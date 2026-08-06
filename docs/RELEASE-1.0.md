@@ -99,7 +99,7 @@ flowchart TB
 | Backend | Supabase (Postgres, Auth, RLS, Realtime, Edge Functions) |
 | Sync jobs | Edge Functions + Vercel Cron |
 | AI | Server-side Grok/Claude |
-| Hosting | Vercel (app) + Supabase (data) |
+| Hosting | Vercel (Hub at hub.ntrr.com) + hosted Supabase — see [PLATFORM-MIGRATION.md](./PLATFORM-MIGRATION.md) |
 
 ### Planned repo layout
 
@@ -339,7 +339,7 @@ sequenceDiagram
 - [ ] Accessibility pass (keyboard, screen reader, focus)
 - [ ] Beta with 3–5 caregiver households
 - [ ] Privacy policy + onboarding copy
-- [ ] Deploy to ntrr.com
+- [ ] Deploy Hub to hub.ntrr.com (Vercel + hosted Supabase) — [PLATFORM-MIGRATION.md](./PLATFORM-MIGRATION.md)
 - [ ] Tag v1.0.0
 
 ---

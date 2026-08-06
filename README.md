@@ -4,7 +4,8 @@
 
 One intelligent dashboard for sandwich-generation families, guardians of adult disabled children, and multi-generational households. NTRR reduces cognitive load by unifying calendars, tasks, and family coordination across the tools you already use — without asking you to rip and replace Google, Apple, or Microsoft.
 
-→ [ntrr.com](https://ntrr.com) (bootstrap micro-SaaS)
+→ Platform: [ntrr.com](https://ntrr.com) · Hub product: [hub.ntrr.com](https://hub.ntrr.com)  
+→ Hosting / domain roadmap: [docs/PLATFORM-MIGRATION.md](docs/PLATFORM-MIGRATION.md)
 
 ---
 
@@ -143,6 +144,7 @@ Open [http://localhost:3000](http://localhost:3000). Supabase Studio runs at [ht
 |-----|----------|---------|
 | **README.md** *(this file)* | Humans | Vision, scope, roadmap |
 | **[AGENTS.md](AGENTS.md)** | AI coding agents | Rules, conventions, code-generation guidance |
+| **[docs/PLATFORM-MIGRATION.md](docs/PLATFORM-MIGRATION.md)** | Humans + agents | Domains, Vercel/Supabase migrate, Hub vs platform |
 
 When using Cursor, Continue.dev, or similar tools in this repo:
 

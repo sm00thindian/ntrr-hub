@@ -1,8 +1,14 @@
 # NTRR — agent instructions
 
-**NTRR** (Nexus Task & Resource Relay) is a secure, AI-powered Family Care Orchestrator — the single intelligent dashboard and coordination hub for sandwich-generation families, guardians of adult disabled children, and multi-generational households.
+**NTRR** (Not The Run Around / Nexus Task & Resource Relay) is the **platform brand** for practical reliability tools. The **Family Care Orchestrator** product in this repo is **Hub** — a secure, AI-powered dashboard for sandwich-generation families, guardians of adult disabled children, and multi-generational households.
 
-Site: [ntrr.com](https://ntrr.com) · Bootstrap as micro-SaaS
+| Layer | Host |
+|-------|------|
+| Platform / brand | [ntrr.com](https://ntrr.com) |
+| **Hub** (this app) | [hub.ntrr.com](https://hub.ntrr.com) |
+| Reliant (sibling product) | [reliant.ntrr.com](https://reliant.ntrr.com) |
+
+**Production hosting + domain migration:** [docs/PLATFORM-MIGRATION.md](docs/PLATFORM-MIGRATION.md) is the source of truth.
 
 ---
 

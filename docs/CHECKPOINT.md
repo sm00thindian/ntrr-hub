@@ -98,7 +98,7 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 2. Playwright E2E (mobile + desktop)
 3. Performance + accessibility pass
 4. Beta with 3–5 caregiver households
-5. Deploy to ntrr.com + tag v1.0.0
+5. Deploy Hub to hub.ntrr.com (Vercel + hosted Supabase) + tag v1.0.0 — see [PLATFORM-MIGRATION.md](./PLATFORM-MIGRATION.md)
 
 ---
 
