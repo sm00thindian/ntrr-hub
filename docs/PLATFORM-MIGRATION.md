@@ -26,7 +26,7 @@ Not The Run Around (brand / company)
 │
 ├── ntrr.com                 Platform home — repo ntrr-com (Vercel)
 │
-├── hub.ntrr.com             Family Care Orchestrator — this repo (ntrr)
+├── hub.ntrr.com             Family Care Orchestrator — this repo (ntrr-hub)
 │     ├── Vercel             Next.js app + cron
 │     └── Supabase           Auth, Postgres, RLS (Hub project only)
 │
@@ -44,7 +44,7 @@ Not The Run Around (brand / company)
 | Layer | Name | Host | Repo |
 |-------|------|------|------|
 | Company / platform | **Not The Run Around** / **NTRR** | `ntrr.com` | [`ntrr-com`](https://github.com/sm00thindian/ntrr-com) |
-| Family coordination product | **Hub** (UI: “NTRR Hub” / “Family Hub” OK) | `hub.ntrr.com` | `ntrr` (this repo) |
+| Family coordination product | **Hub** (UI: “NTRR Hub” / “Family Hub” OK) | `hub.ntrr.com` | [`ntrr-hub`](https://github.com/sm00thindian/ntrr-hub) (this repo) |
 | Phone reliability product | **Reliant** | `reliant.ntrr.com` | `reliant` |
 
 **Rule:** “NTRR” is the parent brand. Product UIs and legal footers say *a Not The Run Around service* (same pattern as Reliant today). Do not treat the Hub app as the entire company forever.
@@ -79,7 +79,7 @@ Not The Run Around (brand / company)
 | Hub app URL | Local `localhost:3000`; docs say deploy to `ntrr.com` | **`https://hub.ntrr.com`** |
 | Apex | Assumed = family app | **Platform home** (thin) |
 | Hub database | Local Supabase Docker | **Hosted Supabase** (project e.g. `ntrr-hub`) |
-| Hub host | Local Next | **Vercel** (repo `sm00thindian/ntrr`) |
+| Hub host | Local Next | **Vercel** (repo `sm00thindian/ntrr-hub`) |
 | Auth | Email magic link + Google OAuth (Supabase) | Same providers; production SMTP + Site URL = hub |
 | AI agents | Rule-based (no LLM keys) | Unchanged for migrate |
 | Cron | `vercel.json` (digest daily, sync 6h) | Enable on Vercel production |
@@ -136,7 +136,7 @@ Two Google uses stay distinct:
 
 #### 1.3 Vercel (Hub app)
 
-- [ ] Import GitHub `sm00thindian/ntrr` → Vercel project (suggestion: `ntrr-hub`)
+- [ ] Import GitHub `sm00thindian/ntrr-hub` → Vercel project (suggestion: `ntrr-hub`)
 - [ ] Production branch: `main`
 - [ ] Attach custom domain **`hub.ntrr.com`**
 - [ ] Set Production env vars (see [Environment matrix](#environment-matrix-hub))
@@ -193,7 +193,7 @@ Repo: [`sm00thindian/ntrr-com`](https://github.com/sm00thindian/ntrr-com) (stubb
 - [ ] Magic-link email subject/body: Hub, not ambiguous “NTRR only”
 - [ ] Production login copy: no Mailpit references
 - [ ] Update [AGENTS.md](../AGENTS.md), [README.md](../README.md), [RELEASE-1.0.md](./RELEASE-1.0.md), [CHECKPOINT.md](./CHECKPOINT.md) deploy URLs to `hub.ntrr.com`
-- [ ] Repo rename **not required**; folder/package name `ntrr` can stay
+- [x] GitHub repo renamed to `ntrr-hub` (2026-08-07); local folder/package name `ntrr` can stay
 
 **Exit Phase 3:** A new user never confuses Hub with the whole company.
 
