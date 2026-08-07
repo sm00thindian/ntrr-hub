@@ -2,8 +2,8 @@
 
 **Status:** Source of truth for platform topology, domains, and production hosting  
 **Audience:** Humans + AI agents implementing deploy and brand split  
-**Last updated:** 2026-08-05  
-**Related:** [RELEASE-1.0.md](./RELEASE-1.0.md) · [CHECKPOINT.md](./CHECKPOINT.md) · [AGENTS.md](../AGENTS.md) · Reliant `../reliant`
+**Last updated:** 2026-08-07  
+**Related:** [RELEASE-1.0.md](./RELEASE-1.0.md) · [CHECKPOINT.md](./CHECKPOINT.md) · [AGENTS.md](../AGENTS.md) · Reliant `../reliant` · Apex site [`ntrr-com`](https://github.com/sm00thindian/ntrr-com)
 
 ---
 
@@ -24,7 +24,7 @@ When env URLs, OAuth redirects, Supabase Site URL, or “where does the app live
 ```text
 Not The Run Around (brand / company)
 │
-├── ntrr.com                 Platform home (brand, product directory, trust)
+├── ntrr.com                 Platform home — repo ntrr-com (Vercel)
 │
 ├── hub.ntrr.com             Family Care Orchestrator — this repo (ntrr)
 │     ├── Vercel             Next.js app + cron
@@ -43,7 +43,7 @@ Not The Run Around (brand / company)
 
 | Layer | Name | Host | Repo |
 |-------|------|------|------|
-| Company / platform | **Not The Run Around** / **NTRR** | `ntrr.com` | Thin site (this monorepo later, or static) |
+| Company / platform | **Not The Run Around** / **NTRR** | `ntrr.com` | [`ntrr-com`](https://github.com/sm00thindian/ntrr-com) |
 | Family coordination product | **Hub** (UI: “NTRR Hub” / “Family Hub” OK) | `hub.ntrr.com` | `ntrr` (this repo) |
 | Phone reliability product | **Reliant** | `reliant.ntrr.com` | `reliant` |
 
@@ -169,11 +169,12 @@ Two Google uses stay distinct:
 
 **Goal:** Apex represents Not The Run Around, not only Hub.
 
-- [ ] Minimal platform page (static or small Next deploy):
-  - Brand one-liner
-  - Links: **Open Hub** → `https://hub.ntrr.com` · **Open Reliant** → `https://reliant.ntrr.com`
-  - Privacy/terms/contact as needed (`support@ntrr.com`)
-- [ ] DNS: `ntrr.com` (+ optional `www`) → platform host
+Repo: [`sm00thindian/ntrr-com`](https://github.com/sm00thindian/ntrr-com) (stubbed 2026-08-07).
+
+- [x] Dedicated apex repo with thin Next.js product directory (Hub + Reliant cards, contact)
+- [ ] Vercel: import `ntrr-com` as its own project (not Hub/Reliant)
+- [ ] Domains: attach `ntrr.com` + `www` (redirect www → apex or vice versa)
+- [ ] Confirm Hub/Reliant subdomains stay on their projects (Vercel already manages DNS zone)
 - [ ] Optional: `ntrr.com/hub` → 302 to `https://hub.ntrr.com`
 - [ ] Reliant footer already points at `ntrr.com` — verify link still correct
 - [ ] Update marketing/README claims: company site vs product hosts
