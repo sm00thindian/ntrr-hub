@@ -20,7 +20,7 @@ import {
 } from "@/lib/permissions/roles";
 
 const PHONE_FIELD_HELP =
-  "Optional. If you include a mobile, invite text explains it may be used for Reliant phone confirmations and is saved on their Hub profile when they join.";
+  "Optional call-target number. Reliant calls this phone for completion checks; the coordinator’s Reliant account places the call and is billed — the invitee does not need their own Reliant account.";
 
 export function InviteForm() {
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function InviteForm() {
         <CardTitle>Invite a family member</CardTitle>
         <CardDescription>
           Access = permissions in Hub. Care persona = their place in the care network. Optional mobile
-          prepares Reliant correlation.
+          Optional mobile is who Reliant may call (coordinator owns the Reliant account).
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -86,7 +86,7 @@ export function InviteForm() {
             />
             <p className="text-muted-foreground text-xs">
               {phone.trim()
-                ? "Invite message will note this number may be used for Reliant phone confirmations."
+                ? "Invite message will explain Reliant may call this number for completion checks (coordinator’s account places the call)."
                 : "Leave blank if you only need email sign-in for now."}
             </p>
           </div>

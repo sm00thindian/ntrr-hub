@@ -21,10 +21,12 @@ export function PhoneProfileCard({ phoneE164 }: PhoneProfileCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Mobile for Reliant</CardTitle>
+        <CardTitle>Your mobile number</CardTitle>
         <CardDescription>
-          Optional. Reliant is phone-first — saving your mobile here lets Hub correlate you with a
-          Reliant account for phone confirmations and the Hub + Reliant bundle later.
+          Optional. If you are the household coordinator, use the same number as your Reliant
+          account (billing). If you are a care partner or self-advocate, this is the number Reliant
+          may call when a Hub task requests phone confirmation — you do not need your own Reliant
+          subscription for that.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -41,7 +43,7 @@ export function PhoneProfileCard({ phoneE164 }: PhoneProfileCardProps) {
               }
               setMessage(
                 result.phoneE164
-                  ? `Saved ${formatPhoneDisplay(result.phoneE164)}. Use this number in Reliant to link services.`
+                  ? `Saved ${formatPhoneDisplay(result.phoneE164)}.`
                   : "Mobile number cleared.",
               );
             });
@@ -58,7 +60,8 @@ export function PhoneProfileCard({ phoneE164 }: PhoneProfileCardProps) {
               defaultValue={phoneE164 ?? ""}
             />
             <p className="text-muted-foreground text-xs">
-              Stored as E.164. Same number you answer for Reliant calls.
+              Stored as E.164. Coordinators: match your Reliant login phone. Call targets: the phone
+              you answer for completion checks.
             </p>
           </div>
           <Button type="submit" disabled={pending}>

@@ -91,9 +91,9 @@ export function CreateTaskForm({
               <span>
                 <span className="font-medium text-foreground">Request Reliant phone confirmation</span>
                 <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
-                  When Reliant is linked, call the assignee (or care focus / self-advocate) until they
-                  confirm — works for coordinators setting checks for others or self-advocates owning
-                  their own items.
+                  Uses the household coordinator&apos;s Reliant account (billing). Reliant calls the
+                  assignee or self-advocate&apos;s mobile until they confirm completion — they do not
+                  need their own Reliant subscription.
                 </span>
               </span>
             </label>

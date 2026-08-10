@@ -124,8 +124,9 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
                   Request Reliant phone confirmation
                 </span>
                 <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
-                  Each instance of this series will request a phone confirm via Reliant when that
-                  pipe is live (assignee or care focus / self-advocate).
+                  Each instance uses the coordinator&apos;s Reliant account. Reliant calls the
+                  assignee or care focus (self-advocate) mobile until they confirm — call target ≠
+                  account holder.
                 </span>
               </span>
             </label>

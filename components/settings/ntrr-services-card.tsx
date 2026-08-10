@@ -13,22 +13,24 @@ export function NtrrServicesCard() {
       <CardHeader>
         <CardTitle>NTRR services</CardTitle>
         <CardDescription>
-          Hub coordinates the household board. Reliant is phone-first accountability — optional
-          phone confirmation for Hub tasks is a tiered bridge between the two.
+          Hub is the family board. Reliant is phone-first accountability. Hub confirms are powered by
+          the <span className="font-medium text-foreground">coordinator&apos;s Reliant account</span>
+          , even when the call goes to a caregiver or self-advocate.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="grid gap-3 sm:grid-cols-2">
           <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm font-semibold tracking-tight">Reliant</p>
+            <p className="text-sm font-semibold tracking-tight">Reliant (coordinator account)</p>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              We call about commitments that matter and keep calling until you confirm. Best for
-              self-advocates and anyone who needs hard accountability by phone.
+              The household coordinator should hold Reliant. That account places confirmation calls
+              and holds billing — it can dial a care partner or self-advocate&apos;s number for
+              completion checks.
             </p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Mark tasks with <span className="font-medium text-foreground">Request Reliant phone
-              confirmation</span> now; live calls + billing land when accounts are linked by mobile
-              number.
+              Mark tasks with{" "}
+              <span className="font-medium text-foreground">Request Reliant phone confirmation</span>
+              . Live dials need the coordinator on Reliant plus mobiles on call targets.
             </p>
             <p className="mt-3">
               <a
@@ -43,13 +45,13 @@ export function NtrrServicesCard() {
           <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-sm font-semibold tracking-tight">Hub + Reliant bundle</p>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              Planned: family coordination plus a shared pool of phone confirm series. One NTRR
-              relationship, clearer pricing than stacking two unrelated tools.
+              Planned: family coordination plus a shared pool of phone confirm series on the
+              coordinator&apos;s Reliant entitlement — clearer than two unrelated tools.
             </p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Dogfood is free while we measure real confirm volume. Add your mobile under{" "}
-              <span className="font-medium text-foreground">Mobile for Reliant</span> to be ready
-              for correlation.
+              Dogfood is free while we measure volume. Coordinators: set up Reliant. Members: save{" "}
+              <span className="font-medium text-foreground">Your mobile number</span> so they can be
+              reached for confirms.
             </p>
             <p className="mt-3">
               <a

@@ -44,7 +44,23 @@ These are independent. A self-advocate may be a `member` (can complete own tasks
 | **Hub + Reliant bundle** | One commercial package: coordination + shared confirm/dial pool |
 
 **Reliant proper** stays the phone-first product (own commitments, inbound, quiet hours).  
-**Hub → Reliant** is a **bridge**: family-board intent → hard phone confirm.
+**Hub → Reliant** is a **bridge**: family-board intent → hard phone confirm, powered by the **coordinator’s Reliant account**.
+
+### Account vs call target (locked)
+
+| Role | Who | Phone / account |
+|------|-----|-----------------|
+| **Reliant account holder** | Household **coordinator** (typically owner/admin) | Coordinator’s Reliant subscription + their Reliant login phone |
+| **Call recipient** | Whoever must confirm (assignee, care partner, or self-advocate) | Their mobile on Hub (`profiles.phone_e164` / invite phone) — **not** required to own Reliant |
+
+```text
+Coordinator’s Reliant account  ──places call──►  Caregiver or self-advocate’s phone
+        (billing / entitlement)                      (answer / confirm completion)
+```
+
+- Entitlement and billing always hang off the **coordinator Reliant** (or Hub+Reliant bundle tied to that household).  
+- The person being called only needs a **reachable mobile** on the household board.  
+- A self-advocate may *also* use Reliant standalone later; that is separate from Hub-originated confirms.
 
 ### Flag on items (shipped)
 
@@ -58,13 +74,17 @@ UX: checkbox on create task + recurring template; **Reliant** chip on cards.
 
 ### Who gets the call (routing)
 
-1. **Assignee** if set and has linked phone / Reliant  
-2. Else **focus person** (often self-advocate)  
-3. Else household default (product decision later — avoid calling every coordinator)
+Resolve **dial number** only (not Reliant account ownership):
+
+1. **Assignee** Hub mobile if set  
+2. Else **focus person** / self-advocate mobile  
+3. Else fail soft / ask coordinator to add a mobile for that member  
+
+**Never** require the call recipient to have a paid Reliant account for Hub-initiated confirms.
 
 ### Meter what costs money
 
-Bill **confirm series started** (due → dials until outcome), not the checkbox alone.  
+Bill the **coordinator’s Reliant / bundle entitlement** for each **confirm series started** (due → dials until outcome), not the checkbox alone.  
 Recurring + Reliant on = cost per **instance** (warn on daily templates).
 
 ### Pricing sketch (go-live)
@@ -72,18 +92,19 @@ Recurring + Reliant on = cost per **instance** (warn on daily templates).
 | Offer | Includes | Confirm series |
 |-------|----------|----------------|
 | Hub free / dogfood | Board only | Off or hard-capped / allowlist |
-| Hub family | Board + calendars | Optional small allotment **or** requires Reliant link |
-| **Reliant confirm add-on** | Metered series on Hub items | e.g. N/mo then overage |
-| **Hub + Reliant bundle** | Hub family + Reliant Starter (or above) | Shared dial/confirm pool |
+| Hub family | Board + calendars | Confirm add-on optional |
+| **Reliant confirm add-on** | Metered series on Hub items | Debits **coordinator Reliant** (or add-on pool) |
+| **Hub + Reliant bundle** | Hub family + coordinator Reliant | Shared dial/confirm pool on coordinator account |
 
 Instrument usage during dogfood even while free.
 
 ### Implementation later
 
-- `reliant_confirm_jobs` + dial counts  
-- Stripe meters / debit Reliant allowance via internal API  
-- Settings: “Reliant confirms used this month”  
-- Gate checkbox effects when entitlement missing (UI: “Add Reliant / upgrade”)
+- `reliant_confirm_jobs` + dial counts on **coordinator Reliant account id**  
+- Outbound dial **to** member `phone_e164`  
+- Stripe meters / debit coordinator Reliant allowance  
+- Settings: “Reliant confirms used this month” for coordinator  
+- Gate live dials if coordinator has no Reliant entitlement (UI: “Connect Reliant / upgrade”)
 
 ---
 
@@ -93,41 +114,39 @@ Keep products distinct; surface each other everywhere it helps the job.
 
 | Surface | Hub shows | Reliant shows |
 |---------|-----------|----------------|
-| Settings | **NTRR services** card → Reliant + bundle story | Link to Hub for family board (when ready) |
+| Settings | **NTRR services** + coordinator Reliant account story | Link to Hub for family board (when ready) |
 | Footer | Reliant + ntrr.com | Already “NTRR service” |
-| Tasks | Reliant confirm checkbox (tiered later) | — |
+| Tasks | Reliant confirm checkbox (coordinator-powered) | — |
 | Apex ntrr.com | Both product cards | — |
 
-**Dogfood copy:** mark intent now; live calls + paid tiers after phone correlation and metering.
+**Dogfood copy:** mark intent now; live calls + paid tiers after coordinator Reliant link + member mobiles.
 
 ---
 
-## Phone identity for correlation (required for live bridge)
+## Phone identity (two numbers, two jobs)
 
-Reliant identity is **phone-first** (`phone_e164`). Hub is **email-first** today. Correlation needs a shared key.
+| Phone | Stored on | Purpose |
+|-------|-----------|---------|
+| **Coordinator Reliant account phone** | Reliant profile (and optionally Hub coordinator profile for convenience) | Login + billing identity for Reliant |
+| **Call-target mobile** | Hub member `profiles.phone_e164` / invite `phone_e164` | Who Reliant dials for Hub confirm |
 
 ### Shipped foundation
 
 | Piece | Detail |
 |-------|--------|
-| `profiles.phone_e164` | Optional unique mobile on Hub profile |
-| Settings → **Mobile for Reliant** | User saves E.164; same number they use in Reliant |
-| Cross-sell card | Explains link + bundle |
+| `profiles.phone_e164` | Optional unique mobile per Hub user (call target or coordinator’s own) |
+| Settings → **Mobile for Reliant** | Members save the number they can be reached on; coordinators should also keep their Reliant number clear for account linking later |
+| Invite optional phone | Seeds invitee profile for **call target**; message explains they may receive Reliant calls for completion |
+| Cross-sell card | Bundle + coordinator-powered confirms |
 
 ### Onboarding path (target)
 
-1. Hub sign-up (email magic link / Google)  
-2. **Prompt for mobile** early (after household create or first Reliant checkbox)  
-3. Optionally verify SMS later (reuse patterns from Reliant)  
-4. Match `profiles.phone_e164` ↔ Reliant `profiles.phone_e164` (or allowlist) when enqueueing confirms  
+1. Hub sign-up (email)  
+2. Coordinator: create/link **Reliant account** (their phone) — entitlement  
+3. Members (caregiver / self-advocate): optional mobile on invite or Settings — **dial target**  
+4. On confirm job: authorize via coordinator Reliant → dial member phone  
 
-**Not yet:** shared Supabase Auth, SSO, or automatic account merge (Phase 6 options still apply). Phone is the **pragmatic join key** for v1 bridge.
-
-### Security / privacy
-
-- Unique phone per Hub profile (DB unique index when set)  
-- Don’t expose other members’ phones beyond household need  
-- Verified phone before dialing (when SMS verify ships)
+**Not yet:** shared Supabase Auth, SSO, or automatic account merge.
 
 ---
 

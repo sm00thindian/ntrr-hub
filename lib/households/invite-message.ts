@@ -16,8 +16,8 @@ export function buildInviteShareText(input: {
     lines.push(
       "",
       `Mobile on file: ${formatPhoneDisplay(input.phoneE164)} (${input.phoneE164}).`,
-      "This number is used so Hub can correlate you with Reliant (phone-first reliability).",
-      "When a task or event requests Reliant confirmation, Reliant may call this number until you confirm — optional, tiered phone accountability under Not The Run Around.",
+      "This is the number Reliant may call when a Hub task requests phone confirmation of completion.",
+      "The household coordinator’s Reliant account places the call and holds billing — you do not need your own Reliant subscription just to answer.",
       "You can update or clear your mobile anytime in Hub Settings after you join.",
     );
   }

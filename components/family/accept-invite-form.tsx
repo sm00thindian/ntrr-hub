@@ -58,19 +58,20 @@ export function AcceptInviteForm({
         >
           <p className="font-medium">About this mobile number</p>
           <p className="mt-1.5 text-xs leading-relaxed opacity-90 sm:text-sm">
-            Your household included <strong>{formatPhoneDisplay(phoneE164)}</strong> so Hub can
-            correlate you with{" "}
+            Your household included <strong>{formatPhoneDisplay(phoneE164)}</strong> as a number
+            you can be reached on. When a Hub task requests{" "}
+            <strong>Reliant phone confirmation</strong>, the household{" "}
+            <strong>coordinator&apos;s</strong>{" "}
             <a
               href="https://reliant.ntrr.com"
               className="font-medium underline underline-offset-2"
               rel="noopener noreferrer"
             >
               Reliant
-            </a>
-            , NTRR&apos;s phone-first reliability service. When a task or event requests{" "}
-            <strong>Reliant phone confirmation</strong>, Reliant may call this number until you
-            confirm. That is optional, tiered accountability — not required for basic Hub use. You can
-            change or remove the number in Settings after you join.
+            </a>{" "}
+            account may call this number until you confirm completion. You do not need your own
+            Reliant subscription for that — optional, tiered accountability. Change or remove the
+            number in Settings after you join.
           </p>
         </div>
       ) : null}
