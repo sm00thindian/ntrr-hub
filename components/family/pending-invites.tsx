@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { PersonaBadge, RoleBadge } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import { revokeInvite } from "@/lib/households/invite-actions";
 import { buildInviteShareText } from "@/lib/households/invite-message";
 import type { PendingInvite } from "@/lib/households/queries";
@@ -70,22 +71,12 @@ export function PendingInvites({ invites, canManage, householdName }: PendingInv
                   <PersonaBadge persona={invite.persona} />
                   {canManage ? (
                     <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigator.clipboard.writeText(url)}
-                      >
-                        Copy link
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigator.clipboard.writeText(shareText)}
-                      >
-                        Copy message
-                      </Button>
+                      <CopyButton value={url} label="Copy link" copiedLabel="Link copied" />
+                      <CopyButton
+                        value={shareText}
+                        label="Copy message"
+                        copiedLabel="Message copied"
+                      />
                       <Button
                         type="button"
                         variant="ghost"

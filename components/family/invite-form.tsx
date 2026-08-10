@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import { FieldHelp } from "@/components/ui/field-help";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -143,14 +144,7 @@ export function InviteForm() {
             <div className="space-y-2">
               <p className="text-sm font-medium">Invite link ready</p>
               <p className="break-all text-sm text-muted-foreground">{inviteUrl}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => navigator.clipboard.writeText(inviteUrl)}
-              >
-                Copy link
-              </Button>
+              <CopyButton value={inviteUrl} label="Copy link" copiedLabel="Link copied" />
             </div>
             {shareText ? (
               <div className="space-y-2 border-t border-border/60 pt-3">
@@ -158,14 +152,11 @@ export function InviteForm() {
                 <pre className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-xs leading-relaxed text-muted-foreground">
                   {shareText}
                 </pre>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigator.clipboard.writeText(shareText)}
-                >
-                  Copy full message
-                </Button>
+                <CopyButton
+                  value={shareText}
+                  label="Copy full message"
+                  copiedLabel="Message copied"
+                />
               </div>
             ) : null}
           </div>
