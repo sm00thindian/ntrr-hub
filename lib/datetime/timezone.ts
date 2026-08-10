@@ -104,3 +104,56 @@ export function calendarDateKeyInZone(iso: string, timeZone: string): string {
     day: "2-digit",
   }).format(new Date(iso));
 }
+
+/**
+ * Start/end of the calendar day containing `now` in `timeZone`, as UTC ISO strings.
+ * Used so "today's agenda" matches the household wall clock, not Vercel UTC midnight.
+ */
+export function getZonedDayBounds(timeZone: string, now = new Date()) {
+  const zone = resolveHouseholdTimeZone(timeZone);
+  const dayKey = calendarDateKeyInZone(now.toISOString(), zone);
+
+  // Local civil days can sit up to ~14h off UTC; scan a window and find [start, end).
+  const probe = new Date(`${dayKey}T12:00:00.000Z`).getTime();
+  const searchStart = probe - 36 * 60 * 60 * 1000;
+  const searchEnd = probe + 36 * 60 * 60 * 1000;
+
+  let startMs: number | null = null;
+  let endMs: number | null = null;
+
+  for (let t = searchStart; t <= searchEnd; t += 60_000) {
+    const key = calendarDateKeyInZone(new Date(t).toISOString(), zone);
+    if (key === dayKey) {
+      if (startMs === null) {
+        startMs = t;
+      }
+      endMs = t + 60_000;
+    } else if (startMs !== null) {
+      break;
+    }
+  }
+
+  if (startMs === null || endMs === null) {
+    // Fallback: UTC day (should be rare)
+    const start = new Date(now);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+    return { start: start.toISOString(), end: end.toISOString(), dayKey };
+  }
+
+  return {
+    start: new Date(startMs).toISOString(),
+    end: new Date(endMs).toISOString(),
+    dayKey,
+  };
+}
+
+/** Chronological sort key; invalid dates sort last */
+export function agendaSortTimeMs(iso: string | null | undefined): number {
+  if (!iso) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+}

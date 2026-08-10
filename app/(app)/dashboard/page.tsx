@@ -45,14 +45,16 @@ export default async function DashboardPage() {
     );
   }
 
-  const [familyStatus, agenda, conflictCount, calendarSettings] = await Promise.all([
+  const calendarSettings = await getHouseholdCalendarSettings(membership.householdId);
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+
+  const [familyStatus, agenda, conflictCount] = await Promise.all([
     getFamilyStatus(membership.householdId, user.id),
-    getTodayAgenda(membership.householdId),
+    getTodayAgenda(membership.householdId, timeZone),
     getPendingConflictCount(membership.householdId),
-    getHouseholdCalendarSettings(membership.householdId),
   ]);
 
-  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  // Priorities follow the same chronological order as the agenda
   const priorities = agenda.slice(0, 4);
 
   return (

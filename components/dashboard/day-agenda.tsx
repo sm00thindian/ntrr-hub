@@ -4,10 +4,34 @@ import { AgendaItemRow } from "@/components/dashboard/agenda-item-row";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AgendaItem } from "@/lib/dashboard/types";
+import { agendaSortTimeMs } from "@/lib/datetime/timezone";
+
+function sortAgendaItems(items: AgendaItem[]) {
+  return [...items].sort((a, b) => {
+    const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
+    const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
+    if (aAllDay !== bAllDay) {
+      return aAllDay - bAllDay;
+    }
+
+    const startDiff = agendaSortTimeMs(a.sortAt) - agendaSortTimeMs(b.sortAt);
+    if (startDiff !== 0) {
+      return startDiff;
+    }
+
+    const endDiff = agendaSortTimeMs(a.endsAt) - agendaSortTimeMs(b.endsAt);
+    if (endDiff !== 0) {
+      return endDiff;
+    }
+
+    return a.title.localeCompare(b.title);
+  });
+}
 
 export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?: string }) {
-  const eventCount = items.filter((item) => item.kind === "event").length;
-  const taskCount = items.filter((item) => item.kind === "task").length;
+  const sorted = sortAgendaItems(items);
+  const eventCount = sorted.filter((item) => item.kind === "event").length;
+  const taskCount = sorted.filter((item) => item.kind === "task").length;
 
   return (
     <Card className="md:col-span-2">
@@ -17,6 +41,7 @@ export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?:
           <CardDescription>
             {taskCount} task{taskCount === 1 ? "" : "s"} · {eventCount} event
             {eventCount === 1 ? "" : "s"} from your connected calendars
+            {timeZone ? ` · times in household timezone` : ""}
           </CardDescription>
         </div>
         <Button asChild variant="outline" size="sm" className="shrink-0">
@@ -24,9 +49,9 @@ export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?:
         </Button>
       </CardHeader>
       <CardContent>
-        {items.length ? (
+        {sorted.length ? (
           <ul className="space-y-2">
-            {items.map((item) => (
+            {sorted.map((item) => (
               <AgendaItemRow key={item.id} item={item} timeZone={timeZone} />
             ))}
           </ul>
