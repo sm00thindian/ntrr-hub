@@ -192,6 +192,18 @@ export function zonedNowParts(timeZone: string) {
   return getZonedParts(new Date(), resolveHouseholdTimeZone(timeZone));
 }
 
+/** Wall date (YYYY-MM-DD) and time (HH:mm) for an ISO instant in household timezone */
+export function isoToWallDateTime(
+  iso: string,
+  timeZone: string,
+): { date: string; time: string } {
+  const parts = getZonedParts(new Date(iso), resolveHouseholdTimeZone(timeZone));
+  return {
+    date: formatWallDate(parts.year, parts.month, parts.day),
+    time: formatWallTime(parts.hour, parts.minute),
+  };
+}
+
 /** YYYY-MM-DD for a wall date */
 export function formatWallDate(year: number, month: number, day: number) {
   return `${year}-${pad2(month)}-${pad2(day)}`;

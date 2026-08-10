@@ -53,6 +53,8 @@ export async function runGoogleSync(householdId: string) {
       }
     }
 
+    // Use updated_at as last successful sync time (do not rewrite metadata here —
+    // tokens may be decrypted in-memory and must stay encryptJson-encoded at rest).
     await admin
       .from("integration_accounts")
       .update({ status: "connected", updated_at: new Date().toISOString() })

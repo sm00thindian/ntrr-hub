@@ -9,6 +9,7 @@ import {
   combineWallDateTime,
   formatWallDate,
   formatWallTime,
+  isoToWallDateTime,
   zonedNowParts,
 } from "@/lib/datetime/timezone";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ type DueDateTimeFieldProps = {
   timeZoneLabel: string;
   idPrefix?: string;
   className?: string;
+  /** ISO instant — pre-fill date/time for edit forms */
+  defaultDueAt?: string | null;
 };
 
 const TIME_PRESETS = [
@@ -37,12 +40,24 @@ export function DueDateTimeField({
   timeZoneLabel,
   idPrefix = "due",
   className,
+  defaultDueAt = null,
 }: DueDateTimeFieldProps) {
   const now = useMemo(() => zonedNowParts(timeZone), [timeZone]);
   const today = formatWallDate(now.year, now.month, now.day);
 
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const initial = useMemo(() => {
+    if (!defaultDueAt) {
+      return { date: "", time: "" };
+    }
+    try {
+      return isoToWallDateTime(defaultDueAt, timeZone);
+    } catch {
+      return { date: "", time: "" };
+    }
+  }, [defaultDueAt, timeZone]);
+
+  const [date, setDate] = useState(initial.date);
+  const [time, setTime] = useState(initial.time);
 
   const combined = combineWallDateTime(date, time);
   const hasDue = Boolean(date);

@@ -94,11 +94,24 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 
 ## Next steps (M6)
 
-1. RLS security audit + token encryption review
-2. Playwright E2E (mobile + desktop)
+1. ~~RLS security audit + token encryption review~~ — see [SECURITY-REVIEW.md](./SECURITY-REVIEW.md); apply `20250811000000_rls_member_role_and_sync.sql`
+2. ~~Playwright E2E smoke~~ — `npm run test:e2e` / `test:e2e:public`; unit ranking `npm run test:unit`
 3. Performance + accessibility pass
 4. Beta with 3–5 caregiver households
 5. Deploy Hub to hub.ntrr.com (Vercel + hosted Supabase) + tag v1.0.0 — see [PLATFORM-MIGRATION.md](./PLATFORM-MIGRATION.md)
+
+### P0 beta readiness (2026-08-10)
+
+| Item | Status |
+|------|--------|
+| Task edit + delete confirm | Done |
+| Mine / Overdue / Unassigned filters | Done |
+| Needs attention ranking (dashboard) | Done |
+| Last sync + reconnect banners + near-realtime refresh | Done |
+| Conflict badge + one-tap resolve path | Done |
+| Post-household setup checklist | Done |
+| RLS / encryption review | Done (doc + migration) |
+| Smoke E2E | Done (public + optional auth) |
 
 ---
 

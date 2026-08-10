@@ -18,7 +18,10 @@
     "db:reset": "npx supabase db reset",
     "db:status": "npx supabase status",
     "db:types": "npx supabase gen types typescript --local > lib/supabase/database.types.ts",
-    "digest:run": "curl -s -X POST http://localhost:3000/api/cron/digest -H \"Authorization: Bearer ${SYNC_CRON_SECRET:-}\" | jq ."
+    "digest:run": "curl -s -X POST http://localhost:3000/api/cron/digest -H \"Authorization: Bearer ${SYNC_CRON_SECRET:-}\" | jq .",
+    "test:unit": "npx tsx --test lib/dashboard/needs-attention.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:public": "playwright test e2e/smoke.spec.ts --grep-invert 'Authenticated'"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -38,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.54.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^20.19.1",
     "@types/react": "^19.1.8",
@@ -46,6 +50,7 @@
     "eslint-config-next": "^15.3.4",
     "supabase": "^2.26.9",
     "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5.8.3"
   }

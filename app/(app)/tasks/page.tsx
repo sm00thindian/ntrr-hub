@@ -39,6 +39,7 @@ export default async function TasksPage() {
 
       <TaskBoard
         householdId={ctx.householdId}
+        currentUserId={ctx.userId}
         tasks={tasks}
         templates={templates}
         members={members}

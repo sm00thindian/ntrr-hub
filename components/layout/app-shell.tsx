@@ -9,6 +9,8 @@ type AppShellProps = {
   userEmail?: string | null;
   householdName?: string | null;
   householdRole?: HouseholdRole | null;
+  householdId?: string | null;
+  conflictCount?: number;
 };
 
 export function AppShell({
@@ -16,6 +18,8 @@ export function AppShell({
   userEmail,
   householdName,
   householdRole,
+  householdId,
+  conflictCount = 0,
 }: AppShellProps) {
   const subtitle = householdName
     ? `${householdName}${householdRole ? ` · ${householdRole}` : ""}`
@@ -29,7 +33,11 @@ export function AppShell({
             <Logo href="/dashboard" size="lg" />
             <p className="mt-1 text-xs text-sidebar-muted">Family coordination</p>
           </div>
-          <AppNav variant="sidebar" />
+          <AppNav
+            variant="sidebar"
+            householdId={householdId}
+            conflictCount={conflictCount}
+          />
           <div className="border-sidebar-border mt-auto space-y-3 border-t pt-4">
             {userEmail ? (
               <p className="text-sidebar-muted truncate text-xs leading-relaxed" title={userEmail}>
@@ -53,6 +61,14 @@ export function AppShell({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {conflictCount > 0 ? (
+                  <a
+                    href="/conflicts"
+                    className="bg-destructive/10 text-destructive hover:bg-destructive/15 inline-flex h-8 items-center rounded-full px-2.5 text-xs font-semibold transition-colors"
+                  >
+                    {conflictCount} conflict{conflictCount === 1 ? "" : "s"}
+                  </a>
+                ) : null}
                 {userEmail ? (
                   <span
                     className="hidden max-w-[12rem] truncate text-xs text-muted-foreground sm:inline"
@@ -76,7 +92,7 @@ export function AppShell({
         </div>
       </div>
 
-      <AppNav variant="bottom" />
+      <AppNav variant="bottom" householdId={householdId} conflictCount={conflictCount} />
     </div>
   );
 }

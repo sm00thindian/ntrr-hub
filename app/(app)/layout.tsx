@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { getUserMembership } from "@/lib/households/queries";
+import { getPendingConflictCount } from "@/lib/sync/conflict";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -15,12 +16,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const membership = await getUserMembership(user.id);
+  const conflictCount = membership
+    ? await getPendingConflictCount(membership.householdId)
+    : 0;
 
   return (
     <AppShell
       userEmail={user.email}
       householdName={membership?.householdName}
       householdRole={membership?.role}
+      householdId={membership?.householdId}
+      conflictCount={conflictCount}
     >
       {children}
     </AppShell>

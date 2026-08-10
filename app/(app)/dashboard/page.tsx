@@ -1,19 +1,21 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AiHighlightsPanel } from "@/components/dashboard/ai-highlights-panel";
 import { DayAgenda } from "@/components/dashboard/day-agenda";
-import { PrioritiesPanel } from "@/components/dashboard/priorities-panel";
+import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { SyncStatusPanel } from "@/components/dashboard/sync-status-panel";
 import { FamilyStatusPanel } from "@/components/family/family-status-panel";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateHouseholdForm } from "@/components/household/create-household-form";
 
 import { getTodayAgenda } from "@/lib/dashboard/agenda";
+import { getNeedsAttention } from "@/lib/dashboard/needs-attention-queries";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getFamilyStatus, getUserMembership } from "@/lib/households/queries";
-import { getPendingConflictCount } from "@/lib/sync/conflict";
+import { getHouseholdSetupStatus } from "@/lib/households/setup";
+import { getHouseholdSyncStatus } from "@/lib/integrations/status";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
-import { canEditTasks } from "@/lib/permissions/roles";
+import { canEditTasks, canManageIntegrations } from "@/lib/permissions/roles";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,7 +42,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Welcome to Hub</h1>
           <p className="mt-2 text-muted-foreground">
             Create a household for your family coordination board — tasks, handoffs, and calendar
-            context (not a calendar replacement).
+            context from the tools you already use.
           </p>
         </div>
         <CreateHouseholdForm />
@@ -51,54 +53,36 @@ export default async function DashboardPage() {
   const calendarSettings = await getHouseholdCalendarSettings(membership.householdId);
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
 
-  const [familyStatus, agenda, conflictCount] = await Promise.all([
+  const [familyStatus, agenda, attention, syncStatus, setupStatus] = await Promise.all([
     getFamilyStatus(membership.householdId, user.id),
     getTodayAgenda(membership.householdId, timeZone),
-    getPendingConflictCount(membership.householdId),
+    getNeedsAttention(membership.householdId, timeZone),
+    getHouseholdSyncStatus(membership.householdId),
+    getHouseholdSetupStatus(membership.householdId),
   ]);
 
-  // Priorities follow the same chronological order as the agenda
-  const priorities = agenda.slice(0, 4);
   const canComplete = canEditTasks(membership.role);
+  const canSync = canManageIntegrations(membership.role);
 
   return (
     <div className="space-y-6">
+      <SetupChecklist status={setupStatus} />
+
       <div className="grid gap-4 lg:grid-cols-3">
-        <PrioritiesPanel
-          items={priorities}
+        <NeedsAttentionPanel
+          items={attention}
           timeZone={timeZone}
           canCompleteTasks={canComplete}
         />
 
         <FamilyStatusPanel status={familyStatus} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sync status</CardTitle>
-            <CardDescription>
-              Hub pulls calendars for context — it doesn&apos;t replace Google or Apple.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {conflictCount > 0 ? (
-              <>
-                <p className="text-sm">
-                  <span className="text-brand text-2xl font-semibold">{conflictCount}</span>{" "}
-                  <span className="text-muted-foreground">
-                    pending conflict{conflictCount === 1 ? "" : "s"}
-                  </span>
-                </p>
-                <Link href="/conflicts" className="text-brand text-sm font-medium hover:underline">
-                  Review conflicts →
-                </Link>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No conflicts. Sync from Settings when you want fresh calendar context on the board.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <SyncStatusPanel
+          householdId={membership.householdId}
+          status={syncStatus}
+          canSync={canSync}
+          timeZone={timeZone}
+        />
 
         <DayAgenda items={agenda} timeZone={timeZone} />
 

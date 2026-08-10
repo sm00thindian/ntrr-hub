@@ -22,6 +22,8 @@ export type GoogleSyncState = {
   defaultTaskListId?: string;
   /** Bumped when calendar pull logic changes — forces a ranged re-sync */
   calendarSyncVersion?: number;
+  /** Last successful pull/push cycle (ISO) */
+  lastSyncedAt?: string;
 };
 
 export type AppleCalDavCredentials = {

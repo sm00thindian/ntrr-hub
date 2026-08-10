@@ -135,6 +135,93 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   return { success: true };
 }
 
+/** Full edit: title, notes, assignee, due, Reliant flag (not status — use updateTaskStatus). */
+export async function updateTask(formData: FormData) {
+  const ctx = await requireHouseholdContext();
+
+  if (!canEditTasks(ctx.role)) {
+    return { error: "You do not have permission to update tasks." };
+  }
+
+  const taskId = String(formData.get("taskId") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const assigneeId = String(formData.get("assigneeId") ?? "").trim() || null;
+  const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
+  const clearDue = formData.get("clearDue") === "true" || formData.get("clearDue") === "on";
+  const reliantConfirmRequested =
+    formData.get("reliantConfirmRequested") === "on" ||
+    formData.get("reliantConfirmRequested") === "true";
+
+  if (!taskId) {
+    return { error: "Task is required." };
+  }
+
+  if (!title) {
+    return { error: "Task title is required." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("tasks")
+    .select("id, status, due_at")
+    .eq("id", taskId)
+    .eq("household_id", ctx.householdId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { error: "Task not found." };
+  }
+
+  // Empty dueAt clears the due date (edit form always submits the field).
+  let dueAt: string | null = null;
+  if (dueAtRaw && !clearDue) {
+    const calendarSettings = await getHouseholdCalendarSettings(ctx.householdId);
+    const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+    dueAt = zonedWallTimeToUtcIso(dueAtRaw, timeZone);
+    if (!dueAt) {
+      return { error: "Invalid due date/time." };
+    }
+  }
+
+  const { data: updated, error } = await supabase
+    .from("tasks")
+    .update({
+      title,
+      description,
+      assignee_id: assigneeId,
+      due_at: dueAt,
+      reliant_confirm_requested: reliantConfirmRequested,
+      provenance: defaultProvenance(),
+    })
+    .eq("id", taskId)
+    .eq("household_id", ctx.householdId)
+    .select("id, title, description, status, due_at")
+    .single();
+
+  if (error || !updated) {
+    return { error: error?.message ?? "Could not update task." };
+  }
+
+  await enqueueGoogleTaskSync({
+    householdId: ctx.householdId,
+    taskId,
+    operation: "update",
+    payload: {
+      title: updated.title,
+      description: updated.description,
+      status: updated.status,
+      dueAt: updated.due_at,
+    },
+  });
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  return { success: true };
+}
+
 export async function deleteTask(taskId: string) {
   const ctx = await requireHouseholdContext();
 
