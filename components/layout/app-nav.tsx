@@ -21,7 +21,7 @@ export function AppNav({ variant }: { variant: "sidebar" | "bottom" }) {
     return (
       <nav
         aria-label="Main navigation"
-        className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t bg-card/95 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] backdrop-blur lg:hidden"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-card/95 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] backdrop-blur lg:hidden"
       >
         <ul className="grid grid-cols-5">
           {navItems.map(({ href, label, icon: Icon }) => {
@@ -41,7 +41,7 @@ export function AppNav({ variant }: { variant: "sidebar" | "bottom" }) {
                   />
                   <span>{label}</span>
                   {active ? (
-                    <span className="bg-foreground absolute top-2 h-1 w-8 rounded-full" aria-hidden />
+                    <span className="absolute top-2 h-1 w-8 rounded-full bg-foreground" aria-hidden />
                   ) : null}
                 </Link>
               </li>
@@ -62,14 +62,17 @@ export function AppNav({ variant }: { variant: "sidebar" | "bottom" }) {
               <Link
                 href={href}
                 className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                  "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-foreground text-background shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-foreground hover:bg-sidebar-accent",
                 )}
               >
                 <Icon
-                  className={cn("h-4 w-4", active ? "text-background" : "text-sidebar-muted")}
+                  className={cn(
+                    "h-4 w-4",
+                    active ? "text-primary-foreground" : "text-sidebar-muted",
+                  )}
                   aria-hidden="true"
                 />
                 {label}

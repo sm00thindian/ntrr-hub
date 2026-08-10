@@ -107,17 +107,18 @@ Not The Run Around (brand / company)
 
 #### 1.1 Hosted Supabase (Hub)
 
-- [ ] Create Supabase project for Hub only (name suggestion: `ntrr-hub`)
-- [ ] Apply all migrations in `supabase/migrations/` in order
-- [ ] Auth → **Site URL:** `https://hub.ntrr.com`
+- [x] Create Supabase project for Hub only (`ntrr-hub` → `https://abzudmcdwgqfbygdkctx.supabase.co`)
+- [x] Apply all migrations in `supabase/migrations/` in order (`supabase db push`; invites migration uses `extensions.gen_random_bytes`)
+- [ ] Auth → **Site URL:** `https://hub.ntrr.com` (use Vercel preview URL first if domain not attached yet)
 - [ ] Auth → **Redirect URLs** include:
   - `https://hub.ntrr.com/auth/callback`
   - `http://localhost:3000/auth/callback` (local dev)
-  - Optional: `https://*-ntrr.vercel.app/auth/callback` if using Vercel previews
-- [ ] Enable Email provider; configure **production SMTP** (Resend / Postmark / SES / etc.)
-- [ ] Install / adapt magic-link template from `supabase/templates/magic_link.html` (must keep `token_hash` + `/auth/callback?flow=magiclink` shape)
+  - Production/preview: exact `https://<deployment>.vercel.app/auth/callback` after first deploy
+- [x] Platform sending: Resend domain `ntrr.com` verified (DKIM + `send` SPF on Vercel DNS)
+- [ ] Hub Supabase **custom SMTP** → Resend (`smtp.resend.com`, sender `Hub` / `noreply@ntrr.com`)
+- [x] Custom magic-link HTML template deferred (free tier); default ConfirmationURL + app `code` exchange works
 - [ ] Enable Google provider for **sign-in** (Supabase Auth) with Google Cloud OAuth client that includes Supabase callback URL
-- [ ] Copy project URL, anon/publishable key, service_role key into password manager
+- [x] Copy project URL, anon/publishable key, service_role key into password manager
 
 #### 1.2 Google Cloud (Hub integrations)
 
@@ -187,13 +188,13 @@ Repo: [`sm00thindian/ntrr-com`](https://github.com/sm00thindian/ntrr-com) (stubb
 
 **Goal:** UI and docs call this product **Hub** under the NTRR brand.
 
-- [ ] Login / landing: product name “Hub” (or “NTRR Hub”); parent “Not The Run Around”
-- [ ] Footer pattern aligned with Reliant (“a Not The Run Around service”)
-- [ ] PWA `name` / `short_name` decision (e.g. short_name `Hub` or `NTRR Hub`)
-- [ ] Magic-link email subject/body: Hub, not ambiguous “NTRR only”
-- [ ] Production login copy: no Mailpit references
-- [ ] Update [AGENTS.md](../AGENTS.md), [README.md](../README.md), [RELEASE-1.0.md](./RELEASE-1.0.md), [CHECKPOINT.md](./CHECKPOINT.md) deploy URLs to `hub.ntrr.com`
-- [x] GitHub repo renamed to `ntrr-hub` (2026-08-07); local folder/package name `ntrr` can stay
+- [x] Login / landing: product name “Hub”; parent “Not The Run Around” (aligned with Reliant / ntrr-com zinc + green theme)
+- [x] Footer pattern aligned with Reliant (“a Not The Run Around service”)
+- [x] PWA `name` / `short_name`: “Hub — Family Care Orchestrator” / `Hub`
+- [x] Magic-link email body: Hub (`supabase/templates/magic_link.html`)
+- [x] Production login copy: no Mailpit references (dev-only helper remains)
+- [ ] Update [AGENTS.md](../AGENTS.md), [README.md](../README.md), [RELEASE-1.0.md](./RELEASE-1.0.md), [CHECKPOINT.md](./CHECKPOINT.md) deploy URLs to `hub.ntrr.com` (mostly done; pass for any stale copy)
+- [x] GitHub repo renamed to `ntrr-hub` (2026-08-07); package name set to `ntrr-hub`
 
 **Exit Phase 3:** A new user never confuses Hub with the whole company.
 
@@ -316,11 +317,20 @@ Use this sequence once Phase 1 assets exist:
 
 ## Explicitly deferred (do not block migrate)
 
+### Do next (platform ops — top of pile after first Hub URL works)
+
+1. **`support@ntrr.com` human inbox** — set up a **forwarder** (ImprovMX / ForwardEmail / etc.) or Google Workspace so mail to `support@` reaches a real person. Not Resend receiving MX (that is API inbound, not a mailbox). Keep Resend on `send` + DKIM for Auth outbound. Do this before partners rely on footer `support@ntrr.com`.
+2. **Reliant Supabase SMTP** — same Resend API key / domain; sender name `Reliant` / `noreply@ntrr.com`.
+3. **Optional DMARC** — TXT `_dmarc` = `v=DMARC1; p=none;` on Vercel DNS.
+
+### Product / later
+
 - Microsoft Graph sync (RELEASE 1.1)
 - Shared SSO / phone-first Hub signup (Phase 6)
 - Hub LLM API (agents are rule-based today)
 - Apple CalDAV shared service account (user-owned credentials)
 - Multi-region HA, Supabase branching matrix, staging env clone (add when beta load requires it)
+- Custom Supabase email templates (requires Pro) — optional polish
 
 ---
 

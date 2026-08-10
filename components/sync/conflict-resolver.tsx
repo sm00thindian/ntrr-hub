@@ -34,7 +34,7 @@ export function ConflictResolver({ conflicts }: { conflicts: ConflictView[] }) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
-          No pending sync conflicts. Changes from Google and NTRR are in sync.
+          No pending sync conflicts. Changes from Google and Hub are in sync.
         </CardContent>
       </Card>
     );
@@ -56,7 +56,7 @@ export function ConflictResolver({ conflicts }: { conflicts: ConflictView[] }) {
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border p-3">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">NTRR</p>
+                  <p className="text-xs font-medium uppercase text-muted-foreground">Hub</p>
                   <p className="mt-1 text-sm">{formatValue(conflict.localValue)}</p>
                 </div>
                 <div className="rounded-lg border p-3">
@@ -74,7 +74,7 @@ export function ConflictResolver({ conflicts }: { conflicts: ConflictView[] }) {
                     startTransition(() => void resolveSyncConflict(conflict.id, "keep_local"))
                   }
                 >
-                  Keep NTRR
+                  Keep Hub
                 </Button>
                 <Button
                   type="button"

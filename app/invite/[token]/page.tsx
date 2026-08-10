@@ -73,7 +73,9 @@ export default async function InvitePage({ params }: InvitePageProps) {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Join {invite.householdName}</CardTitle>
-          <CardDescription>You&apos;ve been invited to coordinate care together in NTRR.</CardDescription>
+          <CardDescription>
+            You&apos;ve been invited to coordinate care together in Hub.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <AcceptInviteForm

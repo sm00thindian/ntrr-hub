@@ -2,8 +2,6 @@
 
 import { useState, useTransition } from "react";
 
-import { AppIcon } from "@/components/brand/app-icon";
-import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +18,7 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [pending, startTransition] = useTransition();
+  const isDev = process.env.NODE_ENV !== "production";
 
   function buildCallbackUrl() {
     const url = new URL("/auth/callback", window.location.origin);
@@ -37,18 +36,12 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
       : "http://127.0.0.1:54324";
 
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-md">
-      <CardHeader className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Logo href="/" size="lg" />
-          <AppIcon size={36} />
-        </div>
-        <div>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>
-            Your family coordination hub. Use email magic link or Google.
-          </CardDescription>
-        </div>
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-2">
+        <CardTitle>Sign in</CardTitle>
+        <CardDescription>
+          Your family coordination hub. Use an email magic link or Google.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form
@@ -76,7 +69,9 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
               }
 
               setMessage(
-                "Check Mailpit for your sign-in link. Open the link in this same browser.",
+                isDev
+                  ? "Check Mailpit for your sign-in link. Open the link in this same browser."
+                  : "Check your email for a sign-in link. Open it in this same browser.",
               );
             });
           }}
@@ -124,23 +119,31 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
         </form>
 
         {message ? (
-          <p className="rounded-md bg-accent/60 px-3 py-2 text-sm text-accent-foreground" role="status">
+          <p
+            className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+            role="status"
+          >
             {message}
           </p>
         ) : null}
         {error ? (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+          <p
+            className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-200"
+            role="alert"
+          >
             {error}
           </p>
         ) : null}
 
-        <p className="text-xs text-muted-foreground">
-          Local dev: magic links arrive in{" "}
-          <a href={mailpitUrl} className="underline" target="_blank" rel="noreferrer">
-            Mailpit
-          </a>
-          . Request the link and open it in this same browser.
-        </p>
+        {isDev ? (
+          <p className="text-xs text-muted-foreground">
+            Local dev: magic links arrive in{" "}
+            <a href={mailpitUrl} className="underline underline-offset-2" target="_blank" rel="noreferrer">
+              Mailpit
+            </a>
+            . Request the link and open it in this same browser.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

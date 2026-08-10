@@ -6,36 +6,37 @@ type LogoProps = {
   className?: string;
   href?: string;
   size?: "sm" | "md" | "lg";
-  variant?: "default" | "inverse";
+  /** Show “Hub” product wordmark (default) or compact “H” mark */
+  mark?: "word" | "compact";
 };
 
 const sizes = {
   sm: "text-base",
-  md: "text-xl",
-  lg: "text-3xl",
+  md: "text-lg",
+  lg: "text-xl",
 };
 
-export function Logo({ className, href = "/dashboard", size = "md", variant = "default" }: LogoProps) {
+export function Logo({
+  className,
+  href = "/dashboard",
+  size = "md",
+  mark = "word",
+}: LogoProps) {
   const content = (
     <span
       className={cn(
-        "font-display inline-flex items-baseline font-bold lowercase tracking-tight",
+        "inline-flex items-baseline font-semibold tracking-tight text-foreground",
         sizes[size],
-        variant === "inverse" ? "text-primary-foreground" : "text-foreground",
         className,
       )}
     >
-      ntrr
-      <span
-        className="bg-brand ml-px inline-block h-[0.38em] w-[0.38em] translate-y-[0.06em] rounded-full"
-        aria-hidden="true"
-      />
+      {mark === "compact" ? "H" : "Hub"}
     </span>
   );
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex shrink-0" aria-label="NTRR home">
+      <Link href={href} className="inline-flex shrink-0" aria-label="Hub home">
         {content}
       </Link>
     );

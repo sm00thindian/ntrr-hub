@@ -1,11 +1,11 @@
 {
-  "name": "ntrr — Family Care Orchestrator",
-  "short_name": "ntrr",
-  "description": "Secure coordination hub for caregiving families.",
+  "name": "Hub — Family Care Orchestrator",
+  "short_name": "Hub",
+  "description": "Secure coordination hub for caregiving families. A Not The Run Around service.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#fafafa",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#18181b",
   "orientation": "any",
   "icons": [
     {

@@ -1,24 +1,30 @@
 import type { Metadata, Viewport } from "next";
-import { Courier_Prime } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 import "./globals.css";
 
-const courierPrime = Courier_Prime({
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  variable: "--font-courier-prime",
-  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "ntrr — Family Care Orchestrator",
+  title: {
+    default: "Hub",
+    template: "%s · Hub",
+  },
   description:
-    "Secure coordination hub for sandwich-generation families and caregivers. One dashboard for tasks, calendars, and family alignment.",
-  applicationName: "ntrr",
+    "One calm dashboard for calendars, tasks, and family handoffs — built for Gen X caregivers who need reliability, not another app to babysit.",
+  applicationName: "Hub",
+  metadataBase: new URL("https://hub.ntrr.com"),
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
@@ -26,13 +32,24 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "ntrr",
+    title: "Hub",
     statusBarStyle: "default",
+  },
+  openGraph: {
+    title: "Hub",
+    description:
+      "One calm dashboard for calendars, tasks, and family handoffs — a Not The Run Around service.",
+    url: "https://hub.ntrr.com",
+    siteName: "Hub",
+    type: "website",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -44,8 +61,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${courierPrime.variable} font-sans antialiased`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
         {process.env.NODE_ENV !== "production" ? (
           <Script id="dev-sw-cleanup" strategy="beforeInteractive">
             {`if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})})}if('caches'in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}`}

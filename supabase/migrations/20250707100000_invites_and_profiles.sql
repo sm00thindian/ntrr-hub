@@ -16,7 +16,8 @@ create table public.invites (
   household_id uuid not null references public.households (id) on delete cascade,
   email text not null check (position('@' in email) > 1),
   role public.household_role not null default 'caregiver',
-  token text not null unique default encode(gen_random_bytes(32), 'hex'),
+  -- Hosted Supabase installs pgcrypto in schema "extensions" (not public search_path)
+  token text not null unique default encode(extensions.gen_random_bytes(32), 'hex'),
   invited_by uuid not null references auth.users (id) on delete restrict,
   expires_at timestamptz not null default (now() + interval '7 days'),
   accepted_at timestamptz,
