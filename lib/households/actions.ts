@@ -49,6 +49,17 @@ export async function createHousehold(
     return { error: "Could not create household." };
   }
 
+  // Persist a default timezone so setup doesn't stall on an unsaved display default.
+  try {
+    const { DEFAULT_HOUSEHOLD_TIMEZONE } = await import("@/lib/datetime/timezone");
+    const { saveHouseholdCalendarSettings } = await import("@/lib/households/calendar-settings");
+    await saveHouseholdCalendarSettings(String(householdId), {
+      timezone: DEFAULT_HOUSEHOLD_TIMEZONE,
+    });
+  } catch {
+    // Non-blocking — user can still confirm in Settings.
+  }
+
   revalidatePath("/", "layout");
   revalidatePath("/dashboard");
   revalidatePath("/tasks");

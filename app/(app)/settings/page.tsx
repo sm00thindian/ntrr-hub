@@ -62,6 +62,7 @@ export default async function SettingsPage({
   }
 
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  const timezoneConfirmed = Boolean(calendarSettings.timezone?.trim());
 
   return (
     <div className="space-y-6">
@@ -80,7 +81,11 @@ export default async function SettingsPage({
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <HouseholdTimezoneCard canManage={canManage} timezone={timeZone} />
+        <HouseholdTimezoneCard
+          canManage={canManage}
+          timezone={timeZone}
+          timezoneConfirmed={timezoneConfirmed}
+        />
 
         <PhoneProfileCard phoneE164={phoneE164} />
 

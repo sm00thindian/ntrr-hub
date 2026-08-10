@@ -47,8 +47,10 @@ export async function getHouseholdSetupStatus(
     {
       id: "timezone",
       title: "Confirm household timezone",
-      description: "Due times and the day board use this zone.",
-      href: "/settings",
+      description: timezoneDone
+        ? "Due times and the day board use this zone."
+        : "Open Settings and tap Confirm timezone (even if the default already looks right).",
+      href: "/settings#household-timezone",
       done: timezoneDone,
     },
     {
