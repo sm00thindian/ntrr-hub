@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
+import { resolveHouseholdTimeZone, zonedWallTimeToUtcIso } from "@/lib/datetime/timezone";
 import { enqueueGoogleTaskSync } from "@/lib/sync/enqueue";
 import { createClient } from "@/lib/supabase/server";
 import { canEditTasks } from "@/lib/permissions/roles";
@@ -28,13 +30,22 @@ export async function createTask(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const assigneeId = String(formData.get("assigneeId") ?? "").trim() || null;
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
-  const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
   const reliantConfirmRequested =
     formData.get("reliantConfirmRequested") === "on" ||
     formData.get("reliantConfirmRequested") === "true";
 
   if (!title) {
     return { error: "Task title is required." };
+  }
+
+  let dueAt: string | null = null;
+  if (dueAtRaw) {
+    const calendarSettings = await getHouseholdCalendarSettings(ctx.householdId);
+    const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+    dueAt = zonedWallTimeToUtcIso(dueAtRaw, timeZone);
+    if (!dueAt) {
+      return { error: "Invalid due date/time." };
+    }
   }
 
   const supabase = await createClient();

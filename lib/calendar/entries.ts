@@ -4,6 +4,7 @@ import {
   formatClockCompactInZone,
   formatDateInZone,
   formatTimeInZone,
+  isMidnightInZone,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import { eventOccursOnDay } from "@/lib/calendar/week";
@@ -50,7 +51,7 @@ export function formatEntryTime(entry: CalendarEntry, timeZone?: string) {
     return `${start} – ${end}`;
   }
 
-  if (dueAtIsMidnight(entry.task.dueAt)) {
+  if (isMidnightInZone(entry.task.dueAt, zone)) {
     return "Due today";
   }
 
@@ -70,7 +71,7 @@ export function formatEntryTimeCompact(entry: CalendarEntry, timeZone?: string) 
     return start === end ? start : `${start}–${end}`;
   }
 
-  if (dueAtIsMidnight(entry.task.dueAt)) {
+  if (isMidnightInZone(entry.task.dueAt, zone)) {
     return "Due today";
   }
 
@@ -80,11 +81,6 @@ export function formatEntryTimeCompact(entry: CalendarEntry, timeZone?: string) 
 export function formatEntryDate(entry: CalendarEntry, timeZone?: string) {
   const iso = entry.kind === "event" ? entry.event.startsAt : entry.task.dueAt;
   return formatDateInZone(iso, resolveHouseholdTimeZone(timeZone));
-}
-
-function dueAtIsMidnight(dueAt: string) {
-  const date = new Date(dueAt);
-  return date.getHours() === 0 && date.getMinutes() === 0;
 }
 
 export function getEntryTitle(entry: CalendarEntry) {

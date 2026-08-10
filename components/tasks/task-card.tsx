@@ -6,6 +6,10 @@ import { Calendar, Check, Trash2, User } from "lucide-react";
 import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import { Button } from "@/components/ui/button";
+import {
+  formatDateTimeInZone,
+  resolveHouseholdTimeZone,
+} from "@/lib/datetime/timezone";
 import { deleteTask, updateTaskStatus } from "@/lib/tasks/actions";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
@@ -15,24 +19,21 @@ type TaskCardProps = {
   task: Task;
   canEdit: boolean;
   compact?: boolean;
+  timeZone?: string;
   onUpdated?: () => void;
 };
 
-function formatDue(dueAt: string | null) {
+function formatDue(dueAt: string | null, timeZone: string) {
   if (!dueAt) {
     return null;
   }
-  return new Date(dueAt).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatDateTimeInZone(dueAt, timeZone);
 }
 
-export function TaskCard({ task, canEdit, compact, onUpdated }: TaskCardProps) {
+export function TaskCard({ task, canEdit, compact, timeZone, onUpdated }: TaskCardProps) {
   const [pending, startTransition] = useTransition();
-  const dueLabel = formatDue(task.dueAt);
+  const zone = resolveHouseholdTimeZone(timeZone);
+  const dueLabel = formatDue(task.dueAt, zone);
 
   function runAction(action: () => Promise<{ error?: string; success?: boolean } | void>) {
     startTransition(async () => {
@@ -139,12 +140,14 @@ export function KanbanColumn({
   status,
   tasks,
   canEdit,
+  timeZone,
   onUpdated,
 }: {
   title: string;
   status: TaskStatus;
   tasks: Task[];
   canEdit: boolean;
+  timeZone?: string;
   onUpdated?: () => void;
 }) {
   const columnTasks = tasks.filter((t) => t.status === status);
@@ -158,7 +161,12 @@ export function KanbanColumn({
       <ul className="space-y-2">
         {columnTasks.map((task) => (
           <li key={task.id}>
-            <TaskCard task={task} canEdit={canEdit} onUpdated={onUpdated} />
+            <TaskCard
+              task={task}
+              canEdit={canEdit}
+              timeZone={timeZone}
+              onUpdated={onUpdated}
+            />
           </li>
         ))}
         {!columnTasks.length ? (

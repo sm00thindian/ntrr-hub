@@ -3,17 +3,22 @@ import { ListTodo } from "lucide-react";
 
 import { SourceChip } from "@/components/provenance/source-chip";
 import type { CalendarTask } from "@/lib/calendar/types";
+import {
+  formatTimeInZone,
+  isMidnightInZone,
+  resolveHouseholdTimeZone,
+} from "@/lib/datetime/timezone";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
 
-function formatDueTime(dueAt: string) {
-  return new Date(dueAt).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-export function CalendarTaskCard({ task }: { task: CalendarTask }) {
-  const hasTime = !dueAtIsMidnight(task.dueAt);
+export function CalendarTaskCard({
+  task,
+  timeZone,
+}: {
+  task: CalendarTask;
+  timeZone?: string;
+}) {
+  const zone = resolveHouseholdTimeZone(timeZone);
+  const hasTime = !isMidnightInZone(task.dueAt, zone);
 
   return (
     <Link
@@ -29,15 +34,10 @@ export function CalendarTaskCard({ task }: { task: CalendarTask }) {
           </div>
           <p className="text-muted-foreground mt-1 text-xs">
             Task · {TASK_STATUS_LABELS[task.status]}
-            {hasTime ? ` · Due ${formatDueTime(task.dueAt)}` : ""}
+            {hasTime ? ` · Due ${formatTimeInZone(task.dueAt, zone)}` : ""}
           </p>
         </div>
       </div>
     </Link>
   );
-}
-
-function dueAtIsMidnight(dueAt: string) {
-  const date = new Date(dueAt);
-  return date.getHours() === 0 && date.getMinutes() === 0;
 }

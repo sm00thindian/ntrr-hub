@@ -20,9 +20,19 @@ type TaskBoardProps = {
   templates: RecurringTaskTemplate[];
   members: HouseholdMember[];
   canEdit: boolean;
+  timeZone: string;
+  timeZoneLabel: string;
 };
 
-export function TaskBoard({ householdId, tasks, templates, members, canEdit }: TaskBoardProps) {
+export function TaskBoard({
+  householdId,
+  tasks,
+  templates,
+  members,
+  canEdit,
+  timeZone,
+  timeZoneLabel,
+}: TaskBoardProps) {
   const router = useRouter();
   const [view, setView] = useState<"kanban" | "list">("list");
   const [, startRefresh] = useTransition();
@@ -86,7 +96,11 @@ export function TaskBoard({ householdId, tasks, templates, members, canEdit }: T
 
       {canEdit ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <CreateTaskForm members={members} onCreated={refresh} />
+          <CreateTaskForm
+            members={members}
+            timeZoneLabel={timeZoneLabel}
+            onCreated={refresh}
+          />
           <RecurringTemplateForm members={members} onCreated={refresh} />
         </div>
       ) : (
@@ -102,6 +116,7 @@ export function TaskBoard({ householdId, tasks, templates, members, canEdit }: T
               status={status}
               tasks={tasks}
               canEdit={canEdit}
+              timeZone={timeZone}
               onUpdated={refresh}
             />
           ))}
@@ -116,7 +131,12 @@ export function TaskBoard({ householdId, tasks, templates, members, canEdit }: T
                 canEdit && "sm:cursor-default",
               )}
             >
-              <TaskCard task={task} canEdit={canEdit} onUpdated={refresh} />
+              <TaskCard
+                task={task}
+                canEdit={canEdit}
+                timeZone={timeZone}
+                onUpdated={refresh}
+              />
             </li>
           ))}
           {!tasks.length ? (

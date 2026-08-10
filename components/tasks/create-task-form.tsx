@@ -11,10 +11,11 @@ import { createTask } from "@/lib/tasks/actions";
 
 type CreateTaskFormProps = {
   members: HouseholdMember[];
+  timeZoneLabel: string;
   onCreated?: () => void;
 };
 
-export function CreateTaskForm({ members, onCreated }: CreateTaskFormProps) {
+export function CreateTaskForm({ members, timeZoneLabel, onCreated }: CreateTaskFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -22,7 +23,10 @@ export function CreateTaskForm({ members, onCreated }: CreateTaskFormProps) {
     <Card>
       <CardHeader>
         <CardTitle>Add task</CardTitle>
-        <CardDescription>Create a family task with optional assignee and due date.</CardDescription>
+        <CardDescription>
+          Create a family task with optional assignee and due date. Due times use household timezone (
+          {timeZoneLabel}).
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -68,6 +72,9 @@ export function CreateTaskForm({ members, onCreated }: CreateTaskFormProps) {
           <div className="space-y-2">
             <Label htmlFor="dueAt">Due (optional)</Label>
             <Input id="dueAt" name="dueAt" type="datetime-local" />
+            <p className="text-muted-foreground text-xs">
+              Interpreted as {timeZoneLabel} (change under Settings → Household timezone).
+            </p>
           </div>
           <div className="sm:col-span-2">
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">

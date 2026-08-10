@@ -157,3 +157,116 @@ export function agendaSortTimeMs(iso: string | null | undefined): number {
   const ms = Date.parse(iso);
   return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
 }
+
+function getZonedParts(date: Date, timeZone: string) {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: resolveHouseholdTimeZone(timeZone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = dtf.formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? "0");
+
+  return {
+    year: get("year"),
+    month: get("month"),
+    day: get("day"),
+    hour: get("hour"),
+    minute: get("minute"),
+    second: get("second"),
+  };
+}
+
+/**
+ * Parse `datetime-local` value (YYYY-MM-DDTHH:mm) as wall time in household timezone → UTC ISO.
+ * Critical: server-side `new Date("2026-08-10T15:00")` is UTC on Vercel, not household time.
+ */
+export function zonedWallTimeToUtcIso(
+  localDateTime: string,
+  timeZone: string,
+): string | null {
+  const match = localDateTime
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] ?? "0");
+
+  if ([year, month, day, hour, minute, second].some((n) => Number.isNaN(n))) {
+    return null;
+  }
+
+  const zone = resolveHouseholdTimeZone(timeZone);
+  // Initial guess: treat wall components as UTC, then correct by zone offset iteratively
+  let guess = Date.UTC(year, month - 1, day, hour, minute, second);
+
+  for (let i = 0; i < 4; i++) {
+    const parts = getZonedParts(new Date(guess), zone);
+    const asIfUtc = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      parts.second,
+    );
+    const desired = Date.UTC(year, month - 1, day, hour, minute, second);
+    const delta = desired - asIfUtc;
+    guess += delta;
+    if (delta === 0) {
+      break;
+    }
+  }
+
+  // Verify wall clock matches (handles rare DST edges)
+  const check = getZonedParts(new Date(guess), zone);
+  if (
+    check.year !== year ||
+    check.month !== month ||
+    check.day !== day ||
+    check.hour !== hour ||
+    check.minute !== minute
+  ) {
+    // Fall back: try ±1h for DST ambiguity
+    for (const offset of [-3600000, 3600000, -7200000, 7200000]) {
+      const candidate = guess + offset;
+      const p = getZonedParts(new Date(candidate), zone);
+      if (
+        p.year === year &&
+        p.month === month &&
+        p.day === day &&
+        p.hour === hour &&
+        p.minute === minute
+      ) {
+        return new Date(candidate).toISOString();
+      }
+    }
+  }
+
+  return new Date(guess).toISOString();
+}
+
+/** True if due time is midnight in household zone (date-only style) */
+export function isMidnightInZone(iso: string, timeZone: string): boolean {
+  const parts = getZonedParts(new Date(iso), resolveHouseholdTimeZone(timeZone));
+  return parts.hour === 0 && parts.minute === 0 && parts.second === 0;
+}
+
+export function householdTimeZoneLabel(timeZone: string): string {
+  const zone = resolveHouseholdTimeZone(timeZone);
+  const option = HOUSEHOLD_TIMEZONE_OPTIONS.find((o) => o.value === zone);
+  return option?.label ?? zone;
+}
