@@ -14,4 +14,8 @@ export type AgendaItem = {
   source: ProvenanceSource;
   status?: TaskStatus;
   href?: string;
+  /** Task/event requests Reliant phone confirmation */
+  reliantConfirmRequested?: boolean;
+  /** Underlying DB id (task uuid or event uuid) for actions */
+  entityId?: string;
 };

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AiHighlightsPanel } from "@/components/dashboard/ai-highlights-panel";
 import { DayAgenda } from "@/components/dashboard/day-agenda";
+import { PrioritiesPanel } from "@/components/dashboard/priorities-panel";
 import { FamilyStatusPanel } from "@/components/family/family-status-panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateHouseholdForm } from "@/components/household/create-household-form";
@@ -12,6 +13,7 @@ import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings
 import { getFamilyStatus, getUserMembership } from "@/lib/households/queries";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
+import { canEditTasks } from "@/lib/permissions/roles";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -56,46 +58,16 @@ export default async function DashboardPage() {
 
   // Priorities follow the same chronological order as the agenda
   const priorities = agenda.slice(0, 4);
+  const canComplete = canEditTasks(membership.role);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Today&apos;s priorities</CardTitle>
-            <CardDescription>Tasks and events that need attention now.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {priorities.length ? (
-              <ul className="relative space-y-0">
-                {priorities.map((item, index) => (
-                  <li key={item.id} className="relative flex gap-3 pb-4 last:pb-0">
-                    {index < priorities.length - 1 ? (
-                      <span
-                        className="bg-brand absolute top-3 left-[5px] h-[calc(100%-4px)] w-0.5"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    <span
-                      className="bg-brand relative z-10 mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0 pt-0.5">
-                      <p className="truncate text-sm font-medium">{item.title}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {item.kind === "event" ? "Calendar event" : "Task"}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nothing urgent today. Connect calendars in Settings to see priorities here.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <PrioritiesPanel
+          items={priorities}
+          timeZone={timeZone}
+          canCompleteTasks={canComplete}
+        />
 
         <FamilyStatusPanel status={familyStatus} />
 

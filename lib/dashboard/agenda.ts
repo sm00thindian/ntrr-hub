@@ -70,6 +70,8 @@ export async function getTodayAgenda(
       source: task.provenance.source,
       status: task.status,
       href: "/tasks",
+      reliantConfirmRequested: task.reliantConfirmRequested,
+      entityId: task.id,
     }));
 
   const eventItems: AgendaItem[] = events.map((event) => ({
@@ -82,6 +84,8 @@ export async function getTodayAgenda(
     location: event.location,
     source: event.provenance.source,
     href: "/calendar",
+    reliantConfirmRequested: event.reliantConfirmRequested,
+    entityId: event.id,
   }));
 
   return [...taskItems, ...eventItems].sort(compareAgendaItems);
