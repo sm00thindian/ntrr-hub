@@ -109,15 +109,12 @@ Not The Run Around (brand / company)
 
 - [x] Create Supabase project for Hub only (`ntrr-hub` → `https://abzudmcdwgqfbygdkctx.supabase.co`)
 - [x] Apply all migrations in `supabase/migrations/` in order (`supabase db push`; invites migration uses `extensions.gen_random_bytes`)
-- [ ] Auth → **Site URL:** `https://hub.ntrr.com` (use Vercel preview URL first if domain not attached yet)
-- [ ] Auth → **Redirect URLs** include:
-  - `https://hub.ntrr.com/auth/callback`
-  - `http://localhost:3000/auth/callback` (local dev)
-  - Production/preview: exact `https://<deployment>.vercel.app/auth/callback` after first deploy
+- [x] Auth → **Site URL:** `https://hub.ntrr.com`
+- [x] Auth → **Redirect URLs** include `https://hub.ntrr.com/auth/callback` (+ localhost for local dev)
 - [x] Platform sending: Resend domain `ntrr.com` verified (DKIM + `send` SPF on Vercel DNS)
-- [ ] Hub Supabase **custom SMTP** → Resend (`smtp.resend.com`, sender `Hub` / `noreply@ntrr.com`)
-- [x] Custom magic-link HTML template deferred (free tier); default ConfirmationURL + app `code` exchange works
-- [ ] Enable Google provider for **sign-in** (Supabase Auth) with Google Cloud OAuth client that includes Supabase callback URL
+- [x] Hub Supabase **custom SMTP** → Resend; magic-link template “Sign in to NTRR” (platform-shared branding)
+- [x] Magic link smoke test on `https://hub.ntrr.com` (2026-08-10)
+- [ ] Enable Google provider for **sign-in** (Supabase Auth) — optional if email magic link is enough
 - [x] Copy project URL, anon/publishable key, service_role key into password manager
 
 #### 1.2 Google Cloud (Hub integrations)
@@ -137,27 +134,27 @@ Two Google uses stay distinct:
 
 #### 1.3 Vercel (Hub app)
 
-- [ ] Import GitHub `sm00thindian/ntrr-hub` → Vercel project (suggestion: `ntrr-hub`)
-- [ ] Production branch: `main`
-- [ ] Attach custom domain **`hub.ntrr.com`**
-- [ ] Set Production env vars (see [Environment matrix](#environment-matrix-hub))
-- [ ] Deploy; confirm build green
-- [ ] Confirm Crons registered from `vercel.json` (Hobby: max once/day per job):
+- [x] Import GitHub `sm00thindian/ntrr-hub` → Vercel project `ntrr-hub`
+- [x] Production branch: `main`
+- [x] Attach custom domain **`hub.ntrr.com`**
+- [x] Set Production env vars (see [Environment matrix](#environment-matrix-hub)); Zapier optional
+- [x] Deploy; build green; production at `https://hub.ntrr.com`
+- [x] Crons in `vercel.json` (Hobby: max once/day per job):
   - `/api/cron/digest` — `0 6 * * *` (06:00 UTC daily)
   - `/api/cron/sync` — `0 12 * * *` (12:00 UTC daily; was every 6h — needs Pro to restore)
 
 #### 1.4 DNS
 
-- [ ] `hub.ntrr.com` → Vercel (CNAME or A as Vercel instructs)
-- [ ] `ntrr.com` / `www` — either thin platform page (Phase 2) or temporary redirect to Hub **only if** Phase 2 is delayed; document the choice
-- [ ] Do not point Reliant DNS at Hub Vercel project
+- [x] `hub.ntrr.com` → Vercel (live)
+- [x] `ntrr.com` / `www` — platform apex / redirect (existing)
+- [x] Reliant stays on its own project/domain
 
 #### 1.5 Smoke tests (Hub production)
 
-- [ ] Email magic link → lands on `hub.ntrr.com`, session sticks
-- [ ] Google sign-in → same
+- [x] Email magic link → lands on `hub.ntrr.com`, session sticks
+- [ ] Google sign-in (Supabase Auth) — optional
 - [ ] Create household + invite link uses `https://hub.ntrr.com/invite/…`
-- [ ] Google Calendar/Tasks connect → OAuth returns to Hub Settings
+- [ ] Google Calendar/Tasks connect → OAuth returns to Hub Settings (redirect URI configured)
 - [ ] Manual cron: `Authorization: Bearer $SYNC_CRON_SECRET` on digest + sync
 - [ ] Wait for or trigger scheduled cron; check logs
 - [ ] PWA manifest loads over HTTPS; install optional

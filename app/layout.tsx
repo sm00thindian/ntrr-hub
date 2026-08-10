@@ -27,8 +27,11 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://hub.ntrr.com"),
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icons/icon-192.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/brand/ntrr-app-icon-125.png", type: "image/png", sizes: "125x125" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
   },
   appleWebApp: {
     capable: true,
@@ -42,6 +45,7 @@ export const metadata: Metadata = {
     url: "https://hub.ntrr.com",
     siteName: "Hub",
     type: "website",
+    images: [{ url: "/brand/ntrr-oauth-icon-512.png", width: 512, height: 512, alt: "NTRR" }],
   },
 };
 
