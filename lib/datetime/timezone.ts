@@ -183,6 +183,44 @@ function getZonedParts(date: Date, timeZone: string) {
   };
 }
 
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+/** Current wall clock parts in household timezone */
+export function zonedNowParts(timeZone: string) {
+  return getZonedParts(new Date(), resolveHouseholdTimeZone(timeZone));
+}
+
+/** YYYY-MM-DD for a wall date */
+export function formatWallDate(year: number, month: number, day: number) {
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+/** HH:mm for a wall time */
+export function formatWallTime(hour: number, minute: number) {
+  return `${pad2(hour)}:${pad2(minute)}`;
+}
+
+/** Combine date + time for datetime-local / server parse */
+export function combineWallDateTime(date: string, time: string): string {
+  if (!date) {
+    return "";
+  }
+  const t = time || "09:00";
+  return `${date}T${t.length === 5 ? t : t.slice(0, 5)}`;
+}
+
+/** Add calendar days to a wall date (YYYY-MM-DD), returns YYYY-MM-DD */
+export function addDaysToWallDate(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  if (!y || !m || !d) {
+    return date;
+  }
+  const utc = new Date(Date.UTC(y, m - 1, d + days));
+  return formatWallDate(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+}
+
 /**
  * Parse `datetime-local` value (YYYY-MM-DDTHH:mm) as wall time in household timezone → UTC ISO.
  * Critical: server-side `new Date("2026-08-10T15:00")` is UTC on Vercel, not household time.

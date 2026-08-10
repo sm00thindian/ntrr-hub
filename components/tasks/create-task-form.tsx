@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { DueDateTimeField } from "@/components/tasks/due-datetime-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,13 +12,20 @@ import { createTask } from "@/lib/tasks/actions";
 
 type CreateTaskFormProps = {
   members: HouseholdMember[];
+  timeZone: string;
   timeZoneLabel: string;
   onCreated?: () => void;
 };
 
-export function CreateTaskForm({ members, timeZoneLabel, onCreated }: CreateTaskFormProps) {
+export function CreateTaskForm({
+  members,
+  timeZone,
+  timeZoneLabel,
+  onCreated,
+}: CreateTaskFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [formKey, setFormKey] = useState(0);
 
   return (
     <Card>
@@ -30,6 +38,7 @@ export function CreateTaskForm({ members, timeZoneLabel, onCreated }: CreateTask
       </CardHeader>
       <CardContent>
         <form
+          key={formKey}
           className="grid gap-4 sm:grid-cols-2"
           action={(formData) => {
             setError(null);
@@ -40,10 +49,9 @@ export function CreateTaskForm({ members, timeZoneLabel, onCreated }: CreateTask
                 return;
               }
               onCreated?.();
-              (document.getElementById("create-task-form") as HTMLFormElement | null)?.reset();
+              setFormKey((k) => k + 1);
             });
           }}
-          id="create-task-form"
         >
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="title">Title</Label>
@@ -53,7 +61,7 @@ export function CreateTaskForm({ members, timeZoneLabel, onCreated }: CreateTask
             <Label htmlFor="description">Notes (optional)</Label>
             <Input id="description" name="description" placeholder="Pharmacy closes at 6pm" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 sm:col-span-2 sm:max-w-md">
             <Label htmlFor="assigneeId">Assign to</Label>
             <select
               id="assigneeId"
@@ -69,13 +77,9 @@ export function CreateTaskForm({ members, timeZoneLabel, onCreated }: CreateTask
               ))}
             </select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="dueAt">Due (optional)</Label>
-            <Input id="dueAt" name="dueAt" type="datetime-local" />
-            <p className="text-muted-foreground text-xs">
-              Interpreted as {timeZoneLabel} (change under Settings → Household timezone).
-            </p>
-          </div>
+
+          <DueDateTimeField timeZone={timeZone} timeZoneLabel={timeZoneLabel} />
+
           <div className="sm:col-span-2">
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">
               <input

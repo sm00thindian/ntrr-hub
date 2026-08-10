@@ -98,6 +98,7 @@ export function TaskBoard({
         <div className="grid gap-4 xl:grid-cols-2">
           <CreateTaskForm
             members={members}
+            timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             onCreated={refresh}
           />
