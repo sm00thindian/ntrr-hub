@@ -37,7 +37,11 @@ export default async function FamilyPage() {
         currentUserRole={ctx.role}
       />
 
-      <PendingInvites invites={invites} canManage={canManage} />
+      <PendingInvites
+        invites={invites}
+        canManage={canManage}
+        householdName={ctx.householdName}
+      />
 
       {!canManage ? (
         <p className="text-sm text-muted-foreground">

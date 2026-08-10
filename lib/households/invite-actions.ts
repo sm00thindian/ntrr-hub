@@ -13,6 +13,8 @@ import {
   type HouseholdPersona,
   type HouseholdRole,
 } from "@/lib/permissions/roles";
+import { buildInviteShareText } from "@/lib/households/invite-message";
+import { normalizeToE164 } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 
 function normalizeEmail(email: string) {
@@ -29,6 +31,7 @@ export async function createInvite(formData: FormData) {
   const email = normalizeEmail(String(formData.get("email") ?? ""));
   const role = String(formData.get("role") ?? "member") as HouseholdRole;
   const persona = String(formData.get("persona") ?? "care_partner") as HouseholdPersona;
+  const phoneRaw = String(formData.get("phone") ?? "").trim();
 
   if (!email || !email.includes("@")) {
     return { error: "A valid email address is required." };
@@ -40,6 +43,16 @@ export async function createInvite(formData: FormData) {
 
   if (!(HOUSEHOLD_PERSONAS as readonly string[]).includes(persona)) {
     return { error: "Invalid care persona for invite." };
+  }
+
+  let phoneE164: string | null = null;
+  if (phoneRaw) {
+    phoneE164 = normalizeToE164(phoneRaw);
+    if (!phoneE164) {
+      return {
+        error: "Enter a valid mobile number (e.g. +1 555 123 4567) or leave phone blank.",
+      };
+    }
   }
 
   if (email === normalizeEmail(ctx.userEmail)) {
@@ -62,6 +75,7 @@ export async function createInvite(formData: FormData) {
       email,
       role,
       persona,
+      phone_e164: phoneE164,
       invited_by: ctx.userId,
     })
     .select("token")
@@ -73,11 +87,16 @@ export async function createInvite(formData: FormData) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const inviteUrl = `${siteUrl}/invite/${(invite as { token: string }).token}`;
+  const shareText = buildInviteShareText({
+    householdName: ctx.householdName,
+    inviteUrl,
+    phoneE164,
+  });
 
   revalidatePath("/family");
   revalidatePath("/dashboard");
 
-  return { success: true, inviteUrl };
+  return { success: true, inviteUrl, shareText, phoneE164 };
 }
 
 export async function revokeInvite(inviteId: string) {
@@ -164,6 +183,26 @@ export async function acceptInvite(token: string) {
     return { error: memberError.message };
   }
 
+  // Seed profile phone from invite when present (does not overwrite an existing number)
+  if (invite.phoneE164) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("phone_e164")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const existing = (profile as { phone_e164?: string | null } | null)?.phone_e164;
+    if (!existing) {
+      await supabase
+        .from("profiles")
+        .update({
+          phone_e164: invite.phoneE164,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+    }
+  }
+
   const { error: inviteError } = await supabase
     .from("invites")
     .update({
@@ -179,5 +218,6 @@ export async function acceptInvite(token: string) {
 
   revalidatePath("/dashboard");
   revalidatePath("/family");
+  revalidatePath("/settings");
   redirect("/dashboard");
 }

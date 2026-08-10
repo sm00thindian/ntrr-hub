@@ -19,20 +19,25 @@ import {
   PERSONA_FIELD_HELP,
 } from "@/lib/permissions/roles";
 
+const PHONE_FIELD_HELP =
+  "Optional. If you include a mobile, invite text explains it may be used for Reliant phone confirmations and is saved on their Hub profile when they join.";
+
 export function InviteForm() {
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [shareText, setShareText] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [persona, setPersona] = useState<(typeof HOUSEHOLD_PERSONAS)[number]>("care_partner");
   const [role, setRole] = useState<(typeof ASSIGNABLE_HOUSEHOLD_ROLES)[number]>("member");
+  const [phone, setPhone] = useState("");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Invite a family member</CardTitle>
         <CardDescription>
-          Access = permissions in Hub. Care persona = their place in the care network. Hover the ?
-          icons for details.
+          Access = permissions in Hub. Care persona = their place in the care network. Optional mobile
+          prepares Reliant correlation.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -41,6 +46,7 @@ export function InviteForm() {
           action={(formData) => {
             setError(null);
             setInviteUrl(null);
+            setShareText(null);
             startTransition(async () => {
               const result = await createInvite(formData);
               if (result?.error) {
@@ -49,6 +55,9 @@ export function InviteForm() {
               }
               if (result?.inviteUrl) {
                 setInviteUrl(result.inviteUrl);
+              }
+              if (result?.shareText) {
+                setShareText(result.shareText);
               }
             });
           }}
@@ -63,6 +72,23 @@ export function InviteForm() {
               required
               autoComplete="email"
             />
+          </div>
+          <div className="space-y-2">
+            <FieldHelp label="Mobile (optional)" help={PHONE_FIELD_HELP} htmlFor="phone" />
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel"
+              placeholder="+1 555 123 4567"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              {phone.trim()
+                ? "Invite message will note this number may be used for Reliant phone confirmations."
+                : "Leave blank if you only need email sign-in for now."}
+            </p>
           </div>
           <div className="space-y-2">
             <FieldHelp label="Access" help={ACCESS_FIELD_HELP} htmlFor="role" />
@@ -113,17 +139,35 @@ export function InviteForm() {
         </form>
 
         {inviteUrl ? (
-          <div className="mt-4 space-y-2 rounded-md border bg-muted/40 p-3">
-            <p className="text-sm font-medium">Invite link ready</p>
-            <p className="break-all text-sm text-muted-foreground">{inviteUrl}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => navigator.clipboard.writeText(inviteUrl)}
-            >
-              Copy link
-            </Button>
+          <div className="mt-4 space-y-3 rounded-md border bg-muted/40 p-3">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Invite link ready</p>
+              <p className="break-all text-sm text-muted-foreground">{inviteUrl}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(inviteUrl)}
+              >
+                Copy link
+              </Button>
+            </div>
+            {shareText ? (
+              <div className="space-y-2 border-t border-border/60 pt-3">
+                <p className="text-sm font-medium">Message to share</p>
+                <pre className="whitespace-pre-wrap rounded-lg border bg-background p-3 text-xs leading-relaxed text-muted-foreground">
+                  {shareText}
+                </pre>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigator.clipboard.writeText(shareText)}
+                >
+                  Copy full message
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

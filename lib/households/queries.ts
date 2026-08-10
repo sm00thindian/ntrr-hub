@@ -26,6 +26,7 @@ export type PendingInvite = {
   email: string;
   role: HouseholdRole;
   persona: HouseholdPersona;
+  phoneE164: string | null;
   expiresAt: string;
   createdAt: string;
   token: string;
@@ -139,7 +140,7 @@ export async function getPendingInvites(householdId: string): Promise<PendingInv
 
   const { data, error } = await supabase
     .from("invites")
-    .select("id, email, role, persona, expires_at, created_at, token")
+    .select("id, email, role, persona, phone_e164, expires_at, created_at, token")
     .eq("household_id", householdId)
     .is("accepted_at", null)
     .is("revoked_at", null)
@@ -156,6 +157,7 @@ export async function getPendingInvites(householdId: string): Promise<PendingInv
       email: string;
       role: HouseholdRole;
       persona: HouseholdPersona | null;
+      phone_e164: string | null;
       expires_at: string;
       created_at: string;
       token: string;
@@ -165,6 +167,7 @@ export async function getPendingInvites(householdId: string): Promise<PendingInv
       email: invite.email,
       role: normalizeHouseholdRole(invite.role),
       persona: invite.persona ?? "care_partner",
+      phoneE164: invite.phone_e164 ?? null,
       expiresAt: invite.expires_at,
       createdAt: invite.created_at,
       token: invite.token,
@@ -190,6 +193,7 @@ export async function getInviteByToken(token: string) {
     email: string;
     role: HouseholdRole;
     persona?: HouseholdPersona | null;
+    phone_e164?: string | null;
     expires_at: string;
     accepted_at: string | null;
     revoked_at: string | null;
@@ -202,6 +206,7 @@ export async function getInviteByToken(token: string) {
     email: invite.email,
     role: normalizeHouseholdRole(invite.role),
     persona: (invite.persona ?? "care_partner") as HouseholdPersona,
+    phoneE164: invite.phone_e164 ?? null,
     expiresAt: invite.expires_at,
     acceptedAt: invite.accepted_at,
     revokedAt: invite.revoked_at,

@@ -74,7 +74,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
         <CardHeader>
           <CardTitle>Join {invite.householdName}</CardTitle>
           <CardDescription>
-            You&apos;ve been invited to coordinate care together in Hub.
+            You&apos;ve been invited to coordinate care together in Hub
+            {invite.phoneE164 ? " — a mobile number was included for Reliant correlation" : ""}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -84,6 +85,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
             email={invite.email}
             role={invite.role}
             persona={invite.persona}
+            phoneE164={invite.phoneE164}
             userEmail={user.email}
           />
         </CardContent>
