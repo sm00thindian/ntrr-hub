@@ -264,6 +264,7 @@ export async function createRecurringTemplate(formData: FormData) {
   const assigneeId = String(formData.get("assigneeId") ?? "").trim() || null;
   const dayOfWeekRaw = String(formData.get("dayOfWeek") ?? "").trim();
   const dayOfMonthRaw = String(formData.get("dayOfMonth") ?? "").trim();
+  const dueTimeRaw = String(formData.get("dueTime") ?? "").trim();
   const reliantConfirmRequested =
     formData.get("reliantConfirmRequested") === "on" ||
     formData.get("reliantConfirmRequested") === "true";
@@ -271,6 +272,15 @@ export async function createRecurringTemplate(formData: FormData) {
   if (!title) {
     return { error: "Template title is required." };
   }
+
+  const { parseDueTime, nextRecurringDueAt } = await import("@/lib/tasks/recurrence");
+  const dueTime = parseDueTime(dueTimeRaw);
+  if (dueTimeRaw && !dueTime) {
+    return { error: "Enter a valid time (e.g. 09:00) or leave time blank." };
+  }
+
+  const dayOfWeek = cadence === "weekly" && dayOfWeekRaw ? Number(dayOfWeekRaw) : null;
+  const dayOfMonth = cadence === "monthly" && dayOfMonthRaw ? Number(dayOfMonthRaw) : null;
 
   const supabase = await createClient();
 
@@ -281,12 +291,13 @@ export async function createRecurringTemplate(formData: FormData) {
       title,
       default_assignee_id: assigneeId,
       cadence,
-      day_of_week: cadence === "weekly" && dayOfWeekRaw ? Number(dayOfWeekRaw) : null,
-      day_of_month: cadence === "monthly" && dayOfMonthRaw ? Number(dayOfMonthRaw) : null,
+      day_of_week: dayOfWeek,
+      day_of_month: dayOfMonth,
+      due_time: dueTime,
       reliant_confirm_requested: reliantConfirmRequested,
       created_by: ctx.userId,
     })
-    .select("id, title, default_assignee_id, reliant_confirm_requested")
+    .select("id, title, default_assignee_id, due_time, reliant_confirm_requested")
     .single();
 
   if (templateError || !template) {
@@ -297,8 +308,19 @@ export async function createRecurringTemplate(formData: FormData) {
     id: string;
     title: string;
     default_assignee_id: string | null;
+    due_time?: string | null;
     reliant_confirm_requested?: boolean | null;
   };
+
+  const calendarSettings = await getHouseholdCalendarSettings(ctx.householdId);
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  const dueAt = nextRecurringDueAt({
+    cadence,
+    dayOfWeek,
+    dayOfMonth,
+    dueTime: row.due_time ?? dueTime,
+    timeZone,
+  });
 
   const { data: spawnedTask, error: taskError } = await supabase
     .from("tasks")
@@ -307,6 +329,7 @@ export async function createRecurringTemplate(formData: FormData) {
       title: row.title,
       assignee_id: row.default_assignee_id,
       status: "todo",
+      due_at: dueAt,
       recurring_template_id: row.id,
       reliant_confirm_requested: Boolean(row.reliant_confirm_requested),
       provenance: defaultProvenance(),

@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { HouseholdMember } from "@/lib/households/queries";
 import { createRecurringTemplate } from "@/lib/tasks/actions";
+import { cn } from "@/lib/utils";
 
 type RecurringTemplateFormProps = {
   members: HouseholdMember[];
+  timeZoneLabel: string;
   onCreated?: () => void;
 };
 
@@ -24,8 +26,21 @@ const WEEKDAYS = [
   { value: 6, label: "Saturday" },
 ];
 
-export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateFormProps) {
+const TIME_PRESETS = [
+  { label: "9:00 AM", value: "09:00" },
+  { label: "12:00 PM", value: "12:00" },
+  { label: "3:00 PM", value: "15:00" },
+  { label: "5:00 PM", value: "17:00" },
+  { label: "8:00 PM", value: "20:00" },
+] as const;
+
+export function RecurringTemplateForm({
+  members,
+  timeZoneLabel,
+  onCreated,
+}: RecurringTemplateFormProps) {
   const [cadence, setCadence] = useState("weekly");
+  const [dueTime, setDueTime] = useState("09:00");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [formKey, setFormKey] = useState(0);
@@ -34,7 +49,9 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
     <Card>
       <CardHeader>
         <CardTitle>Recurring template</CardTitle>
-        <CardDescription>Creates a template and adds the first task instance now.</CardDescription>
+        <CardDescription>
+          Creates a template and adds the first task instance now. Times use {timeZoneLabel}.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -43,7 +60,6 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
-            // Capture form before any await — React nulls event.currentTarget after the handler yields.
             const form = event.currentTarget;
             const formData = new FormData(form);
             startTransition(async () => {
@@ -55,6 +71,7 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
                 }
                 onCreated?.();
                 setCadence("weekly");
+                setDueTime("09:00");
                 setFormKey((k) => k + 1);
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Could not create recurring task.");
@@ -131,6 +148,60 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
               />
             </div>
           ) : null}
+
+          <div className="space-y-3 sm:col-span-2">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <Label htmlFor="template-due-time" className="text-sm font-medium">
+                Time (optional)
+              </Label>
+              <p className="text-muted-foreground text-xs">{timeZoneLabel}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {TIME_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => setDueTime(preset.value)}
+                  className={cn(
+                    "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    dueTime === preset.value
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background text-foreground hover:bg-muted",
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDueTime("")}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  !dueTime
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:bg-muted",
+                )}
+              >
+                No time
+              </button>
+            </div>
+            <Input
+              id="template-due-time"
+              name="dueTime"
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              className="max-w-xs [color-scheme:light]"
+            />
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {dueTime
+                ? `Each instance is due at ${formatTimeLabel(dueTime)} on the scheduled day.`
+                : "No due time — instances appear without a clock time until you edit them."}
+            </p>
+          </div>
+
           <div className="sm:col-span-2">
             <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">
               <input
@@ -165,4 +236,16 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
       </CardContent>
     </Card>
   );
+}
+
+function formatTimeLabel(hhmm: string) {
+  const [hRaw, mRaw] = hhmm.split(":");
+  const h = Number(hRaw);
+  const m = Number(mRaw);
+  if (Number.isNaN(h) || Number.isNaN(m)) {
+    return hhmm;
+  }
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return m === 0 ? `${hour12}:00 ${period}` : `${hour12}:${String(m).padStart(2, "0")} ${period}`;
 }

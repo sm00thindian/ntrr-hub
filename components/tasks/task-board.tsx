@@ -202,7 +202,11 @@ export function TaskBoard({
               setShowAdd(false);
             }}
           />
-          <RecurringTemplateForm members={members} onCreated={refresh} />
+          <RecurringTemplateForm
+            members={members}
+            timeZoneLabel={timeZoneLabel}
+            onCreated={refresh}
+          />
         </div>
       ) : null}
 

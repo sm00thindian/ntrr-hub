@@ -19,7 +19,7 @@
     "db:status": "npx supabase status",
     "db:types": "npx supabase gen types typescript --local > lib/supabase/database.types.ts",
     "digest:run": "curl -s -X POST http://localhost:3000/api/cron/digest -H \"Authorization: Bearer ${SYNC_CRON_SECRET:-}\" | jq .",
-    "test:unit": "npx tsx --test lib/dashboard/needs-attention.test.ts",
+    "test:unit": "npx tsx --test lib/dashboard/needs-attention.test.ts lib/tasks/recurrence.test.ts",
     "test:e2e": "playwright test",
     "test:e2e:public": "playwright test e2e/smoke.spec.ts --grep-invert 'Authenticated'"
   },
