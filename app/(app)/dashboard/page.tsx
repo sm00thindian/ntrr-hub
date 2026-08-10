@@ -54,11 +54,20 @@ export default async function DashboardPage() {
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
 
   const [familyStatus, agenda, attention, syncStatus, setupStatus] = await Promise.all([
-    getFamilyStatus(membership.householdId, user.id),
-    getTodayAgenda(membership.householdId, timeZone),
-    getNeedsAttention(membership.householdId, timeZone),
+    getFamilyStatus(membership.householdId, user.id).catch(() => ({
+      memberCount: 0,
+      pendingInviteCount: 0,
+      members: [],
+    })),
+    getTodayAgenda(membership.householdId, timeZone).catch(() => []),
+    getNeedsAttention(membership.householdId, timeZone).catch(() => []),
     getHouseholdSyncStatus(membership.householdId),
-    getHouseholdSetupStatus(membership.householdId),
+    getHouseholdSetupStatus(membership.householdId).catch(() => ({
+      complete: true,
+      steps: [],
+      completedCount: 0,
+      totalCount: 0,
+    })),
   ]);
 
   const canComplete = canEditTasks(membership.role);

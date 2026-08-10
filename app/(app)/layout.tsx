@@ -16,9 +16,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const membership = await getUserMembership(user.id);
-  const conflictCount = membership
-    ? await getPendingConflictCount(membership.householdId)
-    : 0;
+  let conflictCount = 0;
+  if (membership) {
+    try {
+      conflictCount = await getPendingConflictCount(membership.householdId);
+    } catch {
+      conflictCount = 0;
+    }
+  }
 
   return (
     <AppShell

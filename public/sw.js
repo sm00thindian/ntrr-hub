@@ -1,7 +1,8 @@
-const CACHE_NAME = "ntrr-static-v3";
+const CACHE_NAME = "ntrr-static-v4";
 
 // Only cache stable public assets — never Next.js build chunks (they change every compile).
-const STATIC_ASSETS = ["/manifest.webmanifest", "/icons/icon-192.svg", "/icons/icon-512.svg"];
+// Paths must match files in /public (png icons, not svg).
+const STATIC_ASSETS = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 function isCacheableAsset(pathname) {
   if (pathname.startsWith("/_next/")) {

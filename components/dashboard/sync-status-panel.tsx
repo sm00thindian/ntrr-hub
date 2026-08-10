@@ -1,18 +1,35 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { HouseholdSyncStatus } from "@/lib/integrations/status";
 import { syncGoogleNow } from "@/lib/integrations/actions";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const REFRESH_POLL_MS = 45_000;
+
+/** Serializable snapshot — keep types local so this client module never imports server queries. */
+export type ProviderSyncSnapshot = {
+  provider: "google" | "apple_caldav";
+  label: string;
+  status: "connected" | "disconnected" | "error" | "pending" | "not_connected";
+  lastSyncedAt: string | null;
+  needsReconnect: boolean;
+  connectedEmail?: string | null;
+};
+
+export type HouseholdSyncStatus = {
+  providers: ProviderSyncSnapshot[];
+  conflictCount: number;
+  lastSyncedAt: string | null;
+  anyConnected: boolean;
+  anyNeedsReconnect: boolean;
+};
 
 type SyncStatusPanelProps = {
   householdId: string;
@@ -45,7 +62,7 @@ function formatRelative(iso: string | null) {
   return `${d}d ago`;
 }
 
-function providerLine(p: HouseholdSyncStatus["providers"][number]) {
+function providerLine(p: ProviderSyncSnapshot, relativeLabel: string) {
   if (p.status === "not_connected") {
     return `${p.label}: not connected`;
   }
@@ -53,7 +70,7 @@ function providerLine(p: HouseholdSyncStatus["providers"][number]) {
     return `${p.label}: reconnect needed`;
   }
   if (p.status === "connected") {
-    return `${p.label}: synced ${formatRelative(p.lastSyncedAt)}`;
+    return `${p.label}: synced ${relativeLabel}`;
   }
   return `${p.label}: ${p.status}`;
 }
@@ -69,48 +86,79 @@ export function SyncStatusPanel({
 }: SyncStatusPanelProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Relative times only after mount to avoid SSR/client hydration mismatches.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`sync-status:${householdId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "integration_accounts",
-          filter: `household_id=eq.${householdId}`,
-        },
-        () => {
-          startTransition(() => router.refresh());
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "sync_conflicts",
-          filter: `household_id=eq.${householdId}`,
-        },
-        () => {
-          startTransition(() => router.refresh());
-        },
-      )
-      .subscribe();
+    setMounted(true);
+  }, []);
 
-    const poll = window.setInterval(() => {
-      startTransition(() => router.refresh());
-    }, REFRESH_POLL_MS);
+  useEffect(() => {
+    let cancelled = false;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+    let poll = 0;
+
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel(`sync-status:${householdId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "integration_accounts",
+            filter: `household_id=eq.${householdId}`,
+          },
+          () => {
+            if (!cancelled) {
+              startTransition(() => router.refresh());
+            }
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "sync_conflicts",
+            filter: `household_id=eq.${householdId}`,
+          },
+          () => {
+            if (!cancelled) {
+              startTransition(() => router.refresh());
+            }
+          },
+        )
+        .subscribe();
+
+      poll = window.setInterval(() => {
+        if (!cancelled) {
+          startTransition(() => router.refresh());
+        }
+      }, REFRESH_POLL_MS);
+    } catch {
+      // Realtime optional — panel still shows last server-rendered status.
+    }
 
     return () => {
-      window.clearInterval(poll);
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      if (poll) {
+        window.clearInterval(poll);
+      }
+      if (channel) {
+        try {
+          const supabase = createClient();
+          void supabase.removeChannel(channel);
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [householdId, router]);
 
   const reconnectProviders = status.providers.filter((p) => p.needsReconnect);
+  const lastSyncLabel = mounted ? formatRelative(status.lastSyncedAt) : "…";
 
   return (
     <Card>
@@ -154,7 +202,7 @@ export function SyncStatusPanel({
         ) : (
           <p className="text-sm text-muted-foreground">
             {status.anyConnected
-              ? `No conflicts · last sync ${formatRelative(status.lastSyncedAt)}`
+              ? `No conflicts · last sync ${lastSyncLabel}`
               : "No calendars connected yet."}
           </p>
         )}
@@ -168,7 +216,7 @@ export function SyncStatusPanel({
                 p.status === "connected" && "text-foreground/80",
               )}
             >
-              {providerLine(p)}
+              {providerLine(p, mounted ? formatRelative(p.lastSyncedAt) : "…")}
             </li>
           ))}
         </ul>

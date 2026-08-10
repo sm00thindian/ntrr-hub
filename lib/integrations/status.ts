@@ -87,30 +87,40 @@ function snapshotApple(account: IntegrationAccount | null): ProviderSyncSnapshot
 }
 
 export async function getHouseholdSyncStatus(householdId: string): Promise<HouseholdSyncStatus> {
-  const [google, apple, conflictCount] = await Promise.all([
-    getHouseholdIntegration(householdId, "google"),
-    getHouseholdIntegration(householdId, "apple_caldav"),
-    getPendingConflictCount(householdId),
-  ]);
+  try {
+    const [google, apple, conflictCount] = await Promise.all([
+      getHouseholdIntegration(householdId, "google").catch(() => null),
+      getHouseholdIntegration(householdId, "apple_caldav").catch(() => null),
+      getPendingConflictCount(householdId).catch(() => 0),
+    ]);
 
-  const providers = [snapshotGoogle(google), snapshotApple(apple)];
+    const providers = [snapshotGoogle(google), snapshotApple(apple)];
 
-  const lastSyncedTimes = providers
-    .map((p) => p.lastSyncedAt)
-    .filter((t): t is string => Boolean(t))
-    .map((t) => Date.parse(t))
-    .filter((n) => Number.isFinite(n));
+    const lastSyncedTimes = providers
+      .map((p) => p.lastSyncedAt)
+      .filter((t): t is string => Boolean(t))
+      .map((t) => Date.parse(t))
+      .filter((n) => Number.isFinite(n));
 
-  const lastSyncedAt =
-    lastSyncedTimes.length > 0
-      ? new Date(Math.max(...lastSyncedTimes)).toISOString()
-      : null;
+    const lastSyncedAt =
+      lastSyncedTimes.length > 0
+        ? new Date(Math.max(...lastSyncedTimes)).toISOString()
+        : null;
 
-  return {
-    providers,
-    conflictCount,
-    lastSyncedAt,
-    anyConnected: providers.some((p) => p.status === "connected"),
-    anyNeedsReconnect: providers.some((p) => p.needsReconnect),
-  };
+    return {
+      providers,
+      conflictCount,
+      lastSyncedAt,
+      anyConnected: providers.some((p) => p.status === "connected"),
+      anyNeedsReconnect: providers.some((p) => p.needsReconnect),
+    };
+  } catch {
+    return {
+      providers: [snapshotGoogle(null), snapshotApple(null)],
+      conflictCount: 0,
+      lastSyncedAt: null,
+      anyConnected: false,
+      anyNeedsReconnect: false,
+    };
+  }
 }

@@ -63,19 +63,40 @@ export async function recordSyncConflict(params: {
 }
 
 export async function getPendingConflictCount(householdId: string) {
-  const admin = createAdminClient();
+  try {
+    // Prefer user-scoped client (RLS allows members to view conflicts).
+    // Fall back to admin if the request has no session cookies (cron paths).
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    const { count, error } = await supabase
+      .from("sync_conflicts")
+      .select("id", { count: "exact", head: true })
+      .eq("household_id", householdId)
+      .eq("status", "pending");
 
-  const { count, error } = await admin
-    .from("sync_conflicts")
-    .select("id", { count: "exact", head: true })
-    .eq("household_id", householdId)
-    .eq("status", "pending");
-
-  if (error) {
-    return 0;
+    if (!error) {
+      return count ?? 0;
+    }
+  } catch {
+    // fall through to admin
   }
 
-  return count ?? 0;
+  try {
+    const admin = createAdminClient();
+    const { count, error } = await admin
+      .from("sync_conflicts")
+      .select("id", { count: "exact", head: true })
+      .eq("household_id", householdId)
+      .eq("status", "pending");
+
+    if (error) {
+      return 0;
+    }
+
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function getPendingConflicts(householdId: string) {

@@ -39,16 +39,19 @@ export function RoleBadge({ role }: { role: HouseholdRole }) {
   );
 }
 
-export function PersonaBadge({ persona }: { persona: HouseholdPersona }) {
+export function PersonaBadge({ persona }: { persona: HouseholdPersona | string | null | undefined }) {
+  const key = (persona && persona in HOUSEHOLD_PERSONA_LABELS
+    ? persona
+    : "other") as HouseholdPersona;
   return (
     <span
-      title={HOUSEHOLD_PERSONA_HINTS[persona]}
+      title={HOUSEHOLD_PERSONA_HINTS[key]}
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        personaStyles[persona],
+        personaStyles[key],
       )}
     >
-      {HOUSEHOLD_PERSONA_LABELS[persona]}
+      {HOUSEHOLD_PERSONA_LABELS[key]}
     </span>
   );
 }

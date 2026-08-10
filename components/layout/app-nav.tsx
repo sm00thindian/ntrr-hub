@@ -56,27 +56,42 @@ export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps)
       return;
     }
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`nav-conflicts:${householdId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "sync_conflicts",
-          filter: `household_id=eq.${householdId}`,
-        },
-        () => {
-          startTransition(() => router.refresh());
-        },
-      )
-      .subscribe();
+    // Only one realtime subscriber per tree (sidebar is lg-only, bottom is mobile-only,
+    // but both mount in the DOM). Use a distinct topic suffix per variant to avoid clashes.
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel(`nav-conflicts:${variant}:${householdId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "sync_conflicts",
+            filter: `household_id=eq.${householdId}`,
+          },
+          () => {
+            startTransition(() => router.refresh());
+          },
+        )
+        .subscribe();
+    } catch {
+      // Realtime is best-effort.
+    }
 
     return () => {
-      void supabase.removeChannel(channel);
+      if (!channel) {
+        return;
+      }
+      try {
+        const supabase = createClient();
+        void supabase.removeChannel(channel);
+      } catch {
+        // ignore
+      }
     };
-  }, [householdId, router]);
+  }, [householdId, router, variant]);
 
   if (variant === "bottom") {
     return (

@@ -16,17 +16,47 @@ type IntegrationRow = {
 };
 
 function mapIntegration(row: IntegrationRow): IntegrationAccount {
-  const metadata = (row.metadata ?? {}) as IntegrationMetadata;
+  const metadata = { ...(row.metadata ?? {}) } as IntegrationMetadata;
+  let status = row.status;
 
+  // Never throw from decrypt during page render — broken/rotated keys would
+  // otherwise white-screen the whole authenticated shell.
   if (typeof metadata.tokens === "string") {
-    metadata.tokens = decryptJson<GoogleTokenBundle>(metadata.tokens);
+    try {
+      metadata.tokens = decryptJson<GoogleTokenBundle>(metadata.tokens);
+    } catch {
+      delete metadata.tokens;
+      if (status === "connected") {
+        status = "error";
+      }
+    }
+  }
+
+  const appleCreds = metadata.apple?.credentials as unknown;
+  if (typeof appleCreds === "string") {
+    try {
+      const credentials = decryptJson<NonNullable<NonNullable<IntegrationMetadata["apple"]>["credentials"]>>(
+        appleCreds,
+      );
+      metadata.apple = {
+        ...metadata.apple,
+        credentials,
+      };
+    } catch {
+      if (metadata.apple) {
+        delete metadata.apple.credentials;
+      }
+      if (status === "connected") {
+        status = "error";
+      }
+    }
   }
 
   return {
     id: row.id,
     householdId: row.household_id,
     provider: row.provider,
-    status: row.status,
+    status,
     scopes: row.scopes,
     metadata,
     createdBy: row.created_by,
