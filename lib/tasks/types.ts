@@ -31,6 +31,8 @@ export type RecurringTaskTemplate = {
   cadence: RecurrenceCadence;
   dayOfWeek: number | null;
   dayOfMonth: number | null;
+  /** Default Reliant phone confirmation for each spawned instance */
+  reliantConfirmRequested: boolean;
   isActive: boolean;
   createdAt: string;
 };

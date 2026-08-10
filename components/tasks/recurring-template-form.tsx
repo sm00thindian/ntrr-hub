@@ -112,6 +112,25 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
             </div>
           ) : null}
           <div className="sm:col-span-2">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">
+              <input
+                type="checkbox"
+                name="reliantConfirmRequested"
+                value="true"
+                className="mt-0.5 size-4 shrink-0 rounded border-input"
+              />
+              <span>
+                <span className="font-medium text-foreground">
+                  Request Reliant phone confirmation
+                </span>
+                <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
+                  Each instance of this series will request a phone confirm via Reliant when that
+                  pipe is live (assignee or care focus / self-advocate).
+                </span>
+              </span>
+            </label>
+          </div>
+          <div className="sm:col-span-2">
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Creating…" : "Create recurring task"}
             </Button>

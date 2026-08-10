@@ -87,6 +87,7 @@ export async function getRecurringTemplates(householdId: string): Promise<Recurr
       cadence: RecurrenceCadence;
       day_of_week: number | null;
       day_of_month: number | null;
+      reliant_confirm_requested?: boolean | null;
       is_active: boolean;
       created_at: string;
     };
@@ -99,6 +100,7 @@ export async function getRecurringTemplates(householdId: string): Promise<Recurr
       cadence: template.cadence,
       dayOfWeek: template.day_of_week,
       dayOfMonth: template.day_of_month,
+      reliantConfirmRequested: Boolean(template.reliant_confirm_requested),
       isActive: template.is_active,
       createdAt: template.created_at,
     };
