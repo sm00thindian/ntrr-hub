@@ -17,10 +17,16 @@ import { cn } from "@/lib/utils";
 type CalendarEntryDetailProps = {
   entry: CalendarEntry | null;
   colorContext: CalendarColorContext;
+  timeZone: string;
   onClose: () => void;
 };
 
-export function CalendarEntryDetail({ entry, colorContext, onClose }: CalendarEntryDetailProps) {
+export function CalendarEntryDetail({
+  entry,
+  colorContext,
+  timeZone,
+  onClose,
+}: CalendarEntryDetailProps) {
   useEffect(() => {
     if (!entry) {
       return;
@@ -103,8 +109,8 @@ export function CalendarEntryDetail({ entry, colorContext, onClose }: CalendarEn
               <dt className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                 When
               </dt>
-              <dd className="mt-1 font-medium">{formatEntryDate(entry)}</dd>
-              <dd className="text-muted-foreground">{formatEntryTime(entry)}</dd>
+              <dd className="mt-1 font-medium">{formatEntryDate(entry, timeZone)}</dd>
+              <dd className="text-muted-foreground">{formatEntryTime(entry, timeZone)}</dd>
             </div>
 
             {colors.memberLabel ? (

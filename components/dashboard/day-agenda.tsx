@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AgendaItem } from "@/lib/dashboard/types";
 
-export function DayAgenda({ items }: { items: AgendaItem[] }) {
+export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?: string }) {
   const eventCount = items.filter((item) => item.kind === "event").length;
   const taskCount = items.filter((item) => item.kind === "task").length;
 
@@ -27,7 +27,7 @@ export function DayAgenda({ items }: { items: AgendaItem[] }) {
         {items.length ? (
           <ul className="space-y-2">
             {items.map((item) => (
-              <AgendaItemRow key={item.id} item={item} />
+              <AgendaItemRow key={item.id} item={item} timeZone={timeZone} />
             ))}
           </ul>
         ) : (

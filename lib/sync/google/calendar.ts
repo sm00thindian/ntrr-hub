@@ -1,8 +1,10 @@
 import {
   fetchGoogleCalendarList,
   getSelectedGoogleCalendarIds,
+  googleEventIdFromMappingExternalId,
   parseGoogleCalendarMappingId,
   persistGoogleCalendarMetadata,
+  resolveGooglePrimaryCalendarId,
   toGoogleCalendarMappingId,
 } from "@/lib/integrations/google/calendars";
 import { GoogleApiError, googleFetch } from "@/lib/integrations/google/client";
@@ -15,14 +17,15 @@ type GoogleEvent = {
   summary?: string;
   description?: string;
   location?: string;
-  start?: { dateTime?: string; date?: string };
-  end?: { dateTime?: string; date?: string };
+  start?: { dateTime?: string; date?: string; timeZone?: string };
+  end?: { dateTime?: string; date?: string; timeZone?: string };
   etag?: string;
   updated?: string;
   status?: string;
 };
 
-const CALENDAR_SYNC_VERSION = 3;
+/** v4: normalize primary alias + dedupe double-synced primary events */
+const CALENDAR_SYNC_VERSION = 4;
 
 function getCalendarPullWindow() {
   const rangeStart = new Date();
@@ -75,14 +78,111 @@ function parseEventTimes(event: GoogleEvent) {
   };
 }
 
-function migrateSyncTokens(googleState: NonNullable<IntegrationAccount["metadata"]["google"]>) {
+function migrateSyncTokens(
+  googleState: NonNullable<IntegrationAccount["metadata"]["google"]>,
+  primaryId: string,
+) {
   const tokens = { ...(googleState.calendarSyncTokens ?? {}) };
 
-  if (googleState.calendarSyncToken && !tokens.primary) {
-    tokens.primary = googleState.calendarSyncToken;
+  if (googleState.calendarSyncToken && !tokens[primaryId] && !tokens.primary) {
+    tokens[primaryId] = googleState.calendarSyncToken;
+  }
+
+  // Move alias token onto real primary id
+  if (tokens.primary && primaryId !== "primary") {
+    if (!tokens[primaryId]) {
+      tokens[primaryId] = tokens.primary;
+    }
+    delete tokens.primary;
   }
 
   return tokens;
+}
+
+/**
+ * When the same Google event was synced once as primary:id and again as
+ * realCalendarId:id, keep the canonical mapping and drop the duplicate Hub row.
+ */
+async function dedupePrimaryAliasEvents(householdId: string, primaryId: string) {
+  if (primaryId === "primary") {
+    return;
+  }
+
+  const admin = createAdminClient();
+  const { data: mappings } = await admin
+    .from("sync_mappings")
+    .select("id, ntrr_id, external_id")
+    .eq("household_id", householdId)
+    .eq("provider", "google")
+    .eq("entity_type", "calendar_event");
+
+  if (!mappings?.length) {
+    return;
+  }
+
+  const byEventId = new Map<string, typeof mappings>();
+
+  for (const mapping of mappings) {
+    const externalId = mapping.external_id as string;
+    const eventId = googleEventIdFromMappingExternalId(externalId);
+    const list = byEventId.get(eventId) ?? [];
+    list.push(mapping);
+    byEventId.set(eventId, list);
+  }
+
+  for (const group of byEventId.values()) {
+    if (group.length < 2) {
+      continue;
+    }
+
+    const preferred =
+      group.find((row) => (row.external_id as string).startsWith(`${primaryId}:`)) ??
+      group.find((row) => (row.external_id as string).startsWith("primary:")) ??
+      group[0]!;
+
+    for (const row of group) {
+      if (row.id === preferred.id) {
+        continue;
+      }
+
+      if (row.ntrr_id) {
+        await admin.from("calendar_events").delete().eq("id", row.ntrr_id);
+      }
+      await admin.from("sync_mappings").delete().eq("id", row.id);
+    }
+
+    // Prefer real primary id on the survivor
+    const preferredExternal = preferred.external_id as string;
+    if (preferredExternal.startsWith("primary:")) {
+      const eventId = googleEventIdFromMappingExternalId(preferredExternal);
+      await admin
+        .from("sync_mappings")
+        .update({
+          external_id: toGoogleCalendarMappingId(primaryId, eventId),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", preferred.id);
+
+      const { data: eventRow } = await admin
+        .from("calendar_events")
+        .select("provenance")
+        .eq("id", preferred.ntrr_id)
+        .maybeSingle();
+
+      if (eventRow?.provenance && preferred.ntrr_id) {
+        const provenance = eventRow.provenance as Record<string, unknown>;
+        await admin
+          .from("calendar_events")
+          .update({
+            provenance: {
+              ...provenance,
+              calendarId: primaryId,
+            },
+          })
+          .eq("id", preferred.ntrr_id);
+      }
+    }
+  }
 }
 
 async function pullGoogleCalendarEvents(
@@ -235,28 +335,47 @@ export async function pullGoogleCalendar(account: IntegrationAccount) {
     calendars = await fetchGoogleCalendarList(account);
   }
 
-  const selectedCalendarIds = getSelectedGoogleCalendarIds(account);
+  // Account with freshest calendar list so primary resolution works
+  const accountWithCalendars: IntegrationAccount = {
+    ...account,
+    metadata: {
+      ...account.metadata,
+      google: {
+        ...googleState,
+        calendars,
+      },
+    },
+  };
+
+  const primaryId = resolveGooglePrimaryCalendarId(accountWithCalendars);
+  const selectedCalendarIds = getSelectedGoogleCalendarIds(accountWithCalendars);
   const calendarNameById = new Map(calendars.map((calendar) => [calendar.id, calendar.summary]));
 
-  let syncTokens = migrateSyncTokens(googleState);
+  let syncTokens = migrateSyncTokens(googleState, primaryId);
   if (needsResync) {
     syncTokens = {};
+    await dedupePrimaryAliasEvents(account.householdId, primaryId);
   }
 
   const nextSyncTokens: Record<string, string> = { ...syncTokens };
 
   for (const calendarId of selectedCalendarIds) {
-    const calendarName = calendarNameById.get(calendarId) ?? calendarId;
-    const syncToken = needsResync ? undefined : syncTokens[calendarId];
+    const resolvedId = calendarId === "primary" ? primaryId : calendarId;
+    const calendarName =
+      calendarNameById.get(resolvedId) ??
+      (resolvedId === primaryId ? "Primary" : resolvedId);
+    const syncToken =
+      needsResync ? undefined : (syncTokens[resolvedId] ?? syncTokens[calendarId]);
     const nextToken = await pullGoogleCalendarEvents(
-      account,
-      calendarId,
+      accountWithCalendars,
+      resolvedId,
       calendarName,
       syncToken,
     );
 
     if (nextToken) {
-      nextSyncTokens[calendarId] = nextToken;
+      nextSyncTokens[resolvedId] = nextToken;
+      delete nextSyncTokens.primary;
     }
   }
 

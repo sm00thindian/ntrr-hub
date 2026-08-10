@@ -6,6 +6,7 @@ import { resolveEventColors, resolveTaskColors } from "@/lib/calendar/resolve-en
 import type { ResolvedEntryColors } from "@/lib/calendar/colors";
 import { getEntryDisplayTitle } from "@/lib/calendar/entries";
 import type { CalendarEvent, CalendarTask } from "@/lib/calendar/types";
+import { calendarDateKeyInZone } from "@/lib/datetime/timezone";
 import { eventOccursOnDay, isSameDay, toDayParam } from "@/lib/calendar/week";
 import { cn } from "@/lib/utils";
 
@@ -16,18 +17,15 @@ type MonthCalendarProps = {
   month: number;
   year: number;
   colorContext: CalendarColorContext;
+  timeZone: string;
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_VISIBLE_ITEMS = 3;
 
-function taskOccursOnDay(dueAt: string, day: Date): boolean {
-  const dayStart = new Date(day);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-  const due = new Date(dueAt);
-  return due >= dayStart && due < dayEnd;
+function taskOccursOnDay(dueAt: string, day: Date, timeZone: string): boolean {
+  const wall = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  return calendarDateKeyInZone(dueAt, timeZone) === wall;
 }
 
 type DayItem = {
@@ -43,6 +41,7 @@ export function MonthCalendar({
   month,
   year,
   colorContext,
+  timeZone,
 }: MonthCalendarProps) {
   const today = new Date();
 
@@ -65,9 +64,9 @@ export function MonthCalendar({
           const inMonth = day.getMonth() === month && day.getFullYear() === year;
           const isToday = isSameDay(day, today);
 
-          const dayTasks = tasks.filter((task) => taskOccursOnDay(task.dueAt, day));
+          const dayTasks = tasks.filter((task) => taskOccursOnDay(task.dueAt, day, timeZone));
           const dayEvents = events.filter((event) =>
-            eventOccursOnDay(event.startsAt, event.endsAt, day, event.allDay),
+            eventOccursOnDay(event.startsAt, event.endsAt, day, event.allDay, timeZone),
           );
 
           const items: DayItem[] = [

@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CreateHouseholdForm } from "@/components/household/create-household-form";
 
 import { getTodayAgenda } from "@/lib/dashboard/agenda";
+import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getFamilyStatus, getUserMembership } from "@/lib/households/queries";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
+import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -43,12 +45,14 @@ export default async function DashboardPage() {
     );
   }
 
-  const [familyStatus, agenda, conflictCount] = await Promise.all([
+  const [familyStatus, agenda, conflictCount, calendarSettings] = await Promise.all([
     getFamilyStatus(membership.householdId, user.id),
     getTodayAgenda(membership.householdId),
     getPendingConflictCount(membership.householdId),
+    getHouseholdCalendarSettings(membership.householdId),
   ]);
 
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
   const priorities = agenda.slice(0, 4);
 
   return (
@@ -119,7 +123,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <DayAgenda items={agenda} />
+        <DayAgenda items={agenda} timeZone={timeZone} />
 
         <AiHighlightsPanel householdId={membership.householdId} />
       </div>

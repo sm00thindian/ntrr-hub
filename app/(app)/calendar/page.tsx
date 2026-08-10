@@ -16,10 +16,14 @@ import {
   parseCalendarView,
 } from "@/lib/calendar/views";
 import { toDayParam } from "@/lib/calendar/week";
-import { buildCalendarColorContext } from "@/lib/households/calendar-settings";
+import {
+  buildCalendarColorContext,
+  getHouseholdCalendarSettings,
+} from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { getHouseholdIntegration } from "@/lib/integrations/queries";
 import { canManageIntegrations } from "@/lib/permissions/roles";
+import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 type CalendarPageProps = {
   searchParams: Promise<{ view?: string; date?: string; week?: string }>;
@@ -32,13 +36,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const anchor = parseCalendarDate(params.date, params.week);
   const bounds = getCalendarBounds(view, anchor);
 
-  const [events, tasks, googleIntegration, appleIntegration, colorContext] = await Promise.all([
-    getCalendarEventsForRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
-    getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
-    getHouseholdIntegration(ctx.householdId, "google"),
-    getHouseholdIntegration(ctx.householdId, "apple_caldav"),
-    buildCalendarColorContext(ctx.householdId),
-  ]);
+  const [events, tasks, googleIntegration, appleIntegration, colorContext, calendarSettings] =
+    await Promise.all([
+      getCalendarEventsForRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
+      getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
+      getHouseholdIntegration(ctx.householdId, "google"),
+      getHouseholdIntegration(ctx.householdId, "apple_caldav"),
+      buildCalendarColorContext(ctx.householdId),
+      getHouseholdCalendarSettings(ctx.householdId),
+    ]);
+
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
 
   const dayParams = bounds.days.map((day) => toDayParam(day));
   const hasItems = events.length > 0 || tasks.length > 0;
@@ -78,6 +86,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
               month={monthMeta.month}
               year={monthMeta.year}
               colorContext={colorContext}
+              timeZone={timeZone}
             />
           ) : (
             <DayGridCalendar
@@ -86,6 +95,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
               events={events}
               tasks={tasks}
               colorContext={colorContext}
+              timeZone={timeZone}
             />
           )}
         </>

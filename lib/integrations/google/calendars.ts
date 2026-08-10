@@ -14,16 +14,32 @@ type GoogleCalendarListResponse = {
   }>;
 };
 
+/** Resolve Google's "primary" alias to the real calendar list id when known. */
+export function resolveGooglePrimaryCalendarId(account: IntegrationAccount): string {
+  const fromList = account.metadata.google?.calendars?.find((calendar) => calendar.primary)?.id;
+  return fromList ?? "primary";
+}
+
+/**
+ * Selected calendars for sync. Never return both "primary" and the real primary id —
+ * that double-pulls the same events and creates duplicate Hub rows.
+ */
 export function getSelectedGoogleCalendarIds(account: IntegrationAccount): string[] {
-  const ids = account.metadata.google?.selectedCalendarIds;
-  if (ids?.length) {
-    return ids;
+  const primaryId = resolveGooglePrimaryCalendarId(account);
+  const raw = account.metadata.google?.selectedCalendarIds;
+
+  if (!raw?.length) {
+    return [primaryId];
   }
-  return ["primary"];
+
+  const normalized = raw.map((id) => (id === "primary" ? primaryId : id));
+  return [...new Set(normalized)];
 }
 
 export function toGoogleCalendarMappingId(calendarId: string, eventId: string) {
-  return `${calendarId}:${eventId}`;
+  const resolved =
+    calendarId === "primary" ? calendarId : calendarId; // caller should pass resolved id
+  return `${resolved}:${eventId}`;
 }
 
 export function parseGoogleCalendarMappingId(externalId: string) {
@@ -36,6 +52,11 @@ export function parseGoogleCalendarMappingId(externalId: string) {
     calendarId: externalId.slice(0, separator),
     eventId: externalId.slice(separator + 1),
   };
+}
+
+/** Google event id from a mapping external_id (handles calendarId:eventId and legacy bare ids). */
+export function googleEventIdFromMappingExternalId(externalId: string): string {
+  return parseGoogleCalendarMappingId(externalId).eventId;
 }
 
 export async function fetchGoogleCalendarList(
@@ -73,10 +94,17 @@ export async function persistGoogleCalendarMetadata(
   const nextSelected =
     selectedCalendarIds ??
     (googleState.selectedCalendarIds?.length
-      ? googleState.selectedCalendarIds.filter((id) => calendars.some((calendar) => calendar.id === id))
+      ? googleState.selectedCalendarIds.filter((id) =>
+          id === "primary"
+            ? true
+            : calendars.some((calendar) => calendar.id === id),
+        )
       : [primaryId]);
 
-  const safeSelected = nextSelected.length ? nextSelected : [primaryId];
+  // Collapse primary alias + real id into a single selection
+  const collapsed = nextSelected.map((id) => (id === "primary" ? primaryId : id));
+  const deduped = [...new Set(collapsed.filter(Boolean))];
+  const safeSelected = deduped.length ? deduped : [primaryId];
 
   await admin
     .from("integration_accounts")

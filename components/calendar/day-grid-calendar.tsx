@@ -26,9 +26,17 @@ type DayGridCalendarProps = {
   events: CalendarEvent[];
   tasks: CalendarTask[];
   colorContext: CalendarColorContext;
+  timeZone: string;
 };
 
-export function DayGridCalendar({ view, days, events, tasks, colorContext }: DayGridCalendarProps) {
+export function DayGridCalendar({
+  view,
+  days,
+  events,
+  tasks,
+  colorContext,
+  timeZone,
+}: DayGridCalendarProps) {
   const [selectedEntry, setSelectedEntry] = useState<CalendarEntry | null>(null);
   const today = new Date();
 
@@ -44,7 +52,7 @@ export function DayGridCalendar({ view, days, events, tasks, colorContext }: Day
       >
         {days.map((dayIso) => {
           const day = new Date(`${dayIso}T00:00:00`);
-          const entries = getEntriesForDay(day, events, tasks);
+          const entries = getEntriesForDay(day, events, tasks, timeZone);
           const isToday = isSameDay(day, today);
 
           return (
@@ -89,7 +97,7 @@ export function DayGridCalendar({ view, days, events, tasks, colorContext }: Day
                     {entries.map((entry) => {
                       const colors = resolveEntryColors(entry, colorContext);
                       const title = getEntryDisplayTitle(entry);
-                      const time = formatEntryTimeCompact(entry);
+                      const time = formatEntryTimeCompact(entry, timeZone);
                       const isTask = entry.kind === "task";
 
                       return (
@@ -136,6 +144,7 @@ export function DayGridCalendar({ view, days, events, tasks, colorContext }: Day
       <CalendarEntryDetail
         entry={selectedEntry}
         colorContext={colorContext}
+        timeZone={timeZone}
         onClose={() => setSelectedEntry(null)}
       />
     </>

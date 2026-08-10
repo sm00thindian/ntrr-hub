@@ -28,6 +28,8 @@ export type GoogleCalendarAssignment = {
 export type HouseholdCalendarSettings = {
   memberColors?: Record<string, string>;
   googleCalendars?: Record<string, GoogleCalendarAssignment>;
+  /** IANA timezone for displaying event times household-wide (e.g. America/Chicago) */
+  timezone?: string;
 };
 
 export type CalendarColorMember = {

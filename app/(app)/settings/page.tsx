@@ -1,10 +1,15 @@
 import { AppleCalDavConnectCard } from "@/components/integrations/apple-caldav-connect-card";
 import { GoogleConnectCard } from "@/components/integrations/google-connect-card";
+import { HouseholdTimezoneCard } from "@/components/settings/household-timezone-card";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { isGoogleConfigured } from "@/lib/integrations/google/scopes";
-import { getGoogleCalendarSettingsForUi } from "@/lib/households/calendar-settings";
+import {
+  getGoogleCalendarSettingsForUi,
+  getHouseholdCalendarSettings,
+} from "@/lib/households/calendar-settings";
 import { getHouseholdIntegration } from "@/lib/integrations/queries";
 import { canManageIntegrations } from "@/lib/permissions/roles";
+import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 // Deferred Settings cards (do not show for dogfood):
 // - Zapier/Make webhook — components/integrations/zapier-webhook-card.tsx + /api/webhooks/zapier
@@ -37,12 +42,11 @@ export default async function SettingsPage({
   const params = await searchParams;
   const feedback = feedbackFromSearchParams(params);
 
-  const [googleIntegration, appleIntegration] = canManage
-    ? await Promise.all([
-        getHouseholdIntegration(ctx.householdId, "google"),
-        getHouseholdIntegration(ctx.householdId, "apple_caldav"),
-      ])
-    : [null, null];
+  const [googleIntegration, appleIntegration, calendarSettings] = await Promise.all([
+    canManage ? getHouseholdIntegration(ctx.householdId, "google") : null,
+    canManage ? getHouseholdIntegration(ctx.householdId, "apple_caldav") : null,
+    getHouseholdCalendarSettings(ctx.householdId),
+  ]);
 
   let googleCalendarSettings: Awaited<ReturnType<typeof getGoogleCalendarSettingsForUi>> = null;
   if (canManage && googleIntegration?.status === "connected") {
@@ -52,6 +56,8 @@ export default async function SettingsPage({
       googleCalendarSettings = null;
     }
   }
+
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
 
   return (
     <div className="space-y-6">
@@ -70,6 +76,8 @@ export default async function SettingsPage({
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <HouseholdTimezoneCard canManage={canManage} timezone={timeZone} />
+
         <GoogleConnectCard
           canManage={canManage}
           configured={isGoogleConfigured()}

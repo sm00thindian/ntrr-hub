@@ -1,3 +1,5 @@
+import { calendarDateKeyInZone } from "@/lib/datetime/timezone";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function startOfWeek(date: Date, weekStartsOn: 0 | 1 = 0): Date {
@@ -97,7 +99,30 @@ export function eventOccursOnDay(
   endsAt: string,
   day: Date,
   allDay?: boolean,
+  timeZone?: string,
 ): boolean {
+  // Wall-calendar day from the grid cell (Y-M-D in the viewer's intended zone context)
+  const targetDay = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+
+  if (allDay) {
+    // Google all-day uses date-only strings; we store ISO at UTC midnight for that date
+    const eventDay = startsAt.slice(0, 10);
+    return eventDay === targetDay;
+  }
+
+  if (timeZone) {
+    const startKey = calendarDateKeyInZone(startsAt, timeZone);
+    const endKey = calendarDateKeyInZone(endsAt, timeZone);
+    // Same-day events
+    if (startKey === endKey) {
+      return startKey === targetDay;
+    }
+    // Multi-day: [start, end) in wall-calendar terms when end is exclusive midnight-ish
+    return startKey <= targetDay && targetDay < endKey
+      ? true
+      : startKey === targetDay || endKey === targetDay;
+  }
+
   const dayStart = new Date(day);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
@@ -105,13 +130,6 @@ export function eventOccursOnDay(
 
   const start = new Date(startsAt);
   const end = new Date(endsAt);
-
-  if (allDay) {
-    const eventDay = startsAt.slice(0, 10);
-    const targetDay = dayStart.toISOString().slice(0, 10);
-    return eventDay === targetDay;
-  }
-
   return start < dayEnd && end > dayStart;
 }
 

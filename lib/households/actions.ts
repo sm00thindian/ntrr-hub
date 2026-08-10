@@ -55,3 +55,39 @@ export async function createHousehold(
   revalidatePath("/family");
   redirect("/dashboard");
 }
+
+export async function updateHouseholdTimezone(timezone: string) {
+  const { requireHouseholdContext } = await import("@/lib/households/context");
+  const { canManageIntegrations } = await import("@/lib/permissions/roles");
+  const {
+    getHouseholdCalendarSettings,
+    saveHouseholdCalendarSettings,
+  } = await import("@/lib/households/calendar-settings");
+  const { isValidTimeZone } = await import("@/lib/datetime/timezone");
+
+  const ctx = await requireHouseholdContext();
+
+  if (!canManageIntegrations(ctx.role)) {
+    return { error: "Only owners and admins can change household timezone." };
+  }
+
+  if (!isValidTimeZone(timezone)) {
+    return { error: "Choose a valid timezone." };
+  }
+
+  try {
+    const current = await getHouseholdCalendarSettings(ctx.householdId);
+    await saveHouseholdCalendarSettings(ctx.householdId, {
+      ...current,
+      timezone,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not save timezone.";
+    return { error: message };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  return { success: true as const };
+}

@@ -1,4 +1,11 @@
 import type { CalendarEvent, CalendarTask } from "@/lib/calendar/types";
+import {
+  calendarDateKeyInZone,
+  formatClockCompactInZone,
+  formatDateInZone,
+  formatTimeInZone,
+  resolveHouseholdTimeZone,
+} from "@/lib/datetime/timezone";
 import { eventOccursOnDay } from "@/lib/calendar/week";
 
 export type CalendarEntry =
@@ -9,13 +16,15 @@ export function getEntriesForDay(
   day: Date,
   events: CalendarEvent[],
   tasks: CalendarTask[],
+  timeZone?: string,
 ): CalendarEntry[] {
+  const zone = resolveHouseholdTimeZone(timeZone);
   const dayEvents = events
-    .filter((event) => eventOccursOnDay(event.startsAt, event.endsAt, day, event.allDay))
+    .filter((event) => eventOccursOnDay(event.startsAt, event.endsAt, day, event.allDay, zone))
     .map((event) => ({ kind: "event" as const, sortAt: event.startsAt, event }));
 
   const dayTasks = tasks
-    .filter((task) => taskOccursOnDay(task.dueAt, day))
+    .filter((task) => taskOccursOnDay(task.dueAt, day, zone))
     .map((task) => ({ kind: "task" as const, sortAt: task.dueAt, task }));
 
   return [...dayEvents, ...dayTasks].sort(
@@ -23,23 +32,21 @@ export function getEntriesForDay(
   );
 }
 
-function taskOccursOnDay(dueAt: string, day: Date): boolean {
-  const dayStart = new Date(day);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-  const due = new Date(dueAt);
-  return due >= dayStart && due < dayEnd;
+function taskOccursOnDay(dueAt: string, day: Date, timeZone: string): boolean {
+  const wall = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  return calendarDateKeyInZone(dueAt, timeZone) === wall;
 }
 
-export function formatEntryTime(entry: CalendarEntry) {
+export function formatEntryTime(entry: CalendarEntry, timeZone?: string) {
+  const zone = resolveHouseholdTimeZone(timeZone);
+
   if (entry.kind === "event") {
     if (entry.event.allDay) {
       return "All day";
     }
 
-    const start = formatClock(entry.event.startsAt);
-    const end = formatClock(entry.event.endsAt);
+    const start = formatTimeInZone(entry.event.startsAt, zone);
+    const end = formatTimeInZone(entry.event.endsAt, zone);
     return `${start} – ${end}`;
   }
 
@@ -47,17 +54,19 @@ export function formatEntryTime(entry: CalendarEntry) {
     return "Due today";
   }
 
-  return `Due ${formatClock(entry.task.dueAt)}`;
+  return `Due ${formatTimeInZone(entry.task.dueAt, zone)}`;
 }
 
-export function formatEntryTimeCompact(entry: CalendarEntry) {
+export function formatEntryTimeCompact(entry: CalendarEntry, timeZone?: string) {
+  const zone = resolveHouseholdTimeZone(timeZone);
+
   if (entry.kind === "event") {
     if (entry.event.allDay) {
       return "All day";
     }
 
-    const start = formatClockCompact(entry.event.startsAt);
-    const end = formatClockCompact(entry.event.endsAt);
+    const start = formatClockCompactInZone(entry.event.startsAt, zone);
+    const end = formatClockCompactInZone(entry.event.endsAt, zone);
     return start === end ? start : `${start}–${end}`;
   }
 
@@ -65,38 +74,12 @@ export function formatEntryTimeCompact(entry: CalendarEntry) {
     return "Due today";
   }
 
-  return `Due ${formatClockCompact(entry.task.dueAt)}`;
+  return `Due ${formatClockCompactInZone(entry.task.dueAt, zone)}`;
 }
 
-export function formatEntryDate(entry: CalendarEntry) {
+export function formatEntryDate(entry: CalendarEntry, timeZone?: string) {
   const iso = entry.kind === "event" ? entry.event.startsAt : entry.task.dueAt;
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatClock(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatClockCompact(iso: string) {
-  const date = new Date(iso);
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const period = hours >= 12 ? "p" : "a";
-  const hour12 = hours % 12 || 12;
-
-  if (minutes === 0) {
-    return `${hour12}${period}`;
-  }
-
-  return `${hour12}:${minutes.toString().padStart(2, "0")}${period}`;
+  return formatDateInZone(iso, resolveHouseholdTimeZone(timeZone));
 }
 
 function dueAtIsMidnight(dueAt: string) {

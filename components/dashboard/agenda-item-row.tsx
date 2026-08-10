@@ -2,32 +2,31 @@ import { Calendar, ListTodo, MapPin } from "lucide-react";
 
 import { SourceChip } from "@/components/provenance/source-chip";
 import type { AgendaItem } from "@/lib/dashboard/types";
+import { formatTimeInZone, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
 import { cn } from "@/lib/utils";
 
-function formatTime(iso: string, allDay?: boolean) {
+function formatTime(iso: string, timeZone: string, allDay?: boolean) {
   if (allDay) {
     return "All day";
   }
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatTimeInZone(iso, timeZone);
 }
 
-function formatRange(start: string, end?: string, allDay?: boolean) {
+function formatRange(start: string, end: string | undefined, timeZone: string, allDay?: boolean) {
   if (allDay) {
     return "All day";
   }
-  const startLabel = formatTime(start);
+  const startLabel = formatTime(start, timeZone);
   if (!end) {
     return startLabel;
   }
-  const endLabel = formatTime(end);
+  const endLabel = formatTime(end, timeZone);
   return `${startLabel} – ${endLabel}`;
 }
 
-export function AgendaItemRow({ item }: { item: AgendaItem }) {
+export function AgendaItemRow({ item, timeZone }: { item: AgendaItem; timeZone?: string }) {
+  const zone = resolveHouseholdTimeZone(timeZone);
   const Icon = item.kind === "event" ? Calendar : ListTodo;
 
   return (
@@ -50,9 +49,9 @@ export function AgendaItemRow({ item }: { item: AgendaItem }) {
         </div>
         <p className="text-muted-foreground text-xs">
           {item.kind === "event"
-            ? formatRange(item.sortAt, item.endsAt, item.allDay)
+            ? formatRange(item.sortAt, item.endsAt, zone, item.allDay)
             : item.sortAt
-              ? `Due ${formatTime(item.sortAt)}`
+              ? `Due ${formatTime(item.sortAt, zone)}`
               : "No due time"}
         </p>
         {item.location ? (

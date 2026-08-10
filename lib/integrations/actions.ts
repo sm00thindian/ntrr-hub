@@ -67,14 +67,31 @@ export async function updateGoogleCalendarSelection(calendarIds: string[]) {
   }
 
   const calendars = await fetchGoogleCalendarList(account);
-  const validIds = calendarIds.filter((id) => calendars.some((calendar) => calendar.id === id));
+  const primaryId = calendars.find((calendar) => calendar.primary)?.id ?? "primary";
+  const validIds = [
+    ...new Set(
+      calendarIds
+        .map((id) => (id === "primary" ? primaryId : id))
+        .filter((id) => calendars.some((calendar) => calendar.id === id)),
+    ),
+  ];
 
   if (!validIds.length) {
     return { error: "Select at least one Google calendar to sync." };
   }
 
-  const previous = getSelectedGoogleCalendarIds(account);
-  const removed = previous.filter((id) => !validIds.includes(id));
+  const previous = getSelectedGoogleCalendarIds({
+    ...account,
+    metadata: {
+      ...account.metadata,
+      google: { ...account.metadata.google, calendars },
+    },
+  });
+  // Also treat legacy "primary" selection as the real primary when computing removals
+  const previousNormalized = [
+    ...new Set(previous.map((id) => (id === "primary" ? primaryId : id))),
+  ];
+  const removed = previousNormalized.filter((id) => !validIds.includes(id));
   const googleState = account.metadata.google ?? {};
   const nextTokens = { ...(googleState.calendarSyncTokens ?? {}) };
 

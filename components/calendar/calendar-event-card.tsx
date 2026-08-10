@@ -2,26 +2,28 @@ import { MapPin } from "lucide-react";
 
 import { SourceChip } from "@/components/provenance/source-chip";
 import type { CalendarEvent } from "@/lib/calendar/types";
+import { formatTimeInZone, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { cn } from "@/lib/utils";
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatEventTime(event: CalendarEvent) {
+function formatEventTime(event: CalendarEvent, timeZone: string) {
   if (event.allDay) {
     return "All day";
   }
 
-  const start = formatTime(event.startsAt);
-  const end = formatTime(event.endsAt);
+  const start = formatTimeInZone(event.startsAt, timeZone);
+  const end = formatTimeInZone(event.endsAt, timeZone);
   return `${start} – ${end}`;
 }
 
-export function CalendarEventCard({ event }: { event: CalendarEvent }) {
+export function CalendarEventCard({
+  event,
+  timeZone,
+}: {
+  event: CalendarEvent;
+  timeZone?: string;
+}) {
+  const zone = resolveHouseholdTimeZone(timeZone);
+
   return (
     <article
       className={cn(
@@ -35,7 +37,7 @@ export function CalendarEventCard({ event }: { event: CalendarEvent }) {
       </div>
       <p className="text-muted-foreground mt-1 text-xs">
         {event.provenance.calendarName ? `${event.provenance.calendarName} · ` : ""}
-        {formatEventTime(event)}
+        {formatEventTime(event, zone)}
       </p>
       {event.location ? (
         <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
