@@ -70,6 +70,24 @@ export function CreateTaskForm({ members, onCreated }: CreateTaskFormProps) {
             <Input id="dueAt" name="dueAt" type="datetime-local" />
           </div>
           <div className="sm:col-span-2">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">
+              <input
+                type="checkbox"
+                name="reliantConfirmRequested"
+                value="true"
+                className="mt-0.5 size-4 shrink-0 rounded border-input"
+              />
+              <span>
+                <span className="font-medium text-foreground">Request Reliant phone confirmation</span>
+                <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
+                  When Reliant is linked, call the assignee (or care focus / self-advocate) until they
+                  confirm — works for coordinators setting checks for others or self-advocates owning
+                  their own items.
+                </span>
+              </span>
+            </label>
+          </div>
+          <div className="sm:col-span-2">
             <Button type="submit" disabled={pending}>
               {pending ? "Adding…" : "Add task"}
             </Button>

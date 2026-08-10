@@ -10,6 +10,7 @@ export type CalendarEvent = {
   endsAt: string;
   allDay: boolean;
   location: string | null;
+  reliantConfirmRequested?: boolean;
   provenance: Provenance;
   createdAt: string;
   updatedAt: string;
@@ -22,5 +23,6 @@ export type CalendarTask = {
   assigneeId: string | null;
   dueAt: string;
   status: TaskStatus;
+  reliantConfirmRequested?: boolean;
   provenance: Provenance;
 };

@@ -12,6 +12,7 @@ function mapTask(
     status: TaskStatus;
     assignee_id: string | null;
     due_at: string | null;
+    reliant_confirm_requested?: boolean | null;
     provenance: Provenance;
     recurring_template_id: string | null;
     created_by: string;
@@ -29,6 +30,7 @@ function mapTask(
     assigneeId: row.assignee_id,
     assigneeEmail,
     dueAt: row.due_at,
+    reliantConfirmRequested: Boolean(row.reliant_confirm_requested),
     provenance: row.provenance,
     recurringTemplateId: row.recurring_template_id,
     createdBy: row.created_by,

@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import type { HouseholdRole } from "@/lib/permissions/roles";
+import type { HouseholdPersona, HouseholdRole } from "@/lib/permissions/roles";
+import { normalizeHouseholdRole } from "@/lib/permissions/roles";
 
 export type UserMembership = {
   householdId: string;
   role: HouseholdRole;
+  persona: HouseholdPersona;
+  isFocusPerson: boolean;
   householdName: string;
 };
 
@@ -11,6 +14,8 @@ export type HouseholdMember = {
   id: string;
   userId: string;
   role: HouseholdRole;
+  persona: HouseholdPersona;
+  isFocusPerson: boolean;
   email: string;
   displayName: string | null;
   joinedAt: string;
@@ -20,6 +25,7 @@ export type PendingInvite = {
   id: string;
   email: string;
   role: HouseholdRole;
+  persona: HouseholdPersona;
   expiresAt: string;
   createdAt: string;
   token: string;
@@ -32,6 +38,7 @@ export type FamilyStatus = {
     userId: string;
     email: string;
     role: HouseholdRole;
+    persona: HouseholdPersona;
     isCurrentUser: boolean;
   }>;
 };
@@ -41,7 +48,7 @@ export async function getUserMembership(userId: string): Promise<UserMembership 
 
   const { data: members, error: memberError } = await supabase
     .from("household_members")
-    .select("household_id, role")
+    .select("household_id, role, persona, is_focus_person")
     .eq("user_id", userId)
     .limit(1);
 
@@ -49,7 +56,12 @@ export async function getUserMembership(userId: string): Promise<UserMembership 
     return null;
   }
 
-  const member = members[0] as { household_id: string; role: HouseholdRole };
+  const member = members[0] as {
+    household_id: string;
+    role: HouseholdRole;
+    persona: HouseholdPersona | null;
+    is_focus_person: boolean | null;
+  };
 
   const { data: household, error: householdError } = await supabase
     .from("households")
@@ -65,7 +77,9 @@ export async function getUserMembership(userId: string): Promise<UserMembership 
 
   return {
     householdId: member.household_id,
-    role: member.role,
+    role: normalizeHouseholdRole(member.role),
+    persona: member.persona ?? "coordinator",
+    isFocusPerson: Boolean(member.is_focus_person),
     householdName: record.name,
   };
 }
@@ -75,7 +89,7 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
 
   const { data: members, error } = await supabase
     .from("household_members")
-    .select("id, user_id, role, created_at")
+    .select("id, user_id, role, persona, is_focus_person, created_at")
     .eq("household_id", householdId)
     .order("created_at", { ascending: true });
 
@@ -98,12 +112,21 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
   );
 
   return members.map((m) => {
-    const row = m as { id: string; user_id: string; role: HouseholdRole; created_at: string };
+    const row = m as {
+      id: string;
+      user_id: string;
+      role: HouseholdRole;
+      persona: HouseholdPersona | null;
+      is_focus_person: boolean | null;
+      created_at: string;
+    };
     const profile = profileMap.get(row.user_id);
     return {
       id: row.id,
       userId: row.user_id,
-      role: row.role,
+      role: normalizeHouseholdRole(row.role),
+      persona: row.persona ?? "coordinator",
+      isFocusPerson: Boolean(row.is_focus_person),
       email: profile?.email ?? "Unknown",
       displayName: profile?.display_name ?? null,
       joinedAt: row.created_at,
@@ -116,7 +139,7 @@ export async function getPendingInvites(householdId: string): Promise<PendingInv
 
   const { data, error } = await supabase
     .from("invites")
-    .select("id, email, role, expires_at, created_at, token")
+    .select("id, email, role, persona, expires_at, created_at, token")
     .eq("household_id", householdId)
     .is("accepted_at", null)
     .is("revoked_at", null)
@@ -132,6 +155,7 @@ export async function getPendingInvites(householdId: string): Promise<PendingInv
       id: string;
       email: string;
       role: HouseholdRole;
+      persona: HouseholdPersona | null;
       expires_at: string;
       created_at: string;
       token: string;
@@ -139,7 +163,8 @@ export async function getPendingInvites(householdId: string): Promise<PendingInv
     return {
       id: invite.id,
       email: invite.email,
-      role: invite.role,
+      role: normalizeHouseholdRole(invite.role),
+      persona: invite.persona ?? "care_partner",
       expiresAt: invite.expires_at,
       createdAt: invite.created_at,
       token: invite.token,
@@ -164,6 +189,7 @@ export async function getInviteByToken(token: string) {
     household_name: string;
     email: string;
     role: HouseholdRole;
+    persona?: HouseholdPersona | null;
     expires_at: string;
     accepted_at: string | null;
     revoked_at: string | null;
@@ -174,7 +200,8 @@ export async function getInviteByToken(token: string) {
     householdId: invite.household_id,
     householdName: invite.household_name,
     email: invite.email,
-    role: invite.role,
+    role: normalizeHouseholdRole(invite.role),
+    persona: (invite.persona ?? "care_partner") as HouseholdPersona,
     expiresAt: invite.expires_at,
     acceptedAt: invite.accepted_at,
     revokedAt: invite.revoked_at,
@@ -198,6 +225,7 @@ export async function getFamilyStatus(
       userId: m.userId,
       email: m.email,
       role: m.role,
+      persona: m.persona,
       isCurrentUser: m.userId === currentUserId,
     })),
   };

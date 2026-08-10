@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { RoleBadge } from "@/components/family/role-badge";
+import { PersonaBadge, RoleBadge } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { FamilyStatus } from "@/lib/households/queries";
@@ -39,7 +39,10 @@ export function FamilyStatusPanel({ status }: { status: FamilyStatus }) {
                   <span className="text-muted-foreground"> (you)</span>
                 ) : null}
               </span>
-              <RoleBadge role={member.role} />
+              <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                <RoleBadge role={member.role} />
+                <PersonaBadge persona={member.persona} />
+              </span>
             </li>
           ))}
         </ul>

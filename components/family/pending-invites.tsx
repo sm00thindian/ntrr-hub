@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { RoleBadge } from "@/components/family/role-badge";
+import { PersonaBadge, RoleBadge } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { revokeInvite } from "@/lib/households/invite-actions";
@@ -49,6 +49,7 @@ export function PendingInvites({ invites, canManage }: PendingInvitesProps) {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <RoleBadge role={invite.role} />
+                <PersonaBadge persona={invite.persona} />
                 {canManage ? (
                   <>
                     <Button

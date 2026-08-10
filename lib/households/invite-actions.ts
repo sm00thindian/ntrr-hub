@@ -6,14 +6,14 @@ import { redirect } from "next/navigation";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { getInviteByToken } from "@/lib/households/queries";
 import { upsertProfile } from "@/lib/profiles/actions";
-import { canManageMembers } from "@/lib/permissions/roles";
+import {
+  ASSIGNABLE_HOUSEHOLD_ROLES,
+  HOUSEHOLD_PERSONAS,
+  canManageMembers,
+  type HouseholdPersona,
+  type HouseholdRole,
+} from "@/lib/permissions/roles";
 import { createClient } from "@/lib/supabase/server";
-import type { HouseholdRole } from "@/lib/permissions/roles";
-import { HOUSEHOLD_ROLES } from "@/lib/permissions/roles";
-
-const INVITABLE_ROLES = HOUSEHOLD_ROLES.filter((r) => r !== "owner") as Array<
-  Exclude<HouseholdRole, "owner">
->;
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -27,14 +27,19 @@ export async function createInvite(formData: FormData) {
   }
 
   const email = normalizeEmail(String(formData.get("email") ?? ""));
-  const role = String(formData.get("role") ?? "caregiver") as HouseholdRole;
+  const role = String(formData.get("role") ?? "member") as HouseholdRole;
+  const persona = String(formData.get("persona") ?? "care_partner") as HouseholdPersona;
 
   if (!email || !email.includes("@")) {
     return { error: "A valid email address is required." };
   }
 
-  if (role === "owner" || !INVITABLE_ROLES.includes(role as (typeof INVITABLE_ROLES)[number])) {
-    return { error: "Invalid role for invite." };
+  if (role === "owner" || !(ASSIGNABLE_HOUSEHOLD_ROLES as readonly string[]).includes(role)) {
+    return { error: "Invalid access role for invite." };
+  }
+
+  if (!(HOUSEHOLD_PERSONAS as readonly string[]).includes(persona)) {
+    return { error: "Invalid care persona for invite." };
   }
 
   if (email === normalizeEmail(ctx.userEmail)) {
@@ -56,6 +61,7 @@ export async function createInvite(formData: FormData) {
       household_id: ctx.householdId,
       email,
       role,
+      persona,
       invited_by: ctx.userId,
     })
     .select("token")
@@ -150,6 +156,8 @@ export async function acceptInvite(token: string) {
     household_id: invite.householdId,
     user_id: user.id,
     role: invite.role,
+    persona: invite.persona ?? "care_partner",
+    is_focus_person: invite.persona === "self_advocate",
   });
 
   if (memberError) {

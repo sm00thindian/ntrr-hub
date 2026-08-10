@@ -13,6 +13,8 @@ export type Task = {
   assigneeId: string | null;
   assigneeEmail: string | null;
   dueAt: string | null;
+  /** When true, Reliant should request phone confirmation for this task */
+  reliantConfirmRequested: boolean;
   provenance: Provenance;
   recurringTemplateId: string | null;
   createdBy: string;

@@ -327,6 +327,9 @@ Use this sequence once Phase 1 assets exist:
 
 ### Product / later
 
+- **My day view** for `self_advocate` persona + RLS tightening
+- **Reliant confirm pipe** — enqueue phone confirmation when `reliant_confirm_requested` and resolve assignee / focus person → Reliant (see `docs/ROLES-AND-RELIANT.md`)
+- Calendar event UI toggle for `reliant_confirm_requested` (column exists; task create checkbox ships first)
 - Shared SSO / phone-first Hub signup (Phase 6)
 - Hub LLM API (agents are rule-based today)
 - Apple CalDAV shared service account (user-owned credentials)

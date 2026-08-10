@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Calendar, ListTodo, MapPin, X } from "lucide-react";
 
 import { CalendarEntryColors } from "@/components/calendar/calendar-entry-colors";
+import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import { Button } from "@/components/ui/button";
 import type { CalendarColorContext } from "@/lib/calendar/colors";
@@ -51,6 +52,9 @@ export function CalendarEntryDetail({
   const description = isTask ? entry.task.description : entry.event.description;
   const location = isTask ? null : entry.event.location;
   const source = isTask ? entry.task.provenance.source : entry.event.provenance.source;
+  const reliantConfirm = isTask
+    ? Boolean(entry.task.reliantConfirmRequested)
+    : Boolean(entry.event.reliantConfirmRequested);
   const colors = resolveEntryColors(entry, colorContext);
 
   return (
@@ -84,8 +88,9 @@ export function CalendarEntryDetail({
               )}
             </div>
             <div className="min-w-0">
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                {isTask ? "Task" : "Calendar event"}
+              <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide">
+                <span>{isTask ? "Task" : "Calendar event"}</span>
+                {reliantConfirm ? <ReliantConfirmChip /> : null}
               </p>
               <h2 id="calendar-entry-title" className="mt-1 text-lg font-semibold leading-tight">
                 {title}

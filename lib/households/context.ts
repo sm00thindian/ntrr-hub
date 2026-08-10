@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserMembership } from "@/lib/households/queries";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
-import type { HouseholdRole } from "@/lib/permissions/roles";
+import type { HouseholdPersona, HouseholdRole } from "@/lib/permissions/roles";
 
 export type HouseholdContext = {
   userId: string;
@@ -11,6 +11,8 @@ export type HouseholdContext = {
   householdId: string;
   householdName: string;
   role: HouseholdRole;
+  persona: HouseholdPersona;
+  isFocusPerson: boolean;
 };
 
 export async function requireHouseholdContext(): Promise<HouseholdContext> {
@@ -37,5 +39,7 @@ export async function requireHouseholdContext(): Promise<HouseholdContext> {
     householdId: membership.householdId,
     householdName: membership.householdName,
     role: membership.role,
+    persona: membership.persona,
+    isFocusPerson: membership.isFocusPerson,
   };
 }

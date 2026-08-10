@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { Calendar, Check, Trash2, User } from "lucide-react";
 
+import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import { Button } from "@/components/ui/button";
 import { deleteTask, updateTaskStatus } from "@/lib/tasks/actions";
@@ -57,6 +58,7 @@ export function TaskCard({ task, canEdit, compact, onUpdated }: TaskCardProps) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <SourceChip source={task.provenance.source} />
+          {task.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
             {TASK_STATUS_LABELS[task.status]}
           </span>

@@ -7,9 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createInvite } from "@/lib/households/invite-actions";
-import { HOUSEHOLD_ROLES } from "@/lib/permissions/roles";
-
-const INVITABLE_ROLES = HOUSEHOLD_ROLES.filter((r) => r !== "owner");
+import {
+  ASSIGNABLE_HOUSEHOLD_ROLES,
+  HOUSEHOLD_PERSONAS,
+  HOUSEHOLD_PERSONA_HINTS,
+  HOUSEHOLD_PERSONA_LABELS,
+  HOUSEHOLD_ROLE_LABELS,
+} from "@/lib/permissions/roles";
 
 export function InviteForm() {
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +25,8 @@ export function InviteForm() {
       <CardHeader>
         <CardTitle>Invite a family member</CardTitle>
         <CardDescription>
-          Send an invite link by email. Copy the link and share it directly for now.
+          Choose access (what they can do) and persona (their place in the care network). Self-advocates
+          can later use a simpler My day view and Reliant phone confirmation.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -48,25 +53,47 @@ export function InviteForm() {
               id="email"
               name="email"
               type="email"
-              placeholder="caregiver@example.com"
+              placeholder="family@example.com"
               required
               autoComplete="email"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">Access</Label>
             <select
               id="role"
               name="role"
-              defaultValue="caregiver"
-              className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              defaultValue="member"
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {INVITABLE_ROLES.map((role) => (
+              {ASSIGNABLE_HOUSEHOLD_ROLES.map((role) => (
                 <option key={role} value={role}>
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                  {HOUSEHOLD_ROLE_LABELS[role]}
                 </option>
               ))}
             </select>
+            <p className="text-muted-foreground text-xs">
+              Admin can manage members and integrations. Member can work the board. Viewer is read-mostly.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="persona">Care persona</Label>
+            <select
+              id="persona"
+              name="persona"
+              defaultValue="care_partner"
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {HOUSEHOLD_PERSONAS.map((persona) => (
+                <option key={persona} value={persona}>
+                  {HOUSEHOLD_PERSONA_LABELS[persona]}
+                </option>
+              ))}
+            </select>
+            <p className="text-muted-foreground text-xs">
+              {HOUSEHOLD_PERSONA_HINTS.care_partner} Self-advocate invites are marked as a care focus
+              person by default.
+            </p>
           </div>
           <Button type="submit" disabled={pending}>
             {pending ? "Creating invite…" : "Create invite link"}

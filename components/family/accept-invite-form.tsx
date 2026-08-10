@@ -2,16 +2,17 @@
 
 import { useState, useTransition } from "react";
 
-import { RoleBadge } from "@/components/family/role-badge";
+import { PersonaBadge, RoleBadge } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { acceptInvite } from "@/lib/households/invite-actions";
-import type { HouseholdRole } from "@/lib/permissions/roles";
+import type { HouseholdPersona, HouseholdRole } from "@/lib/permissions/roles";
 
 type AcceptInviteFormProps = {
   token: string;
   householdName: string;
   email: string;
   role: HouseholdRole;
+  persona: HouseholdPersona;
   userEmail: string;
 };
 
@@ -20,6 +21,7 @@ export function AcceptInviteForm({
   householdName,
   email,
   role,
+  persona,
   userEmail,
 }: AcceptInviteFormProps) {
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +34,8 @@ export function AcceptInviteForm({
         <p>
           Household: <span className="font-medium text-foreground">{householdName}</span>
         </p>
-        <p>
-          Invited as: <RoleBadge role={role} />
+        <p className="flex flex-wrap items-center gap-2">
+          Invited as: <RoleBadge role={role} /> <PersonaBadge persona={persona} />
         </p>
         <p>
           Invite sent to: <span className="font-medium text-foreground">{email}</span>

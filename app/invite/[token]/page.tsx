@@ -83,6 +83,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
             householdName={invite.householdName}
             email={invite.email}
             role={invite.role}
+            persona={invite.persona}
             userEmail={user.email}
           />
         </CardContent>

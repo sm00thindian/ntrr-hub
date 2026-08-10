@@ -14,6 +14,7 @@ function mapEvent(row: {
   ends_at: string;
   all_day: boolean;
   location: string | null;
+  reliant_confirm_requested?: boolean | null;
   provenance: Provenance;
   created_at: string;
   updated_at: string;
@@ -27,6 +28,7 @@ function mapEvent(row: {
     endsAt: row.ends_at,
     allDay: row.all_day,
     location: row.location,
+    reliantConfirmRequested: Boolean(row.reliant_confirm_requested),
     provenance: row.provenance,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -51,7 +53,7 @@ export async function getCalendarEventsForRange(
   const { data, error } = await supabase
     .from("calendar_events")
     .select(
-      "id, household_id, title, description, starts_at, ends_at, all_day, location, provenance, created_at, updated_at",
+      "id, household_id, title, description, starts_at, ends_at, all_day, location, reliant_confirm_requested, provenance, created_at, updated_at",
     )
     .eq("household_id", householdId)
     .lt("starts_at", rangeEnd)
@@ -79,7 +81,7 @@ export async function getTasksDueInRange(
 
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, title, description, assignee_id, due_at, status, provenance")
+    .select("id, title, description, assignee_id, due_at, status, reliant_confirm_requested, provenance")
     .eq("household_id", householdId)
     .not("due_at", "is", null)
     .in("status", ["todo", "in_progress"])
@@ -98,6 +100,9 @@ export async function getTasksDueInRange(
     assigneeId: (row.assignee_id as string | null) ?? null,
     dueAt: row.due_at as string,
     status: row.status as TaskStatus,
+    reliantConfirmRequested: Boolean(
+      (row as { reliant_confirm_requested?: boolean }).reliant_confirm_requested,
+    ),
     provenance: row.provenance as CalendarTask["provenance"],
   }));
 }

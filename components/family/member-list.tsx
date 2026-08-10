@@ -2,16 +2,25 @@
 
 import { useState, useTransition } from "react";
 
-import { RoleBadge } from "@/components/family/role-badge";
+import { PersonaBadge, RoleBadge } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { removeMember, updateMemberRole } from "@/lib/households/member-actions";
+import {
+  removeMember,
+  updateMemberFocusPerson,
+  updateMemberPersona,
+  updateMemberRole,
+} from "@/lib/households/member-actions";
 import type { HouseholdMember } from "@/lib/households/queries";
-import { canManageMembers } from "@/lib/permissions/roles";
-import type { HouseholdRole } from "@/lib/permissions/roles";
-import { HOUSEHOLD_ROLES } from "@/lib/permissions/roles";
-
-const EDITABLE_ROLES = HOUSEHOLD_ROLES.filter((r) => r !== "owner");
+import {
+  ASSIGNABLE_HOUSEHOLD_ROLES,
+  HOUSEHOLD_PERSONAS,
+  HOUSEHOLD_PERSONA_LABELS,
+  HOUSEHOLD_ROLE_LABELS,
+  canManageMembers,
+  type HouseholdPersona,
+  type HouseholdRole,
+} from "@/lib/permissions/roles";
 
 type MemberListProps = {
   members: HouseholdMember[];
@@ -28,7 +37,10 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
     <Card>
       <CardHeader>
         <CardTitle>Members ({members.length})</CardTitle>
-        <CardDescription>People with access to this household.</CardDescription>
+        <CardDescription>
+          Access controls the board; care persona describes their place in the network (including
+          self-advocates).
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <ul className="divide-y rounded-lg border">
@@ -39,63 +51,117 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
             return (
               <li
                 key={member.id}
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0 space-y-1">
                   <p className="truncate font-medium">
                     {member.displayName ?? member.email}
                     {isSelf ? <span className="text-muted-foreground"> (you)</span> : null}
+                    {member.isFocusPerson ? (
+                      <span className="text-brand ml-2 text-xs font-medium">Focus</span>
+                    ) : null}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{member.email}</p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <RoleBadge role={member.role} />
+                    <PersonaBadge persona={member.persona} />
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2 sm:items-end">
                   {canEdit ? (
-                    <select
-                      defaultValue={member.role}
-                      disabled={pending}
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                      onChange={(e) => {
-                        setError(null);
-                        startTransition(async () => {
-                          const result = await updateMemberRole(
-                            member.id,
-                            e.target.value as HouseholdRole,
-                          );
-                          if (result?.error) {
-                            setError(result.error);
-                          }
-                        });
-                      }}
-                    >
-                      {EDITABLE_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <RoleBadge role={member.role} />
-                  )}
-
-                  {canEdit ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={pending}
-                      onClick={() => {
-                        setError(null);
-                        startTransition(async () => {
-                          const result = await removeMember(member.id);
-                          if (result?.error) {
-                            setError(result.error);
-                          }
-                        });
-                      }}
-                    >
-                      Remove
-                    </Button>
+                    <>
+                      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                        Access
+                        <select
+                          defaultValue={member.role === "caregiver" ? "member" : member.role}
+                          disabled={pending}
+                          className="h-9 min-w-[8rem] rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                          onChange={(e) => {
+                            setError(null);
+                            startTransition(async () => {
+                              const result = await updateMemberRole(
+                                member.id,
+                                e.target.value as HouseholdRole,
+                              );
+                              if (result?.error) {
+                                setError(result.error);
+                              }
+                            });
+                          }}
+                        >
+                          {ASSIGNABLE_HOUSEHOLD_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {HOUSEHOLD_ROLE_LABELS[role]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                        Persona
+                        <select
+                          defaultValue={member.persona}
+                          disabled={pending}
+                          className="h-9 min-w-[8rem] rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                          onChange={(e) => {
+                            setError(null);
+                            startTransition(async () => {
+                              const result = await updateMemberPersona(
+                                member.id,
+                                e.target.value as HouseholdPersona,
+                              );
+                              if (result?.error) {
+                                setError(result.error);
+                              }
+                            });
+                          }}
+                        >
+                          {HOUSEHOLD_PERSONAS.map((persona) => (
+                            <option key={persona} value={persona}>
+                              {HOUSEHOLD_PERSONA_LABELS[persona]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-input"
+                          checked={member.isFocusPerson}
+                          disabled={pending}
+                          onChange={(e) => {
+                            setError(null);
+                            startTransition(async () => {
+                              const result = await updateMemberFocusPerson(
+                                member.id,
+                                e.target.checked,
+                              );
+                              if (result?.error) {
+                                setError(result.error);
+                              }
+                            });
+                          }}
+                        />
+                        Care focus person
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => {
+                          setError(null);
+                          startTransition(async () => {
+                            const result = await removeMember(member.id);
+                            if (result?.error) {
+                              setError(result.error);
+                            }
+                          });
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </li>

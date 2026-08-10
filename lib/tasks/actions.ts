@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { enqueueGoogleTaskSync } from "@/lib/sync/enqueue";
 import { createClient } from "@/lib/supabase/server";
+import { canEditTasks } from "@/lib/permissions/roles";
 import type { RecurrenceCadence, TaskStatus } from "@/lib/tasks/types";
 
 function defaultProvenance() {
@@ -16,14 +17,10 @@ function defaultProvenance() {
   };
 }
 
-function canEdit(role: string) {
-  return role === "owner" || role === "admin" || role === "caregiver";
-}
-
 export async function createTask(formData: FormData) {
   const ctx = await requireHouseholdContext();
 
-  if (!canEdit(ctx.role)) {
+  if (!canEditTasks(ctx.role)) {
     return { error: "You do not have permission to create tasks." };
   }
 
@@ -32,6 +29,9 @@ export async function createTask(formData: FormData) {
   const assigneeId = String(formData.get("assigneeId") ?? "").trim() || null;
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
   const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
+  const reliantConfirmRequested =
+    formData.get("reliantConfirmRequested") === "on" ||
+    formData.get("reliantConfirmRequested") === "true";
 
   if (!title) {
     return { error: "Task title is required." };
@@ -48,10 +48,11 @@ export async function createTask(formData: FormData) {
       assignee_id: assigneeId,
       due_at: dueAt,
       status: "todo",
+      reliant_confirm_requested: reliantConfirmRequested,
       provenance: defaultProvenance(),
       created_by: ctx.userId,
     })
-    .select("id, title, description, status, due_at")
+    .select("id, title, description, status, due_at, reliant_confirm_requested")
     .single();
 
   if (error || !created) {
@@ -78,7 +79,7 @@ export async function createTask(formData: FormData) {
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const ctx = await requireHouseholdContext();
 
-  if (!canEdit(ctx.role)) {
+  if (!canEditTasks(ctx.role)) {
     return { error: "You do not have permission to update tasks." };
   }
 
@@ -126,7 +127,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
 export async function deleteTask(taskId: string) {
   const ctx = await requireHouseholdContext();
 
-  if (!canEdit(ctx.role)) {
+  if (!canEditTasks(ctx.role)) {
     return { error: "You do not have permission to delete tasks." };
   }
 
@@ -156,7 +157,7 @@ export async function deleteTask(taskId: string) {
 export async function createRecurringTemplate(formData: FormData) {
   const ctx = await requireHouseholdContext();
 
-  if (!canEdit(ctx.role)) {
+  if (!canEditTasks(ctx.role)) {
     return { error: "You do not have permission to create templates." };
   }
 
