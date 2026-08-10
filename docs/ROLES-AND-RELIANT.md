@@ -1,7 +1,7 @@
 # Household roles, personas, and Reliant confirmation
 
-**Status:** Implemented in schema + invite/task UI (2026-08-10)  
-**Product:** Hub · handoff intent for Reliant
+**Status:** Schema + invite/task UI + profile phone (2026-08-10)  
+**Product:** Hub · optional tiered bridge to Reliant · cross-sell under NTRR
 
 ## Two axes
 
@@ -33,98 +33,111 @@ These are independent. A self-advocate may be a `member` (can complete own tasks
 
 `is_focus_person` marks primary care focus for filters and future Reliant routing (multi-focus later).
 
-## Reliant confirmation requested
+## Reliant confirmation as an **optional tiered service**
 
-**Not only a display tag** — a durable boolean on the item:
+**Product decision:** Phone confirmation from Hub is **not** core free forever. It is an **optional, tiered** capability that uses Reliant’s phone stack.
+
+| Layer | Role |
+|-------|------|
+| **Hub core** | Family board, calendars, tasks, personas — valuable without phone calls |
+| **Reliant confirm add-on / tier** | When a task/event has `reliant_confirm_requested`, Reliant may call until confirm |
+| **Hub + Reliant bundle** | One commercial package: coordination + shared confirm/dial pool |
+
+**Reliant proper** stays the phone-first product (own commitments, inbound, quiet hours).  
+**Hub → Reliant** is a **bridge**: family-board intent → hard phone confirm.
+
+### Flag on items (shipped)
 
 | Table | Column |
 |-------|--------|
 | `tasks` | `reliant_confirm_requested` |
 | `calendar_events` | `reliant_confirm_requested` |
+| `recurring_task_templates` | `reliant_confirm_requested` (default for instances) |
 
-### UX
+UX: checkbox on create task + recurring template; **Reliant** chip on cards.
 
-- **Create task:** checkbox *“Request Reliant phone confirmation”*
-- **Cards / agenda:** green **Reliant** chip when true
-- **Calendar events:** field exists; UI toggle can follow (detail panel)
+### Who gets the call (routing)
 
-### Semantics (either caregiver or self-advocate)
+1. **Assignee** if set and has linked phone / Reliant  
+2. Else **focus person** (often self-advocate)  
+3. Else household default (product decision later — avoid calling every coordinator)
 
-Who gets the call is **not** the checkbox alone:
+### Meter what costs money
 
-1. Prefer **assignee** if set (self-advocate or care partner with Reliant linked)  
-2. Else household **focus person** with persona `self_advocate`  
-3. Else coordinator’s Reliant (household-level fallback — product decision later)
+Bill **confirm series started** (due → dials until outcome), not the checkbox alone.  
+Recurring + Reliant on = cost per **instance** (warn on daily templates).
 
-The checkbox means: *this commitment should not die as a banner — ask for phone confirmation via Reliant when that pipe exists.*
+### Pricing sketch (go-live)
 
-### Recurring templates
+| Offer | Includes | Confirm series |
+|-------|----------|----------------|
+| Hub free / dogfood | Board only | Off or hard-capped / allowlist |
+| Hub family | Board + calendars | Optional small allotment **or** requires Reliant link |
+| **Reliant confirm add-on** | Metered series on Hub items | e.g. N/mo then overage |
+| **Hub + Reliant bundle** | Hub family + Reliant Starter (or above) | Shared dial/confirm pool |
 
-`recurring_task_templates.reliant_confirm_requested` is the default for each spawned task instance (create form checkbox). Spawning code should always copy the flag onto `tasks.reliant_confirm_requested`.
+Instrument usage during dogfood even while free.
 
-### Future wire-up (not built)
+### Implementation later
 
-- Hub outbox / job: when due, enqueue Reliant reminder for resolved phone identity  
-- Reliant confirm → Hub task `done` or event acknowledged  
-- Cross-product identity (PLATFORM-MIGRATION Phase 6)
-- **Billing:** see “Charging for Reliant confirmations” below
+- `reliant_confirm_jobs` + dial counts  
+- Stripe meters / debit Reliant allowance via internal API  
+- Settings: “Reliant confirms used this month”  
+- Gate checkbox effects when entitlement missing (UI: “Add Reliant / upgrade”)
 
-## Charging for Reliant confirmations (go-live guidance)
+---
 
-Reliant today is a **standalone** phone-reliability product (subscription-ish, dial/SMS meters). Hub confirm is a **usage event** that burns Reliant cost (Twilio + xAI voice). Don’t give unlimited Hub→Reliant confirms free on a flat Hub plan.
+## Cross-selling NTRR services
 
-### Recommended model
+Keep products distinct; surface each other everywhere it helps the job.
 
-**Meter the confirmation, not the checkbox.**
+| Surface | Hub shows | Reliant shows |
+|---------|-----------|----------------|
+| Settings | **NTRR services** card → Reliant + bundle story | Link to Hub for family board (when ready) |
+| Footer | Reliant + ntrr.com | Already “NTRR service” |
+| Tasks | Reliant confirm checkbox (tiered later) | — |
+| Apex ntrr.com | Both product cards | — |
 
-| Concept | Meter |
-|---------|--------|
-| Billable unit | **Confirm attempt series** (one commitment due → outbound call(s) until confirm/snooze/cancel, or max attempts) — *not* every redial as a separate SKU if possible |
-| Alternate unit | **Outbound dial minutes** / dials (aligns with Reliant’s own COGS) |
+**Dogfood copy:** mark intent now; live calls + paid tiers after phone correlation and metering.
 
-**Who pays**
+---
 
-1. **Preferred v1:** Household (or the **focus person’s** Reliant account) holds a Reliant entitlement. Hub only *requests* confirms if a linked Reliant identity has remaining quota.  
-2. **Alt:** Hub plan includes a small monthly allotment of “Reliant confirms”; overage routes through Reliant billing.
+## Phone identity for correlation (required for live bridge)
 
-**Tiers (sketch)**
+Reliant identity is **phone-first** (`phone_e164`). Hub is **email-first** today. Correlation needs a shared key.
 
-| Tier | Included Reliant confirms / mo | Overage |
-|------|----------------------------------|---------|
-| Hub free / dogfood | 0–5 or allowlist only | Block or manual |
-| Hub family | e.g. 20–40 series | Soft warn → pay-as-you-go or upgrade |
-| Hub + Reliant bundle | Higher / shared pool with Reliant Starter dials | Same overage rules as Reliant |
+### Shipped foundation
 
-**Product rules that control cost**
+| Piece | Detail |
+|-------|--------|
+| `profiles.phone_e164` | Optional unique mobile on Hub profile |
+| Settings → **Mobile for Reliant** | User saves E.164; same number they use in Reliant |
+| Cross-sell card | Explains link + bundle |
 
-- Cap redials and respect quiet hours (Reliant already does this).  
-- Only bill **started** series (not checkbox alone).  
-- Recurring templates with Reliant on: each **instance due** can start one series (daily series = daily cost — make that obvious in UI).  
-- Prefer self-advocate / assignee phone; don’t call every coordinator by default.
+### Onboarding path (target)
 
-**Implementation later**
+1. Hub sign-up (email magic link / Google)  
+2. **Prompt for mobile** early (after household create or first Reliant checkbox)  
+3. Optionally verify SMS later (reuse patterns from Reliant)  
+4. Match `profiles.phone_e164` ↔ Reliant `profiles.phone_e164` (or allowlist) when enqueueing confirms  
 
-- `reliant_confirm_jobs` table: household, task/event id, status, dial_count, billable_at  
-- Stripe: meter event or prepaid credits; or debit Reliant’s existing dial allowance via internal API  
-- Dashboard: “Reliant confirms used this month” on Hub Settings
+**Not yet:** shared Supabase Auth, SSO, or automatic account merge (Phase 6 options still apply). Phone is the **pragmatic join key** for v1 bridge.
 
-**Dogfood:** free / unlimited with soft rate limits is fine; instrument counts now so you know real usage before pricing.
+### Security / privacy
 
-### Positioning vs “Reliant proper”
+- Unique phone per Hub profile (DB unique index when set)  
+- Don’t expose other members’ phones beyond household need  
+- Verified phone before dialing (when SMS verify ships)
 
-| | Reliant standalone | Hub → Reliant confirm |
-|--|--------------------|------------------------|
-| Use case | User’s own commitments, phone-first | Family board item needs a hard confirm |
-| Buyer | Individual operator | Household / caregiver |
-| Billing | Reliant sub + dials | Confirm series metered, often via Reliant identity or Hub add-on |
-
-Keep products separate; **sell the confirm as a bridge**, not a free unlimited feature of Hub.
+---
 
 ## Invite flow
 
-Invite stores both `role` and `persona`. Accept copies both onto `household_members`.
+Invite stores `role` + `persona`. Accept copies both; self-advocate → `is_focus_person` default true.
 
 ## Related
 
-- Permissions helpers: `lib/permissions/roles.ts`
-- Migration: `supabase/migrations/20250810000000_personas_and_reliant_confirm.sql`
+- Permissions: `lib/permissions/roles.ts`  
+- Phone helpers: `lib/phone.ts`  
+- Migrations: `2025081000000*` personas / reliant flags / profile phone  
+- Platform topology: `docs/PLATFORM-MIGRATION.md` Phase 6  

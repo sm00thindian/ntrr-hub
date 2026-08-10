@@ -93,6 +93,13 @@ Keep code clean, modular, and well-documented. Prefer simple, maintainable solut
 
 Design with future **document vault** and **finance** modules in mind. Modular architecture; loose coupling between sync, dashboard, and AI layers.
 
+### NTRR sibling: Reliant
+
+- **Reliant** (`reliant.ntrr.com`) is phone-first reliability; Hub is the family board  
+- Phone confirmation of Hub tasks is an **optional tiered** bridge (or **Hub + Reliant bundle**), not free unlimited forever — see [docs/ROLES-AND-RELIANT.md](docs/ROLES-AND-RELIANT.md)  
+- Correlate members via optional **`profiles.phone_e164`** (same number as Reliant); cross-sell sibling services in Settings/footer  
+- Keep products loosely coupled; don’t merge auth stacks without Phase 6 ADR
+
 ---
 
 ## Development principles

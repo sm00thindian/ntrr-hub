@@ -228,26 +228,41 @@ Owned primarily in `../reliant` docs; track only cross-platform touchpoints here
 
 ---
 
-### Phase 6 — Cross-product identity (later)
+### Phase 6 — Cross-product identity + Reliant bridge (later)
 
-**Do not start until Hub + Reliant auth are stable in production.**
+**Do not start full SSO until Hub + Reliant auth are stable in production.**
 
-Goal: phone-first signup (Reliant strength) can seed or link a Hub account.
+**Product framing (locked for planning):**
 
-Options to evaluate then (pick one; don’t build all):
+- Hub core stays valuable without phone calls  
+- **Reliant phone confirmation** from Hub items is an **optional tiered** service (or part of a **Hub + Reliant bundle**)  
+- Cross-sell both products under NTRR (Settings + footers + apex)  
+- Correlation key for v1: **`phone_e164`** (Reliant is phone-first; Hub stores optional mobile on `profiles`)
 
-| Option | Sketch |
-|--------|--------|
-| A. Explicit handoff | Reliant issues one-time link/token; Hub creates/links session |
-| B. Shared Supabase Auth project | One IdP, multiple apps — largest design cost |
-| C. Parent-domain cookies (`.ntrr.com`) | Only with shared auth design |
-| D. OIDC / third-party IdP | Overkill for bootstrap unless forced |
+**Shipped foundation (not full bridge):**
 
-- [ ] Write short ADR when chosen
-- [ ] Implement behind feature flag
-- [ ] Update this doc with chosen approach
+- [x] `reliant_confirm_requested` on tasks / events / recurring templates  
+- [x] `profiles.phone_e164` + Settings “Mobile for Reliant”  
+- [x] Settings “NTRR services” cross-sell card + footer link to Reliant  
+- [x] Docs: `docs/ROLES-AND-RELIANT.md` (tiers, metering, bundle)
 
-**Exit Phase 6:** Documented path from phone identity → Hub household.
+**Still to build:**
+
+| Step | Work |
+|------|------|
+| Phone in onboarding | Prompt for mobile after household create / first Reliant checkbox; optional SMS verify later |
+| Link check | Resolve Hub assignee/focus → phone → Reliant identity before dialing |
+| Confirm jobs | Enqueue series, map confirm back to Hub task/event |
+| Entitlement | Gate live dials on Reliant sub / Hub add-on / bundle quota |
+| SSO options (later) | A handoff token · B shared Auth · C parent cookies · D OIDC — pick one ADR |
+
+- [ ] ADR for identity + billing of confirm series  
+- [ ] Implement link + jobs behind feature flag  
+- [ ] Bundle SKU in Stripe when ready  
+
+**Exit Phase 6:** Phone-correlated Hub member can receive a metered Reliant confirm for a Hub task; products remain separately marketable with a clear bundle.
+
+See also: [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md).
 
 ---
 

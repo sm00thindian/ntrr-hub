@@ -28,6 +28,14 @@ export function SiteFooter({ className }: { className?: string }) {
             >
               {SUPPORT_EMAIL}
             </a>
+            {" · "}
+            <a
+              href="https://reliant.ntrr.com"
+              className="underline-offset-2 hover:text-foreground hover:underline"
+              rel="noopener noreferrer"
+            >
+              Reliant
+            </a>
           </p>
         </div>
         <p className="sm:text-right">© {new Date().getFullYear()} Not The Run Around</p>

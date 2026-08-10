@@ -1,6 +1,8 @@
 import { AppleCalDavConnectCard } from "@/components/integrations/apple-caldav-connect-card";
 import { GoogleConnectCard } from "@/components/integrations/google-connect-card";
 import { HouseholdTimezoneCard } from "@/components/settings/household-timezone-card";
+import { NtrrServicesCard } from "@/components/settings/ntrr-services-card";
+import { PhoneProfileCard } from "@/components/settings/phone-profile-card";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { isGoogleConfigured } from "@/lib/integrations/google/scopes";
 import {
@@ -9,6 +11,7 @@ import {
 } from "@/lib/households/calendar-settings";
 import { getHouseholdIntegration } from "@/lib/integrations/queries";
 import { canManageIntegrations } from "@/lib/permissions/roles";
+import { getProfilePhone } from "@/lib/profiles/actions";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 // Deferred Settings cards (do not show for dogfood):
@@ -42,10 +45,11 @@ export default async function SettingsPage({
   const params = await searchParams;
   const feedback = feedbackFromSearchParams(params);
 
-  const [googleIntegration, appleIntegration, calendarSettings] = await Promise.all([
+  const [googleIntegration, appleIntegration, calendarSettings, phoneE164] = await Promise.all([
     canManage ? getHouseholdIntegration(ctx.householdId, "google") : null,
     canManage ? getHouseholdIntegration(ctx.householdId, "apple_caldav") : null,
     getHouseholdCalendarSettings(ctx.householdId),
+    getProfilePhone(ctx.userId),
   ]);
 
   let googleCalendarSettings: Awaited<ReturnType<typeof getGoogleCalendarSettingsForUi>> = null;
@@ -77,6 +81,10 @@ export default async function SettingsPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <HouseholdTimezoneCard canManage={canManage} timezone={timeZone} />
+
+        <PhoneProfileCard phoneE164={phoneE164} />
+
+        <NtrrServicesCard />
 
         <GoogleConnectCard
           canManage={canManage}
