@@ -142,9 +142,9 @@ Two Google uses stay distinct:
 - [ ] Attach custom domain **`hub.ntrr.com`**
 - [ ] Set Production env vars (see [Environment matrix](#environment-matrix-hub))
 - [ ] Deploy; confirm build green
-- [ ] Confirm Crons registered from `vercel.json`:
-  - `/api/cron/digest` — `0 6 * * *`
-  - `/api/cron/sync` — `0 */6 * * *`
+- [ ] Confirm Crons registered from `vercel.json` (Hobby: max once/day per job):
+  - `/api/cron/digest` — `0 6 * * *` (06:00 UTC daily)
+  - `/api/cron/sync` — `0 12 * * *` (12:00 UTC daily; was every 6h — needs Pro to restore)
 
 #### 1.4 DNS
 
