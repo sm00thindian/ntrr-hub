@@ -161,59 +161,31 @@ export async function acceptInvite(token: string) {
     };
   }
 
-  const { data: existingMembership } = await supabase
-    .from("household_members")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (existingMembership) {
-    return { error: "You already belong to a household." };
-  }
-
-  const { error: memberError } = await supabase.from("household_members").insert({
-    household_id: invite.householdId,
-    user_id: user.id,
-    role: invite.role,
-    persona: invite.persona ?? "care_partner",
-    is_focus_person: invite.persona === "self_advocate",
+  // Security-definer RPC: invitees are not members yet, so client INSERT into
+  // household_members is blocked by RLS (owners/admins only).
+  const { error: acceptError } = await supabase.rpc("accept_household_invite", {
+    invite_token: token,
   });
 
-  if (memberError) {
-    return { error: memberError.message };
-  }
-
-  // Seed profile phone from invite when present (does not overwrite an existing number)
-  if (invite.phoneE164) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("phone_e164")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const existing = (profile as { phone_e164?: string | null } | null)?.phone_e164;
-    if (!existing) {
-      await supabase
-        .from("profiles")
-        .update({
-          phone_e164: invite.phoneE164,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+  if (acceptError) {
+    const message = acceptError.message ?? "Could not accept invite.";
+    // Surface clean copy without Postgres exception prefixes when possible
+    if (message.includes("already belong")) {
+      return { error: "You already belong to a household." };
     }
-  }
-
-  const { error: inviteError } = await supabase
-    .from("invites")
-    .update({
-      accepted_at: new Date().toISOString(),
-      accepted_by: user.id,
-    })
-    .eq("id", invite.id)
-    .is("accepted_at", null);
-
-  if (inviteError) {
-    return { error: inviteError.message };
+    if (message.includes("revoked")) {
+      return { error: "This invite has been revoked." };
+    }
+    if (message.includes("expired")) {
+      return { error: "This invite has expired." };
+    }
+    if (message.includes("already been accepted")) {
+      redirect("/dashboard");
+    }
+    if (message.includes("Sign in with that email")) {
+      return { error: message.replace(/^.*exception:\s*/i, "") };
+    }
+    return { error: message };
   }
 
   revalidatePath("/dashboard");
