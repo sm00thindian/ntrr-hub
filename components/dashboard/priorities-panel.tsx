@@ -35,7 +35,8 @@ export function PrioritiesPanel({
       <CardHeader>
         <CardTitle>Today&apos;s priorities</CardTitle>
         <CardDescription>
-          Next up on today&apos;s list. Mark tasks done here; open Calendar for events.
+          Tasks you can complete here. Calendar items are from your connected calendars — Hub is not
+          a calendar app.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -70,7 +71,7 @@ export function PrioritiesPanel({
                       {item.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
                     </div>
                     <p className="text-muted-foreground text-xs">
-                      {isTask ? "Task" : "Calendar event"} · {timeLabel}
+                      {isTask ? "Hub task" : "From calendar"} · {timeLabel}
                     </p>
                   </div>
                   {isTask && canCompleteTasks && item.entityId && item.status !== "done" ? (
@@ -99,7 +100,7 @@ export function PrioritiesPanel({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Nothing urgent today. Connect calendars in Settings or add tasks to see priorities here.
+            Nothing due yet. Add Hub tasks or connect calendars in Settings for today&apos;s context.
           </p>
         )}
       </CardContent>

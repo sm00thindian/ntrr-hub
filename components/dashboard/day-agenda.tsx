@@ -39,13 +39,13 @@ export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?:
         <div>
           <CardTitle>Today&apos;s agenda</CardTitle>
           <CardDescription>
-            {taskCount} task{taskCount === 1 ? "" : "s"} · {eventCount} event
-            {eventCount === 1 ? "" : "s"} from your connected calendars
-            {timeZone ? ` · times in household timezone` : ""}
+            {taskCount} Hub task{taskCount === 1 ? "" : "s"} · {eventCount} calendar item
+            {eventCount === 1 ? "" : "s"} (synced for context — manage them in Google or Apple)
+            {timeZone ? " · household timezone" : ""}
           </CardDescription>
         </div>
         <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link href="/settings">Integrations</Link>
+          <Link href="/settings">Calendars</Link>
         </Button>
       </CardHeader>
       <CardContent>
@@ -57,8 +57,8 @@ export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?:
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Nothing scheduled for today. Connect Google or Apple in Settings, run sync, and your
-            family calendar will show up here.
+            Quiet day. Add tasks on the Tasks board, or connect a calendar in Settings to pull
+            today&apos;s events for family context — Hub doesn&apos;t replace your calendar apps.
           </p>
         )}
       </CardContent>

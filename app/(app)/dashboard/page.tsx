@@ -39,7 +39,8 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Welcome to Hub</h1>
           <p className="mt-2 text-muted-foreground">
-            Create a household to unlock your coordination dashboard.
+            Create a household for your family coordination board — tasks, handoffs, and calendar
+            context (not a calendar replacement).
           </p>
         </div>
         <CreateHouseholdForm />
@@ -74,7 +75,9 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Sync status</CardTitle>
-            <CardDescription>Google Calendar + Tasks conflicts need your confirmation.</CardDescription>
+            <CardDescription>
+              Hub pulls calendars for context — it doesn&apos;t replace Google or Apple.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {conflictCount > 0 ? (
@@ -91,7 +94,7 @@ export default async function DashboardPage() {
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No sync conflicts. Connect calendars in Settings and run sync to keep everyone aligned.
+                No conflicts. Sync from Settings when you want fresh calendar context on the board.
               </p>
             )}
           </CardContent>

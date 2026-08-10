@@ -17,6 +17,7 @@ export function FamilyStatusPanel({ status }: { status: FamilyStatus }) {
             {status.pendingInviteCount > 0
               ? ` · ${status.pendingInviteCount} pending invite${status.pendingInviteCount === 1 ? "" : "s"}`
               : ""}
+            {" · "}roles & care personas
           </CardDescription>
         </div>
         <Button asChild variant="outline" size="sm" className="shrink-0">
