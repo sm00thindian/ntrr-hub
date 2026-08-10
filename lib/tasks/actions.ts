@@ -319,17 +319,21 @@ export async function createRecurringTemplate(formData: FormData) {
     return { error: taskError?.message ?? "Could not spawn recurring task." };
   }
 
-  await enqueueGoogleTaskSync({
-    householdId: ctx.householdId,
-    taskId: spawnedTask.id,
-    operation: "create",
-    payload: {
-      title: spawnedTask.title,
-      description: spawnedTask.description,
-      status: spawnedTask.status,
-      dueAt: spawnedTask.due_at,
-    },
-  });
+  try {
+    await enqueueGoogleTaskSync({
+      householdId: ctx.householdId,
+      taskId: spawnedTask.id,
+      operation: "create",
+      payload: {
+        title: spawnedTask.title,
+        description: spawnedTask.description,
+        status: spawnedTask.status,
+        dueAt: spawnedTask.due_at,
+      },
+    });
+  } catch {
+    // Template + first task already saved; sync can retry later.
+  }
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");

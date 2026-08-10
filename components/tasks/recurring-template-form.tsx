@@ -28,6 +28,7 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
   const [cadence, setCadence] = useState("weekly");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [formKey, setFormKey] = useState(0);
 
   return (
     <Card>
@@ -37,26 +38,38 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
       </CardHeader>
       <CardContent>
         <form
+          key={formKey}
           className="grid gap-4 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
-            const formData = new FormData(event.currentTarget);
+            // Capture form before any await — React nulls event.currentTarget after the handler yields.
+            const form = event.currentTarget;
+            const formData = new FormData(form);
             startTransition(async () => {
-              const result = await createRecurringTemplate(formData);
-              if (result?.error) {
-                setError(result.error);
-                return;
+              try {
+                const result = await createRecurringTemplate(formData);
+                if (result?.error) {
+                  setError(result.error);
+                  return;
+                }
+                onCreated?.();
+                setCadence("weekly");
+                setFormKey((k) => k + 1);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Could not create recurring task.");
               }
-              onCreated?.();
-              event.currentTarget.reset();
-              setCadence("weekly");
             });
           }}
         >
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="template-title">Title</Label>
-            <Input id="template-title" name="title" placeholder="Refill weekly pill organizer" required />
+            <Input
+              id="template-title"
+              name="title"
+              placeholder="Refill weekly pill organizer"
+              required
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="cadence">Cadence</Label>
@@ -108,7 +121,14 @@ export function RecurringTemplateForm({ members, onCreated }: RecurringTemplateF
           {cadence === "monthly" ? (
             <div className="space-y-2">
               <Label htmlFor="dayOfMonth">Day of month</Label>
-              <Input id="dayOfMonth" name="dayOfMonth" type="number" min={1} max={28} defaultValue={1} />
+              <Input
+                id="dayOfMonth"
+                name="dayOfMonth"
+                type="number"
+                min={1}
+                max={28}
+                defaultValue={1}
+              />
             </div>
           ) : null}
           <div className="sm:col-span-2">
