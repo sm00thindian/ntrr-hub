@@ -40,6 +40,24 @@ export const HOUSEHOLD_PERSONA_HINTS: Record<HouseholdPersona, string> = {
   other: "Family member without a specific care role",
 };
 
+/** Short blurbs for Access (Axis A) hover help and option titles */
+export const HOUSEHOLD_ROLE_HINTS: Record<HouseholdRole, string> = {
+  owner: "Full household control. Cannot be assigned via invite.",
+  admin: "Can manage members, invites, and calendar integrations.",
+  member: "Can create and complete tasks and use the full family board.",
+  viewer: "Can see the household board; limited ability to change things.",
+  caregiver: "Same as Member (legacy label).",
+};
+
+export const ACCESS_FIELD_HELP =
+  "Access is what they can do in Hub (permissions). It is separate from care persona.";
+
+export const PERSONA_FIELD_HELP =
+  "Care persona is their place in the care network—not login power. A self-advocate can be a Member (act) or Viewer (read).";
+
+export const FOCUS_PERSON_FIELD_HELP =
+  "Marks who care is organized around for filters and future Reliant phone confirmation routing.";
+
 export function normalizeHouseholdRole(role: HouseholdRole | string): HouseholdRole {
   if (role === "caregiver") {
     return "member";

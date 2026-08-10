@@ -4,29 +4,35 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FieldHelp } from "@/components/ui/field-help";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createInvite } from "@/lib/households/invite-actions";
 import {
+  ACCESS_FIELD_HELP,
   ASSIGNABLE_HOUSEHOLD_ROLES,
   HOUSEHOLD_PERSONAS,
   HOUSEHOLD_PERSONA_HINTS,
   HOUSEHOLD_PERSONA_LABELS,
+  HOUSEHOLD_ROLE_HINTS,
   HOUSEHOLD_ROLE_LABELS,
+  PERSONA_FIELD_HELP,
 } from "@/lib/permissions/roles";
 
 export function InviteForm() {
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [persona, setPersona] = useState<(typeof HOUSEHOLD_PERSONAS)[number]>("care_partner");
+  const [role, setRole] = useState<(typeof ASSIGNABLE_HOUSEHOLD_ROLES)[number]>("member");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Invite a family member</CardTitle>
         <CardDescription>
-          Choose access (what they can do) and persona (their place in the care network). Self-advocates
-          can later use a simpler My day view and Reliant phone confirmation.
+          Access = permissions in Hub. Care persona = their place in the care network. Hover the ?
+          icons for details.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -59,40 +65,46 @@ export function InviteForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role">Access</Label>
+            <FieldHelp label="Access" help={ACCESS_FIELD_HELP} htmlFor="role" />
             <select
               id="role"
               name="role"
-              defaultValue="member"
+              value={role}
+              onChange={(e) =>
+                setRole(e.target.value as (typeof ASSIGNABLE_HOUSEHOLD_ROLES)[number])
+              }
               className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {ASSIGNABLE_HOUSEHOLD_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {HOUSEHOLD_ROLE_LABELS[role]}
+              {ASSIGNABLE_HOUSEHOLD_ROLES.map((r) => (
+                <option key={r} value={r} title={HOUSEHOLD_ROLE_HINTS[r]}>
+                  {HOUSEHOLD_ROLE_LABELS[r]}
                 </option>
               ))}
             </select>
-            <p className="text-muted-foreground text-xs">
-              Admin can manage members and integrations. Member can work the board. Viewer is read-mostly.
-            </p>
+            <p className="text-muted-foreground text-xs">{HOUSEHOLD_ROLE_HINTS[role]}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="persona">Care persona</Label>
+            <FieldHelp label="Care persona" help={PERSONA_FIELD_HELP} htmlFor="persona" />
             <select
               id="persona"
               name="persona"
-              defaultValue="care_partner"
+              value={persona}
+              onChange={(e) =>
+                setPersona(e.target.value as (typeof HOUSEHOLD_PERSONAS)[number])
+              }
               className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {HOUSEHOLD_PERSONAS.map((persona) => (
-                <option key={persona} value={persona}>
-                  {HOUSEHOLD_PERSONA_LABELS[persona]}
+              {HOUSEHOLD_PERSONAS.map((p) => (
+                <option key={p} value={p} title={HOUSEHOLD_PERSONA_HINTS[p]}>
+                  {HOUSEHOLD_PERSONA_LABELS[p]}
                 </option>
               ))}
             </select>
             <p className="text-muted-foreground text-xs">
-              {HOUSEHOLD_PERSONA_HINTS.care_partner} Self-advocate invites are marked as a care focus
-              person by default.
+              {HOUSEHOLD_PERSONA_HINTS[persona]}
+              {persona === "self_advocate"
+                ? " Self-advocate invites are marked as a care focus person by default."
+                : null}
             </p>
           </div>
           <Button type="submit" disabled={pending}>

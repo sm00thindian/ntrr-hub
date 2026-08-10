@@ -12,11 +12,17 @@ import {
   updateMemberRole,
 } from "@/lib/households/member-actions";
 import type { HouseholdMember } from "@/lib/households/queries";
+import { MicroFieldHelp } from "@/components/ui/field-help";
 import {
+  ACCESS_FIELD_HELP,
   ASSIGNABLE_HOUSEHOLD_ROLES,
+  FOCUS_PERSON_FIELD_HELP,
   HOUSEHOLD_PERSONAS,
+  HOUSEHOLD_PERSONA_HINTS,
   HOUSEHOLD_PERSONA_LABELS,
+  HOUSEHOLD_ROLE_HINTS,
   HOUSEHOLD_ROLE_LABELS,
+  PERSONA_FIELD_HELP,
   canManageMembers,
   type HouseholdPersona,
   type HouseholdRole,
@@ -72,11 +78,12 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
                   {canEdit ? (
                     <>
                       <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                        Access
+                        <MicroFieldHelp label="Access" help={ACCESS_FIELD_HELP} />
                         <select
                           defaultValue={member.role === "caregiver" ? "member" : member.role}
                           disabled={pending}
                           className="h-9 min-w-[8rem] rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                          title={HOUSEHOLD_ROLE_HINTS[member.role]}
                           onChange={(e) => {
                             setError(null);
                             startTransition(async () => {
@@ -91,18 +98,19 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
                           }}
                         >
                           {ASSIGNABLE_HOUSEHOLD_ROLES.map((role) => (
-                            <option key={role} value={role}>
+                            <option key={role} value={role} title={HOUSEHOLD_ROLE_HINTS[role]}>
                               {HOUSEHOLD_ROLE_LABELS[role]}
                             </option>
                           ))}
                         </select>
                       </label>
                       <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                        Persona
+                        <MicroFieldHelp label="Care persona" help={PERSONA_FIELD_HELP} />
                         <select
                           defaultValue={member.persona}
                           disabled={pending}
                           className="h-9 min-w-[8rem] rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                          title={HOUSEHOLD_PERSONA_HINTS[member.persona]}
                           onChange={(e) => {
                             setError(null);
                             startTransition(async () => {
@@ -117,13 +125,20 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
                           }}
                         >
                           {HOUSEHOLD_PERSONAS.map((persona) => (
-                            <option key={persona} value={persona}>
+                            <option
+                              key={persona}
+                              value={persona}
+                              title={HOUSEHOLD_PERSONA_HINTS[persona]}
+                            >
                               {HOUSEHOLD_PERSONA_LABELS[persona]}
                             </option>
                           ))}
                         </select>
                       </label>
-                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <label
+                        className="flex items-center gap-2 text-xs text-muted-foreground"
+                        title={FOCUS_PERSON_FIELD_HELP}
+                      >
                         <input
                           type="checkbox"
                           className="size-4 rounded border-input"
@@ -142,7 +157,7 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
                             });
                           }}
                         />
-                        Care focus person
+                        <MicroFieldHelp label="Care focus person" help={FOCUS_PERSON_FIELD_HELP} />
                       </label>
                       <Button
                         type="button"

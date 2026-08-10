@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 import {
+  HOUSEHOLD_PERSONA_HINTS,
   HOUSEHOLD_PERSONA_LABELS,
+  HOUSEHOLD_ROLE_HINTS,
   HOUSEHOLD_ROLE_LABELS,
   type HouseholdPersona,
   type HouseholdRole,
@@ -26,6 +28,7 @@ export function RoleBadge({ role }: { role: HouseholdRole }) {
   const normalized = normalizeHouseholdRole(role);
   return (
     <span
+      title={HOUSEHOLD_ROLE_HINTS[role] ?? HOUSEHOLD_ROLE_HINTS[normalized]}
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
         roleStyles[normalized] ?? roleStyles.member,
@@ -39,6 +42,7 @@ export function RoleBadge({ role }: { role: HouseholdRole }) {
 export function PersonaBadge({ persona }: { persona: HouseholdPersona }) {
   return (
     <span
+      title={HOUSEHOLD_PERSONA_HINTS[persona]}
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
         personaStyles[persona],
