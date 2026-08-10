@@ -1,12 +1,14 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppleCalDavConnectCard } from "@/components/integrations/apple-caldav-connect-card";
 import { GoogleConnectCard } from "@/components/integrations/google-connect-card";
-import { ZapierWebhookCard } from "@/components/integrations/zapier-webhook-card";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { isGoogleConfigured } from "@/lib/integrations/google/scopes";
 import { getGoogleCalendarSettingsForUi } from "@/lib/households/calendar-settings";
 import { getHouseholdIntegration } from "@/lib/integrations/queries";
 import { canManageIntegrations } from "@/lib/permissions/roles";
+
+// Deferred Settings cards (do not show for dogfood):
+// - Zapier/Make webhook — components/integrations/zapier-webhook-card.tsx + /api/webhooks/zapier
+// - Microsoft Outlook — 1.1 (lib/sync/microsoft stub)
 
 function feedbackFromSearchParams(params: { [key: string]: string | string[] | undefined }) {
   if (params.connected === "google") {
@@ -81,21 +83,6 @@ export default async function SettingsPage({
         />
 
         <AppleCalDavConnectCard canManage={canManage} integration={appleIntegration} />
-
-        <ZapierWebhookCard
-          householdId={ctx.householdId}
-          configured={Boolean(process.env.ZAPIER_WEBHOOK_SECRET)}
-        />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Microsoft</CardTitle>
-            <CardDescription>Outlook sync — planned for v1.1.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Coming in 1.1</p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

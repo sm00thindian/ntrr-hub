@@ -320,9 +320,13 @@ Use this sequence once Phase 1 assets exist:
 2. **Reliant Supabase SMTP** — same Resend API key / domain; sender name `Reliant` / `noreply@ntrr.com`.
 3. **Optional DMARC** — TXT `_dmarc` = `v=DMARC1; p=none;` on Vercel DNS.
 
+### Product / Settings UI later (hidden from dogfood Settings)
+
+- **Zapier / Make webhook card** — re-enable `ZapierWebhookCard` on Settings; API already at `/api/webhooks/zapier` (Apple Reminders → tasks). Needs `ZAPIER_WEBHOOK_SECRET` on Vercel.
+- **Microsoft Graph sync (1.1)** — Outlook Calendar + To Do; Settings “Connect Microsoft” card; implement `lib/sync/microsoft/` (stub exists). See RELEASE-1.0 §1.1.
+
 ### Product / later
 
-- Microsoft Graph sync (RELEASE 1.1)
 - Shared SSO / phone-first Hub signup (Phase 6)
 - Hub LLM API (agents are rule-based today)
 - Apple CalDAV shared service account (user-owned credentials)
