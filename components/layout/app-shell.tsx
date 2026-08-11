@@ -49,29 +49,37 @@ export function AppShell({
         </aside>
 
         <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-          <header className="safe-top sticky top-0 z-40 border-b border-border/80 bg-background/80 backdrop-blur">
-            <div className="flex h-14 items-center justify-between gap-3 px-4 lg:px-8">
-              <div className="flex min-w-0 items-center gap-3">
+          <header className="safe-top sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur">
+            <div className="flex h-12 items-center justify-between gap-2 px-3 sm:h-14 sm:gap-3 sm:px-4 lg:px-8">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <div className="lg:hidden">
                   <Logo href="/dashboard" size="md" />
+                </div>
+                <div className="min-w-0 lg:hidden">
+                  {householdName ? (
+                    <p className="truncate text-xs font-medium leading-tight">{householdName}</p>
+                  ) : null}
                 </div>
                 <div className="hidden min-w-0 lg:block">
                   <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
                   <p className="truncate text-sm font-medium tracking-tight">Hub</p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {conflictCount > 0 ? (
                   <a
                     href="/conflicts"
-                    className="bg-destructive/10 text-destructive hover:bg-destructive/15 inline-flex h-8 items-center rounded-full px-2.5 text-xs font-semibold transition-colors"
+                    className="bg-destructive/10 text-destructive hover:bg-destructive/15 inline-flex h-8 items-center rounded-full px-2 text-xs font-semibold transition-colors sm:px-2.5"
                   >
-                    {conflictCount} conflict{conflictCount === 1 ? "" : "s"}
+                    <span className="sm:hidden">{conflictCount}</span>
+                    <span className="hidden sm:inline">
+                      {conflictCount} conflict{conflictCount === 1 ? "" : "s"}
+                    </span>
                   </a>
                 ) : null}
                 {userEmail ? (
                   <span
-                    className="hidden max-w-[12rem] truncate text-xs text-muted-foreground sm:inline"
+                    className="hidden max-w-[12rem] truncate text-xs text-muted-foreground md:inline"
                     title={userEmail}
                   >
                     {userEmail}
@@ -84,7 +92,9 @@ export function AppShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 pb-24 lg:px-8 lg:pb-8">{children}</main>
+          <main className="flex-1 px-3 py-4 pb-28 sm:px-4 sm:py-6 sm:pb-24 lg:px-8 lg:pb-8">
+            {children}
+          </main>
 
           <div className="hidden lg:block">
             <SiteFooter className="border-t border-border/60" />

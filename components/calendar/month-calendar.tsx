@@ -46,14 +46,16 @@ export function MonthCalendar({
   const today = new Date();
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+    <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+      <div className="min-w-[22rem] sm:min-w-0">
       <div className="grid grid-cols-7 border-b bg-muted/40">
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="text-muted-foreground px-2 py-2 text-center text-xs font-medium"
+            className="text-muted-foreground px-0.5 py-1.5 text-center text-[10px] font-medium sm:px-2 sm:py-2 sm:text-xs"
           >
-            {label}
+            <span className="sm:hidden">{label.slice(0, 1)}</span>
+            <span className="hidden sm:inline">{label}</span>
           </div>
         ))}
       </div>
@@ -88,25 +90,31 @@ export function MonthCalendar({
           return (
             <Link
               key={dayIso}
-              href={`/calendar?view=7&date=${toDayParam(day)}`}
+              href={`/calendar?view=1&date=${toDayParam(day)}`}
               className={cn(
-                "min-h-28 border-b border-r p-2 transition-colors hover:bg-muted/30",
+                "min-h-16 border-b border-r p-1 transition-colors hover:bg-muted/30 sm:min-h-28 sm:p-2",
                 !inMonth && "bg-muted/20 text-muted-foreground",
                 isToday && "bg-brand/5 ring-1 ring-inset ring-brand/25",
               )}
             >
-              <div className="mb-2 flex items-center justify-between gap-1">
+              <div className="mb-1 flex items-center justify-between gap-1 sm:mb-2">
                 <span
                   className={cn(
-                    "inline-flex h-7 min-w-7 items-center justify-center rounded-full text-sm font-medium",
+                    "inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-medium sm:h-7 sm:min-w-7 sm:text-sm",
                     isToday ? "bg-foreground text-background" : undefined,
                   )}
                 >
                   {day.getDate()}
                 </span>
+                {items.length > 0 ? (
+                  <span className="bg-muted text-muted-foreground rounded-full px-1 text-[9px] font-medium tabular-nums sm:hidden">
+                    {items.length}
+                  </span>
+                ) : null}
               </div>
 
-              <ul className="space-y-1">
+              {/* Full item chips on tablet+; phone shows count only to save space */}
+              <ul className="hidden space-y-1 sm:block">
                 {visible.map((item) => (
                   <li
                     key={item.id}
@@ -123,6 +131,7 @@ export function MonthCalendar({
             </Link>
           );
         })}
+      </div>
       </div>
     </div>
   );

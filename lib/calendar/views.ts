@@ -5,15 +5,15 @@ import {
   toDayParam,
 } from "@/lib/calendar/week";
 
-export type CalendarView = "5" | "7" | "month";
+export type CalendarView = "1" | "5" | "7" | "month";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function parseCalendarView(value?: string): CalendarView {
-  if (value === "5" || value === "month") {
+export function parseCalendarView(value?: string): CalendarView | null {
+  if (value === "1" || value === "5" || value === "7" || value === "month") {
     return value;
   }
-  return "7";
+  return null;
 }
 
 export function parseCalendarDate(date?: string, legacyWeek?: string): Date {
@@ -44,6 +44,24 @@ export function getCalendarBounds(view: CalendarView, anchor: Date): CalendarBou
   const normalized = new Date(anchor);
   normalized.setHours(0, 0, 0, 0);
 
+  if (view === "1") {
+    const day = normalized;
+    const next = addDays(day, 1);
+    return {
+      view,
+      anchor: day,
+      days: [day],
+      rangeStart: day.toISOString(),
+      rangeEnd: next.toISOString(),
+      periodLabel: day.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }),
+      dateParam: toDayParam(day),
+    };
+  }
+
   if (view === "5") {
     const periodStart = startOfWeek(normalized, 1);
     const days = Array.from({ length: 5 }, (_, index) => addDays(periodStart, index));
@@ -62,7 +80,6 @@ export function getCalendarBounds(view: CalendarView, anchor: Date): CalendarBou
 
   if (view === "month") {
     const monthStart = new Date(normalized.getFullYear(), normalized.getMonth(), 1);
-    const monthEnd = new Date(normalized.getFullYear(), normalized.getMonth() + 1, 1);
     const gridStart = startOfWeek(monthStart, 0);
     const lastDayOfMonth = new Date(normalized.getFullYear(), normalized.getMonth() + 1, 0);
     const gridEnd = addDays(startOfWeek(lastDayOfMonth, 0), 7);
@@ -106,6 +123,10 @@ export function shiftCalendarPeriod(view: CalendarView, anchor: Date, direction:
     return new Date(normalized.getFullYear(), normalized.getMonth() + direction, 1);
   }
 
+  if (view === "1") {
+    return addDays(normalized, direction);
+  }
+
   if (view === "5") {
     const periodStart = startOfWeek(normalized, 1);
     return addDays(periodStart, direction * 7);
@@ -121,6 +142,10 @@ export function getTodayAnchor(view: CalendarView): Date {
 
   if (view === "month") {
     return new Date(today.getFullYear(), today.getMonth(), 1);
+  }
+
+  if (view === "1") {
+    return today;
   }
 
   if (view === "5") {
@@ -148,9 +173,21 @@ export function getCalendarNavLinks(view: CalendarView, anchor: Date) {
     nextHref: buildCalendarHref(view, shiftCalendarPeriod(view, anchor, 1)),
     todayHref: buildCalendarHref(view, getTodayAnchor(view)),
     viewHrefs: {
+      "1": buildCalendarHref("1", view === "1" ? anchor : getTodayAnchor("1")),
       "5": buildCalendarHref("5", anchor),
       "7": buildCalendarHref("7", anchor),
       month: buildCalendarHref("month", anchor),
     } as Record<CalendarView, string>,
   };
+}
+
+/** Breakpoint-aware default when user has not chosen a view yet. */
+export function preferredDefaultView(width: number): CalendarView {
+  if (width < 640) {
+    return "1";
+  }
+  if (width < 1024) {
+    return "5";
+  }
+  return "7";
 }

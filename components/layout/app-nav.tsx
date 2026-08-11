@@ -108,20 +108,26 @@ export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps)
                 <Link
                   href={href}
                   className={cn(
-                    "relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 text-xs font-medium transition-colors",
+                    "relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] font-medium transition-colors sm:min-h-16 sm:gap-1 sm:px-2 sm:text-xs",
                     active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <span className="relative">
                     <Icon
-                      className={cn("h-5 w-5", active ? "text-foreground" : "text-muted-foreground")}
+                      className={cn(
+                        "h-5 w-5",
+                        active ? "text-foreground" : "text-muted-foreground",
+                      )}
                       aria-hidden="true"
                     />
                     {showConflict ? <ConflictBadge count={count} /> : null}
                   </span>
-                  <span>{label}</span>
+                  <span className="max-w-full truncate">{label}</span>
                   {active ? (
-                    <span className="absolute top-2 h-1 w-8 rounded-full bg-foreground" aria-hidden />
+                    <span
+                      className="absolute top-1.5 h-1 w-6 rounded-full bg-foreground sm:top-2 sm:w-8"
+                      aria-hidden
+                    />
                   ) : null}
                 </Link>
               </li>

@@ -21,11 +21,12 @@ export default async function FamilyPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Family</h1>
-        <p className="mt-1 text-muted-foreground">
-          {ctx.householdName} · manage members and invites
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Family</h1>
+        <p className="text-muted-foreground mt-0.5 text-sm">
+          {ctx.householdName}
+          <span className="hidden sm:inline"> · manage members and invites</span>
         </p>
       </div>
 

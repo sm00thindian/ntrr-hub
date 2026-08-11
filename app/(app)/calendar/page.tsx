@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CalendarColorLegend } from "@/components/calendar/calendar-color-legend";
+import { CalendarDefaultView } from "@/components/calendar/calendar-default-view";
 import { CalendarSyncButton } from "@/components/calendar/calendar-sync-button";
 import { CalendarViewNav } from "@/components/calendar/calendar-view-nav";
 import { DayGridCalendar } from "@/components/calendar/day-grid-calendar";
@@ -33,6 +34,12 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const ctx = await requireHouseholdContext();
   const params = await searchParams;
   const view = parseCalendarView(params.view);
+
+  // No explicit view → client picks day (phone) / 5-day (tablet) / week (desktop)
+  if (!view) {
+    return <CalendarDefaultView />;
+  }
+
   const anchor = parseCalendarDate(params.date, params.week);
   const bounds = getCalendarBounds(view, anchor);
 
@@ -57,15 +64,17 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const emptyLabel =
     view === "month"
       ? "Nothing scheduled this month"
-      : view === "5"
-        ? "No events or tasks this work week"
-        : "No events or tasks this week";
+      : view === "1"
+        ? "Nothing scheduled today"
+        : view === "5"
+          ? "No events or tasks this work week"
+          : "No events or tasks this week";
 
   const monthMeta = view === "month" ? getMonthMeta(bounds.anchor) : null;
   const navLinks = getCalendarNavLinks(view, bounds.anchor);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <CalendarViewNav
         view={view}
         periodLabel={bounds.periodLabel}
@@ -77,7 +86,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
       {hasItems ? (
         <>
-          <CalendarColorLegend context={colorContext} />
+          <div className="hidden sm:block">
+            <CalendarColorLegend context={colorContext} />
+          </div>
           {view === "month" && monthMeta ? (
             <MonthCalendar
               days={dayParams}
@@ -90,7 +101,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             />
           ) : (
             <DayGridCalendar
-              view={view === "5" ? "5" : "7"}
+              view={view === "1" ? "1" : view === "5" ? "5" : "7"}
               days={dayParams}
               events={events}
               tasks={tasks}
@@ -98,20 +109,23 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
               timeZone={timeZone}
             />
           )}
+          <div className="sm:hidden">
+            <CalendarColorLegend context={colorContext} />
+          </div>
         </>
       ) : (
         <Card>
-          <CardHeader>
-            <CardTitle>{emptyLabel}</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">{emptyLabel}</CardTitle>
             <CardDescription>
               {hasIntegration
                 ? "Your calendars are connected. Run sync to pull the latest events and tasks from Google or Apple."
                 : "Connect Google Calendar or Apple CalDAV in Settings, then run sync to see your family schedule here."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
+          <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {canSync ? <CalendarSyncButton /> : null}
-            <Button asChild variant={canSync ? "outline" : "default"}>
+            <Button asChild variant={canSync ? "outline" : "default"} className="w-full sm:w-auto">
               <Link href="/settings">{hasIntegration ? "Settings" : "Connect calendars"}</Link>
             </Button>
           </CardContent>

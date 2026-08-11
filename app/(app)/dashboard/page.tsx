@@ -74,17 +74,25 @@ export default async function DashboardPage() {
   const canSync = canManageIntegrations(membership.role);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="min-w-0">
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Dashboard</h1>
+        <p className="text-muted-foreground mt-0.5 text-sm">
+          {membership.householdName} · what needs you now
+        </p>
+      </div>
+
       <SetupChecklist status={setupStatus} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <NeedsAttentionPanel
-          items={attention}
-          timeZone={timeZone}
-          canCompleteTasks={canComplete}
-        />
-
-        <FamilyStatusPanel status={familyStatus} />
+      {/* Phone: single column. Tablet: 2-up. Desktop: 3-up with agenda spanning. */}
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="md:col-span-2 lg:col-span-1">
+          <NeedsAttentionPanel
+            items={attention}
+            timeZone={timeZone}
+            canCompleteTasks={canComplete}
+          />
+        </div>
 
         <SyncStatusPanel
           householdId={membership.householdId}
@@ -93,9 +101,15 @@ export default async function DashboardPage() {
           timeZone={timeZone}
         />
 
-        <DayAgenda items={agenda} timeZone={timeZone} />
+        <FamilyStatusPanel status={familyStatus} />
 
-        <AiHighlightsPanel householdId={membership.householdId} />
+        <div className="md:col-span-2 lg:col-span-2">
+          <DayAgenda items={agenda} timeZone={timeZone} />
+        </div>
+
+        <div className="md:col-span-2 lg:col-span-1">
+          <AiHighlightsPanel householdId={membership.householdId} />
+        </div>
       </div>
     </div>
   );

@@ -65,11 +65,11 @@ export default async function SettingsPage({
   const timezoneConfirmed = Boolean(calendarSettings.timezone?.trim());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-muted-foreground">
-          Integrations and account preferences
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
+        <p className="text-muted-foreground mt-0.5 text-sm">
+          Integrations and preferences
           {!canManage ? " · view only" : ""}
         </p>
       </div>
@@ -80,7 +80,7 @@ export default async function SettingsPage({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <HouseholdTimezoneCard
           canManage={canManage}
           timezone={timeZone}

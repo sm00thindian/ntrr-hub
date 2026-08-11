@@ -29,11 +29,13 @@ export default async function TasksPage() {
   const timeZoneLabel = householdTimeZoneLabel(timeZone);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-        <p className="mt-1 text-muted-foreground">
-          {ctx.householdName} · shared family task board · times in {timeZoneLabel}
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Tasks</h1>
+        <p className="text-muted-foreground mt-0.5 text-sm">
+          {ctx.householdName}
+          <span className="hidden sm:inline"> · shared family task board</span>
+          <span className="text-muted-foreground/80"> · {timeZoneLabel}</span>
         </p>
       </div>
 

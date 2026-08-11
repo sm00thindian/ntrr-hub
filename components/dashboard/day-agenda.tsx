@@ -34,19 +34,27 @@ export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?:
   const taskCount = sorted.filter((item) => item.kind === "task").length;
 
   return (
-    <Card className="md:col-span-2">
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div>
+    <Card>
+      <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <CardTitle>Today&apos;s agenda</CardTitle>
           <CardDescription>
             {taskCount} Hub task{taskCount === 1 ? "" : "s"} · {eventCount} calendar item
-            {eventCount === 1 ? "" : "s"} (synced for context — manage them in Google or Apple)
-            {timeZone ? " · household timezone" : ""}
+            {eventCount === 1 ? "" : "s"}
+            <span className="hidden sm:inline">
+              {" "}
+              (synced for context — manage them in Google or Apple)
+            </span>
           </CardDescription>
         </div>
-        <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link href="/settings">Calendars</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm" className="min-h-10 flex-1 sm:flex-none">
+            <Link href="/calendar">Open calendar</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="min-h-10 flex-1 sm:flex-none">
+            <Link href="/settings">Integrations</Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {sorted.length ? (

@@ -32,11 +32,11 @@ export function NeedsAttentionPanel({
   const [pending, startTransition] = useTransition();
 
   return (
-    <Card className="border-brand/20 lg:col-span-1">
+    <Card className="border-brand/20">
       <CardHeader>
         <CardTitle>Needs attention</CardTitle>
-        <CardDescription>
-          Overdue, unassigned, conflicts, and what is due soon — ranked for a quick scan.
+        <CardDescription className="line-clamp-2 sm:line-clamp-none">
+          Overdue, unassigned, conflicts, and what is due soon.
         </CardDescription>
       </CardHeader>
       <CardContent>
