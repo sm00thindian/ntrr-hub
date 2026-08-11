@@ -8,18 +8,28 @@ import { Calendar, Home, ListTodo, Settings, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-const navItems = [
+const coordinatorNav = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/family", label: "Family", icon: Users },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/settings", label: "Settings", icon: Settings },
-];
+] as const;
+
+/** Self-advocate: calm day focus; Family still available read-only for context */
+const myDayNav = [
+  { href: "/dashboard", label: "My day", icon: Home },
+  { href: "/tasks", label: "My tasks", icon: ListTodo },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/family", label: "Family", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings },
+] as const;
 
 type AppNavProps = {
   variant: "sidebar" | "bottom";
   householdId?: string | null;
   conflictCount?: number;
+  myDayMode?: boolean;
 };
 
 function ConflictBadge({ count }: { count: number }) {
@@ -41,18 +51,24 @@ function ConflictBadge({ count }: { count: number }) {
  * Main nav. Conflict badge sits on Dashboard (one-tap path to review via dashboard card
  * and /conflicts). Near real-time count via Supabase realtime when householdId is set.
  */
-export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps) {
+export function AppNav({
+  variant,
+  householdId,
+  conflictCount = 0,
+  myDayMode = false,
+}: AppNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [count, setCount] = useState(conflictCount);
   const [, startTransition] = useTransition();
+  const navItems = myDayMode ? myDayNav : coordinatorNav;
 
   useEffect(() => {
     setCount(conflictCount);
   }, [conflictCount]);
 
   useEffect(() => {
-    if (!householdId) {
+    if (!householdId || myDayMode) {
       return;
     }
 
@@ -91,7 +107,7 @@ export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps)
         // ignore
       }
     };
-  }, [householdId, router, variant]);
+  }, [householdId, router, variant, myDayMode]);
 
   if (variant === "bottom") {
     return (
@@ -102,7 +118,7 @@ export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps)
         <ul className="grid grid-cols-5">
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
-            const showConflict = href === "/dashboard" && count > 0;
+            const showConflict = !myDayMode && href === "/dashboard" && count > 0;
             return (
               <li key={href}>
                 <Link
@@ -143,7 +159,7 @@ export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps)
       <ul className="space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
-          const showConflict = href === "/dashboard" && count > 0;
+          const showConflict = !myDayMode && href === "/dashboard" && count > 0;
           return (
             <li key={href}>
               <Link
@@ -182,7 +198,7 @@ export function AppNav({ variant, householdId, conflictCount = 0 }: AppNavProps)
             </li>
           );
         })}
-        {count > 0 ? (
+        {!myDayMode && count > 0 ? (
           <li className="pt-1">
             <Link
               href="/conflicts"

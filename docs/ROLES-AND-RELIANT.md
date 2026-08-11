@@ -28,10 +28,24 @@ These are independent. A self-advocate may be a `member` (can complete own tasks
 |---------|---------|
 | `coordinator` | Runs the board |
 | `care_partner` | Helps with handoffs |
-| `self_advocate` | Person care is organized around; future **My day** + Reliant |
+| `self_advocate` | Person care is organized around; **My day** home (Phase A) + Reliant chips |
 | `other` | Family without a specific care role |
 
-`is_focus_person` marks primary care focus for filters and future Reliant routing (multi-focus later).
+`is_focus_person` marks primary care focus for filters and Reliant routing (multi-focus later).
+
+### Phase A — My day (shipped)
+
+When `persona === self_advocate`:
+
+| Surface | Behavior |
+|---------|----------|
+| **Dashboard** | **My day** only: tasks assigned to them + events from calendars assigned to them; Reliant chips; no setup/sync/household admin |
+| **Tasks** | Default **Mine**; hide All/Unassigned; no recurring templates UI; new tasks default-assign to self |
+| **Calendar** | Filtered to their calendars + their due tasks; no sync/connect CTAs |
+| **Settings** | Phone + timezone display only (integrations stay coordinator) |
+| **Nav** | Labels: My day · My tasks · Calendar · Family · Settings |
+
+Coordinator / care_partner / other keep the full family board.
 
 ## Reliant confirmation as an **optional tiered service**
 

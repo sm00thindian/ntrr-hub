@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AiHighlightsPanel } from "@/components/dashboard/ai-highlights-panel";
 import { DayAgenda } from "@/components/dashboard/day-agenda";
+import { MyDayPanel } from "@/components/dashboard/my-day-panel";
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { SyncStatusPanel } from "@/components/dashboard/sync-status-panel";
@@ -10,6 +11,7 @@ import { CreateHouseholdForm } from "@/components/household/create-household-for
 
 import { getTodayAgenda } from "@/lib/dashboard/agenda";
 import { getNeedsAttention } from "@/lib/dashboard/needs-attention-queries";
+import { getMyDayAgenda, isMyDayPersona } from "@/lib/dashboard/my-day";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getFamilyStatus, getUserMembership } from "@/lib/households/queries";
 import { getHouseholdSetupStatus } from "@/lib/households/setup";
@@ -52,7 +54,26 @@ export default async function DashboardPage() {
 
   const calendarSettings = await getHouseholdCalendarSettings(membership.householdId);
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  const canComplete = canEditTasks(membership.role);
+  const myDay = isMyDayPersona(membership.persona);
 
+  // —— Self-advocate: My day only ——
+  if (myDay) {
+    const items = await getMyDayAgenda(membership.householdId, user.id, timeZone).catch(
+      () => [],
+    );
+
+    return (
+      <MyDayPanel
+        items={items}
+        timeZone={timeZone}
+        canCompleteTasks={canComplete}
+        householdName={membership.householdName}
+      />
+    );
+  }
+
+  // —— Coordinator / care partner / other: full household board ——
   const [familyStatus, agenda, attention, syncStatus, setupStatus] = await Promise.all([
     getFamilyStatus(membership.householdId, user.id).catch(() => ({
       memberCount: 0,
@@ -70,7 +91,6 @@ export default async function DashboardPage() {
     })),
   ]);
 
-  const canComplete = canEditTasks(membership.role);
   const canSync = canManageIntegrations(membership.role);
 
   return (
@@ -84,7 +104,6 @@ export default async function DashboardPage() {
 
       <SetupChecklist status={setupStatus} />
 
-      {/* Phone: single column. Tablet: 2-up. Desktop: 3-up with agenda spanning. */}
       <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="md:col-span-2 lg:col-span-1">
           <NeedsAttentionPanel

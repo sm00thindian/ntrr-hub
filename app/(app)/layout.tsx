@@ -30,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       userEmail={user.email}
       householdName={membership?.householdName}
       householdRole={membership?.role}
+      householdPersona={membership?.persona}
       householdId={membership?.householdId}
       conflictCount={conflictCount}
     >

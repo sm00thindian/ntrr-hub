@@ -3,6 +3,7 @@ import { GoogleConnectCard } from "@/components/integrations/google-connect-card
 import { HouseholdTimezoneCard } from "@/components/settings/household-timezone-card";
 import { NtrrServicesCard } from "@/components/settings/ntrr-services-card";
 import { PhoneProfileCard } from "@/components/settings/phone-profile-card";
+import { isMyDayPersona } from "@/lib/dashboard/my-day";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { isGoogleConfigured } from "@/lib/integrations/google/scopes";
 import {
@@ -42,6 +43,7 @@ export default async function SettingsPage({
 }) {
   const ctx = await requireHouseholdContext();
   const canManage = canManageIntegrations(ctx.role);
+  const myDayMode = isMyDayPersona(ctx.persona);
   const params = await searchParams;
   const feedback = feedbackFromSearchParams(params);
 
@@ -63,6 +65,28 @@ export default async function SettingsPage({
 
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
   const timezoneConfirmed = Boolean(calendarSettings.timezone?.trim());
+
+  // Self-advocate: phone + quiet profile only (no integration admin)
+  if (myDayMode) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Your phone and profile · household calendars are managed by a coordinator
+          </p>
+        </div>
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
+          <PhoneProfileCard phoneE164={phoneE164} />
+          <HouseholdTimezoneCard
+            canManage={false}
+            timezone={timeZone}
+            timezoneConfirmed={timezoneConfirmed}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">

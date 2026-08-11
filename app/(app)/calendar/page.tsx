@@ -18,6 +18,11 @@ import {
 } from "@/lib/calendar/views";
 import { toDayParam } from "@/lib/calendar/week";
 import {
+  filterCalendarTasksForMember,
+  filterEventsForMember,
+  isMyDayPersona,
+} from "@/lib/dashboard/my-day";
+import {
   buildCalendarColorContext,
   getHouseholdCalendarSettings,
 } from "@/lib/households/calendar-settings";
@@ -43,7 +48,9 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const anchor = parseCalendarDate(params.date, params.week);
   const bounds = getCalendarBounds(view, anchor);
 
-  const [events, tasks, googleIntegration, appleIntegration, colorContext, calendarSettings] =
+  const myDayMode = isMyDayPersona(ctx.persona);
+
+  const [rawEvents, rawTasks, googleIntegration, appleIntegration, colorContext, calendarSettings] =
     await Promise.all([
       getCalendarEventsForRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
@@ -53,6 +60,13 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       getHouseholdCalendarSettings(ctx.householdId),
     ]);
 
+  const events = myDayMode
+    ? filterEventsForMember(rawEvents, ctx.userId, calendarSettings.googleCalendars)
+    : rawEvents;
+  const tasks = myDayMode
+    ? filterCalendarTasksForMember(rawTasks, ctx.userId)
+    : rawTasks;
+
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
 
   const dayParams = bounds.days.map((day) => toDayParam(day));
@@ -60,9 +74,14 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const googleConnected = googleIntegration?.status === "connected";
   const appleConnected = appleIntegration?.status === "connected";
   const hasIntegration = googleConnected || appleConnected;
-  const canSync = canManageIntegrations(ctx.role) && googleConnected;
-  const emptyLabel =
-    view === "month"
+  const canSync = canManageIntegrations(ctx.role) && googleConnected && !myDayMode;
+  const emptyLabel = myDayMode
+    ? view === "month"
+      ? "Nothing on your calendar this month"
+      : view === "1"
+        ? "Nothing on your day"
+        : "Nothing on your calendar in this range"
+    : view === "month"
       ? "Nothing scheduled this month"
       : view === "1"
         ? "Nothing scheduled today"
@@ -75,6 +94,12 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {myDayMode ? (
+        <p className="text-muted-foreground -mt-1 text-sm">
+          Showing only your appointments and tasks
+        </p>
+      ) : null}
+
       <CalendarViewNav
         view={view}
         periodLabel={bounds.periodLabel}
@@ -86,9 +111,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
       {hasItems ? (
         <>
-          <div className="hidden sm:block">
-            <CalendarColorLegend context={colorContext} />
-          </div>
+          {!myDayMode ? (
+            <div className="hidden sm:block">
+              <CalendarColorLegend context={colorContext} />
+            </div>
+          ) : null}
           {view === "month" && monthMeta ? (
             <MonthCalendar
               days={dayParams}
@@ -109,26 +136,38 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
               timeZone={timeZone}
             />
           )}
-          <div className="sm:hidden">
-            <CalendarColorLegend context={colorContext} />
-          </div>
+          {!myDayMode ? (
+            <div className="sm:hidden">
+              <CalendarColorLegend context={colorContext} />
+            </div>
+          ) : null}
         </>
       ) : (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">{emptyLabel}</CardTitle>
             <CardDescription>
-              {hasIntegration
-                ? "Your calendars are connected. Run sync to pull the latest events and tasks from Google or Apple."
-                : "Connect Google Calendar or Apple CalDAV in Settings, then run sync to see your family schedule here."}
+              {myDayMode
+                ? "When a care calendar is linked to you, or tasks are assigned to you, they appear here."
+                : hasIntegration
+                  ? "Your calendars are connected. Run sync to pull the latest events and tasks from Google or Apple."
+                  : "Connect Google Calendar or Apple CalDAV in Settings, then run sync to see your family schedule here."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            {canSync ? <CalendarSyncButton /> : null}
-            <Button asChild variant={canSync ? "outline" : "default"} className="w-full sm:w-auto">
-              <Link href="/settings">{hasIntegration ? "Settings" : "Connect calendars"}</Link>
-            </Button>
-          </CardContent>
+          {!myDayMode ? (
+            <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {canSync ? <CalendarSyncButton /> : null}
+              <Button asChild variant={canSync ? "outline" : "default"} className="w-full sm:w-auto">
+                <Link href="/settings">{hasIntegration ? "Settings" : "Connect calendars"}</Link>
+              </Button>
+            </CardContent>
+          ) : (
+            <CardContent>
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/dashboard">Back to My day</Link>
+              </Button>
+            </CardContent>
+          )}
         </Card>
       )}
     </div>

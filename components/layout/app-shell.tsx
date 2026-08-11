@@ -2,13 +2,15 @@ import { Logo } from "@/components/brand/logo";
 import { AppNav } from "@/components/layout/app-nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import type { HouseholdRole } from "@/lib/permissions/roles";
+import type { HouseholdPersona, HouseholdRole } from "@/lib/permissions/roles";
+import { prefersMyDayView } from "@/lib/permissions/roles";
 
 type AppShellProps = {
   children: React.ReactNode;
   userEmail?: string | null;
   householdName?: string | null;
   householdRole?: HouseholdRole | null;
+  householdPersona?: HouseholdPersona | null;
   householdId?: string | null;
   conflictCount?: number;
 };
@@ -18,9 +20,11 @@ export function AppShell({
   userEmail,
   householdName,
   householdRole,
+  householdPersona,
   householdId,
   conflictCount = 0,
 }: AppShellProps) {
+  const myDayMode = householdPersona ? prefersMyDayView(householdPersona) : false;
   const subtitle = householdName
     ? `${householdName}${householdRole ? ` · ${householdRole}` : ""}`
     : "Family Care Orchestrator";
@@ -31,12 +35,15 @@ export function AppShell({
         <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-56 shrink-0 border-r px-4 py-6 lg:flex lg:flex-col">
           <div className="mb-8">
             <Logo href="/dashboard" size="lg" />
-            <p className="mt-1 text-xs text-sidebar-muted">Family coordination</p>
+            <p className="mt-1 text-xs text-sidebar-muted">
+              {myDayMode ? "Your day" : "Family coordination"}
+            </p>
           </div>
           <AppNav
             variant="sidebar"
             householdId={householdId}
-            conflictCount={conflictCount}
+            conflictCount={myDayMode ? 0 : conflictCount}
+            myDayMode={myDayMode}
           />
           <div className="border-sidebar-border mt-auto space-y-3 border-t pt-4">
             {userEmail ? (
@@ -62,11 +69,13 @@ export function AppShell({
                 </div>
                 <div className="hidden min-w-0 lg:block">
                   <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-                  <p className="truncate text-sm font-medium tracking-tight">Hub</p>
+                  <p className="truncate text-sm font-medium tracking-tight">
+                    {myDayMode ? "My day" : "Hub"}
+                  </p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                {conflictCount > 0 ? (
+                {!myDayMode && conflictCount > 0 ? (
                   <a
                     href="/conflicts"
                     className="bg-destructive/10 text-destructive hover:bg-destructive/15 inline-flex h-8 items-center rounded-full px-2 text-xs font-semibold transition-colors sm:px-2.5"
@@ -102,7 +111,12 @@ export function AppShell({
         </div>
       </div>
 
-      <AppNav variant="bottom" householdId={householdId} conflictCount={conflictCount} />
+      <AppNav
+        variant="bottom"
+        householdId={householdId}
+        conflictCount={myDayMode ? 0 : conflictCount}
+        myDayMode={myDayMode}
+      />
     </div>
   );
 }

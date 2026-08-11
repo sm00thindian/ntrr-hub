@@ -32,6 +32,8 @@ type TaskBoardProps = {
   canEdit: boolean;
   timeZone: string;
   timeZoneLabel: string;
+  /** Self-advocate: default Mine, simpler filters, no household templates */
+  myDayMode?: boolean;
 };
 
 function filterTasks(tasks: Task[], filter: TaskFilter, currentUserId: string, nowMs: number) {
@@ -61,12 +63,17 @@ export function TaskBoard({
   canEdit,
   timeZone,
   timeZoneLabel,
+  myDayMode = false,
 }: TaskBoardProps) {
   const router = useRouter();
   const [view, setView] = useState<"kanban" | "list">("list");
-  const [filter, setFilter] = useState<TaskFilter>("all");
+  const [filter, setFilter] = useState<TaskFilter>(myDayMode ? "mine" : "all");
   const [showAdd, setShowAdd] = useState(false);
   const [, startRefresh] = useTransition();
+
+  const visibleFilters = myDayMode
+    ? FILTERS.filter((f) => f.id === "mine" || f.id === "overdue")
+    : FILTERS;
 
   useEffect(() => {
     const supabase = createClient();
@@ -101,26 +108,51 @@ export function TaskBoard({
 
   const filterCounts = useMemo(() => {
     const nowMs = Date.now();
+    const mine = tasks.filter((t) => t.assigneeId === currentUserId);
+    const pool = myDayMode ? mine : tasks;
     return {
       all: tasks.length,
-      mine: tasks.filter((t) => t.assigneeId === currentUserId).length,
-      overdue: tasks.filter(
+      mine: mine.length,
+      overdue: pool.filter(
         (t) => t.status !== "done" && t.dueAt && Date.parse(t.dueAt) < nowMs,
       ).length,
       unassigned: tasks.filter((t) => t.status !== "done" && !t.assigneeId).length,
     } satisfies Record<TaskFilter, number>;
-  }, [tasks, currentUserId]);
+  }, [tasks, currentUserId, myDayMode]);
+
+  // In My day mode, "overdue" only counts the member's tasks
+  const scopedTasks = useMemo(() => {
+    if (!myDayMode) {
+      return tasks;
+    }
+    return tasks.filter((t) => t.assigneeId === currentUserId);
+  }, [tasks, myDayMode, currentUserId]);
+
+  const displayTasks = useMemo(() => {
+    if (!myDayMode) {
+      return filteredTasks;
+    }
+    if (filter === "overdue") {
+      const nowMs = Date.now();
+      return scopedTasks.filter(
+        (t) => t.status !== "done" && t.dueAt && Date.parse(t.dueAt) < nowMs,
+      );
+    }
+    // mine (default) — already scoped
+    return scopedTasks;
+  }, [myDayMode, filter, filteredTasks, scopedTasks]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {filteredTasks.length}
-          {filter !== "all" ? ` of ${tasks.length}` : ""} active task
-          {filteredTasks.length === 1 ? "" : "s"}
-          {templates.length
+          {displayTasks.length}
+          {!myDayMode && filter !== "all" ? ` of ${tasks.length}` : ""} active task
+          {displayTasks.length === 1 ? "" : "s"}
+          {!myDayMode && templates.length
             ? ` · ${templates.length} recurring template${templates.length === 1 ? "" : "s"}`
             : ""}
+          {myDayMode ? " · assigned to you" : ""}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit ? (
@@ -163,7 +195,7 @@ export function TaskBoard({
         role="tablist"
         aria-label="Filter tasks"
       >
-        {FILTERS.map((item) => (
+        {visibleFilters.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -192,21 +224,24 @@ export function TaskBoard({
       </div>
 
       {canEdit && showAdd ? (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className={cn("grid gap-4", !myDayMode && "xl:grid-cols-2")}>
           <CreateTaskForm
             members={members}
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
+            defaultAssigneeId={myDayMode ? currentUserId : ""}
             onCreated={() => {
               refresh();
               setShowAdd(false);
             }}
           />
-          <RecurringTemplateForm
-            members={members}
-            timeZoneLabel={timeZoneLabel}
-            onCreated={refresh}
-          />
+          {!myDayMode ? (
+            <RecurringTemplateForm
+              members={members}
+              timeZoneLabel={timeZoneLabel}
+              onCreated={refresh}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -221,7 +256,7 @@ export function TaskBoard({
               key={status}
               title={TASK_STATUS_LABELS[status]}
               status={status}
-              tasks={filteredTasks}
+              tasks={displayTasks}
               canEdit={canEdit}
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
@@ -232,7 +267,7 @@ export function TaskBoard({
         </div>
       ) : (
         <ul className="space-y-3">
-          {filteredTasks.map((task) => (
+          {displayTasks.map((task) => (
             <li key={task.id} className="touch-pan-y">
               <TaskCard
                 task={task}
@@ -244,11 +279,13 @@ export function TaskBoard({
               />
             </li>
           ))}
-          {!filteredTasks.length ? (
+          {!displayTasks.length ? (
             <li className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-              {filter === "all"
-                ? "No tasks yet. Add one to get your household coordinated."
-                : "No tasks match this filter."}
+              {myDayMode
+                ? "No tasks assigned to you yet."
+                : filter === "all"
+                  ? "No tasks yet. Add one to get your household coordinated."
+                  : "No tasks match this filter."}
             </li>
           ) : null}
         </ul>

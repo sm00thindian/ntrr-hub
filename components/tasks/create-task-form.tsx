@@ -14,6 +14,8 @@ type CreateTaskFormProps = {
   members: HouseholdMember[];
   timeZone: string;
   timeZoneLabel: string;
+  /** Pre-select assignee (e.g. self for My day mode) */
+  defaultAssigneeId?: string;
   onCreated?: () => void;
 };
 
@@ -21,6 +23,7 @@ export function CreateTaskForm({
   members,
   timeZone,
   timeZoneLabel,
+  defaultAssigneeId = "",
   onCreated,
 }: CreateTaskFormProps) {
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +69,7 @@ export function CreateTaskForm({
             <select
               id="assigneeId"
               name="assigneeId"
-              defaultValue=""
+              defaultValue={defaultAssigneeId}
               className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
             >
               <option value="">Unassigned</option>

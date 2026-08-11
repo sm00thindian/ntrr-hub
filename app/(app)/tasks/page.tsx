@@ -8,11 +8,13 @@ import {
   householdTimeZoneLabel,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
+import { isMyDayPersona } from "@/lib/dashboard/my-day";
 import { getHouseholdTasks, getRecurringTemplates } from "@/lib/tasks/queries";
 
 export default async function TasksPage() {
   const ctx = await requireHouseholdContext();
   const canEdit = ctx.role !== "viewer";
+  const myDayMode = isMyDayPersona(ctx.persona);
 
   const [tasks, templates, members, calendarSettings] = await Promise.all([
     getHouseholdTasks(ctx.householdId),
@@ -31,10 +33,14 @@ export default async function TasksPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Tasks</h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          {myDayMode ? "My tasks" : "Tasks"}
+        </h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
           {ctx.householdName}
-          <span className="hidden sm:inline"> · shared family task board</span>
+          <span className="hidden sm:inline">
+            {myDayMode ? " · assigned to you" : " · shared family task board"}
+          </span>
           <span className="text-muted-foreground/80"> · {timeZoneLabel}</span>
         </p>
       </div>
@@ -48,6 +54,7 @@ export default async function TasksPage() {
         canEdit={canEdit}
         timeZone={timeZone}
         timeZoneLabel={timeZoneLabel}
+        myDayMode={myDayMode}
       />
     </div>
   );
