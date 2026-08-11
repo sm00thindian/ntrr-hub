@@ -2,7 +2,7 @@
 
 **Status:** Source of truth for platform topology, domains, and production hosting  
 **Audience:** Humans + AI agents implementing deploy and brand split  
-**Last updated:** 2026-08-07  
+**Last updated:** 2026-08-11  
 **Related:** [RELEASE-1.0.md](./RELEASE-1.0.md) · [CHECKPOINT.md](./CHECKPOINT.md) · [AGENTS.md](../AGENTS.md) · Reliant `../reliant` · Apex site [`ntrr-com`](https://github.com/sm00thindian/ntrr-com)
 
 ---
@@ -119,18 +119,74 @@ Not The Run Around (brand / company)
 
 #### 1.2 Google Cloud (Hub integrations)
 
-Two Google uses stay distinct:
+Two Google uses stay distinct — **do not mix OAuth clients**:
 
 | Use | Config surface | Production redirect / callback |
 |-----|----------------|--------------------------------|
-| Sign-in | Supabase Auth Google | Supabase `…/auth/v1/callback` |
+| Sign-in (“Continue with Google”) | **Supabase Auth** Google provider | Supabase `https://<project-ref>.supabase.co/auth/v1/callback` (or custom domain — see below) |
 | Calendar + Tasks sync | App `GOOGLE_CLIENT_ID` / `SECRET` | `https://hub.ntrr.com/api/integrations/google/callback` |
+
+**Integration client (Calendar + Tasks):**
 
 - [ ] Enable Google Calendar API + Tasks API
 - [ ] OAuth consent screen ready for testing / production
 - [ ] Web client authorized JS origins: `https://hub.ntrr.com`, `http://localhost:3000`
 - [ ] Authorized redirect URIs for **integration** client include Hub callback above + local equivalent
 - [ ] Prefer Hub-dedicated OAuth client (or clearly labeled) vs Reliant’s client
+
+#### 1.2a Google Auth branding / custom domain (sign-in)
+
+**Why this exists:** Google’s consent screen shows **“Continue to &lt;redirect host&gt;”**. With default Supabase Auth that host is `abzudmcdwgqfbygdkctx.supabase.co`, not Hub. Hub code already returns users to `https://hub.ntrr.com/auth/callback` after OAuth; branding of the Google interstitial is controlled by **Google consent screen + Auth redirect host**, not Next.js copy.
+
+**Supabase Auth URL (next to Site URL):**
+
+| Setting | Production value |
+|---------|------------------|
+| Site URL | `https://hub.ntrr.com` |
+| Redirect URLs | `https://hub.ntrr.com/auth/callback` (+ `http://localhost:3000/auth/callback` for local) |
+| App env | `NEXT_PUBLIC_SITE_URL=https://hub.ntrr.com` |
+
+- [x] Site URL + Hub redirect URL set (see §1.1)
+- [ ] Supabase Auth → **Google** provider enabled; client ID/secret = **Auth** OAuth client (not Calendar client)
+- [ ] Smoke: Continue with Google → lands on Hub with session
+
+**Google Cloud — Auth OAuth client + consent screen:**
+
+Use the client registered in Supabase Auth (not the Calendar/Tasks integration client unless intentionally shared).
+
+- [ ] OAuth consent screen **App name:** `Hub` or `NTRR Hub`
+- [ ] **Application home page:** `https://hub.ntrr.com`
+- [ ] **Authorized domains:** `ntrr.com` (add `hub.ntrr.com` if the console requires it)
+- [ ] Optional: app logo (Hub / NTRR icon)
+- [ ] Authorized redirect URI for Auth client still includes  
+  `https://abzudmcdwgqfbygdkctx.supabase.co/auth/v1/callback`  
+  until a custom domain replaces it
+- [ ] JS origins for Auth client as required by Google (often not used for pure server OAuth; follow Supabase docs for the provider)
+
+**Removing “Continue to …supabase.co” (real fix):**
+
+Google displays the **redirect URI hostname**. Site URL alone does not change that. To show ntrr/hub branding on the host line:
+
+1. Supabase **custom domain** (typically Pro) for the Hub project, e.g. `https://api.hub.ntrr.com` or `https://auth.ntrr.com`
+2. Complete DNS + verification in Supabase
+3. Google Auth client: add  
+   `https://<custom-domain>/auth/v1/callback`  
+   as authorized redirect; cut over, then remove or keep `*.supabase.co` during transition
+4. Update Hub env (`NEXT_PUBLIC_SUPABASE_URL`, etc.) if Supabase requires the custom API URL for clients
+5. Retest Continue with Google
+
+- [ ] Decide custom domain hostname (recommend `api.hub.ntrr.com` or `auth.ntrr.com`)
+- [ ] Supabase custom domain verified
+- [ ] Google Auth redirect URI updated to custom domain
+- [ ] Env / docs updated; smoke test no longer shows `*.supabase.co` on consent
+
+**Quick reference:**
+
+| Goal | Where to fix |
+|------|----------------|
+| App name / logo on consent | Google OAuth consent screen (Auth client) |
+| Land on Hub after login | Supabase Site URL + Redirect URLs + `NEXT_PUBLIC_SITE_URL` |
+| “Continue to **hub/ntrr**” not supabase | Supabase custom domain + Google Auth redirect URI |
 
 #### 1.3 Vercel (Hub app)
 
