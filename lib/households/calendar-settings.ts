@@ -13,14 +13,11 @@ import { getConnectedGoogleIntegrationAdmin } from "@/lib/integrations/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { memberDisplayLabel } from "./member-label";
 import { getHouseholdMembers } from "./queries";
 
 function memberLabel(email: string, displayName: string | null) {
-  if (displayName?.trim()) {
-    return displayName.trim();
-  }
-
-  return email.split("@")[0] ?? email;
+  return memberDisplayLabel(email, displayName);
 }
 
 export async function getHouseholdCalendarSettings(

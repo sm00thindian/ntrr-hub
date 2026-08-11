@@ -188,8 +188,12 @@ export async function acceptInvite(token: string) {
     return { error: message };
   }
 
+  // Full-tree revalidate so invitees (incl. self-advocates) don't briefly see
+  // the create-household empty state from a stale RSC payload.
+  revalidatePath("/", "layout");
   revalidatePath("/dashboard");
   revalidatePath("/family");
   revalidatePath("/settings");
+  revalidatePath("/tasks");
   redirect("/dashboard");
 }

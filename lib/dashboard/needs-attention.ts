@@ -40,6 +40,8 @@ function taskToAgenda(task: Task, fallbackSortAt: string): AgendaItem {
     href: "/tasks",
     reliantConfirmRequested: task.reliantConfirmRequested,
     entityId: task.id,
+    assigneeLabel: task.assigneeLabel,
+    assigneePersona: task.assigneePersona,
   };
 }
 

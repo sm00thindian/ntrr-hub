@@ -5,6 +5,8 @@ import { getUserMembership } from "@/lib/households/queries";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 import { createClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const {

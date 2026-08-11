@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Calendar, Check, Pencil, Trash2, User } from "lucide-react";
 
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import { EditTaskForm } from "@/components/tasks/edit-task-form";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import type { HouseholdMember } from "@/lib/households/queries";
+import { resolveAssigneeDisplay } from "@/lib/households/member-label";
 import { deleteTask, updateTaskStatus } from "@/lib/tasks/actions";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
@@ -48,6 +49,10 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const zone = resolveHouseholdTimeZone(timeZone);
   const dueLabel = formatDue(task.dueAt, zone);
+  const assigneeFromMembers = resolveAssigneeDisplay(task.assigneeId, members);
+  const assigneeLabel = task.assigneeLabel ?? assigneeFromMembers.label;
+  const assigneePersona = task.assigneePersona ?? assigneeFromMembers.persona;
+  const assigneeEmail = task.assigneeEmail ?? assigneeFromMembers.email;
 
   function runAction(action: () => Promise<{ error?: string; success?: boolean } | void>) {
     startTransition(async () => {
@@ -81,15 +86,16 @@ export function TaskCard({
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          {task.assigneeEmail ? (
-            <span className="inline-flex items-center gap-1">
-              <User className="h-3.5 w-3.5" aria-hidden="true" />
-              {task.assigneeEmail}
-            </span>
-          ) : (
-            <span>Unassigned</span>
-          )}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <AssigneeChip
+              label={assigneeLabel}
+              persona={assigneePersona}
+              email={assigneeEmail}
+              unassigned={!task.assigneeId}
+            />
+          </span>
           {dueLabel ? (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" aria-hidden="true" />

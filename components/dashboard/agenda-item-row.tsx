@@ -1,6 +1,6 @@
 import { Calendar, ListTodo, MapPin } from "lucide-react";
 
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import { formatTimeInZone, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
@@ -47,6 +47,13 @@ export function AgendaItemRow({ item, timeZone }: { item: AgendaItem; timeZone?:
           {item.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
           {item.status ? (
             <span className="text-muted-foreground text-xs">{TASK_STATUS_LABELS[item.status]}</span>
+          ) : null}
+          {item.kind === "task" ? (
+            <AssigneeChip
+              label={item.assigneeLabel}
+              persona={item.assigneePersona}
+              unassigned={!item.assigneeLabel}
+            />
           ) : null}
         </div>
         <p className="text-muted-foreground text-xs">

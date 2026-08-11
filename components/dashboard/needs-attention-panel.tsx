@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -92,6 +92,13 @@ export function NeedsAttentionPanel({
                         <p className="truncate text-sm font-medium">{item.title}</p>
                       )}
                       {item.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
+                      {item.kind === "task" && item.reason !== "conflict" ? (
+                        <AssigneeChip
+                          label={item.assigneeLabel}
+                          persona={item.assigneePersona}
+                          unassigned={!item.assigneeLabel}
+                        />
+                      ) : null}
                     </div>
                     <p className="text-muted-foreground text-xs">
                       <span className="font-medium text-foreground/80">

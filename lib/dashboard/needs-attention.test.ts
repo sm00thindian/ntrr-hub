@@ -15,6 +15,8 @@ function task(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     status: "todo",
     assigneeId: "user-1",
     assigneeEmail: "a@example.com",
+    assigneeLabel: "Alex",
+    assigneePersona: "self_advocate",
     dueAt: null,
     reliantConfirmRequested: false,
     provenance: {
@@ -62,6 +64,8 @@ describe("rankNeedsAttention", () => {
           title: "Unassigned chore",
           assigneeId: null,
           assigneeEmail: null,
+          assigneeLabel: null,
+          assigneePersona: null,
         }),
         task({
           id: "o1",

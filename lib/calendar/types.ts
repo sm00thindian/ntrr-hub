@@ -1,3 +1,4 @@
+import type { HouseholdPersona } from "@/lib/permissions/roles";
 import type { Provenance } from "@/lib/provenance/types";
 import type { TaskStatus } from "@/lib/tasks/types";
 
@@ -21,6 +22,8 @@ export type CalendarTask = {
   title: string;
   description: string | null;
   assigneeId: string | null;
+  assigneeLabel?: string | null;
+  assigneePersona?: HouseholdPersona | null;
   dueAt: string;
   status: TaskStatus;
   reliantConfirmRequested?: boolean;

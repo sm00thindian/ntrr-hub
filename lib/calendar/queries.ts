@@ -78,6 +78,8 @@ export async function getTasksDueInRange(
   rangeEnd: string,
 ): Promise<CalendarTask[]> {
   const supabase = await createClient();
+  const { getHouseholdMembers } = await import("@/lib/households/queries");
+  const { resolveAssigneeDisplay } = await import("@/lib/households/member-label");
 
   const { data, error } = await supabase
     .from("tasks")
@@ -93,16 +95,24 @@ export async function getTasksDueInRange(
     return [];
   }
 
-  return data.map((row) => ({
-    id: row.id as string,
-    title: row.title as string,
-    description: (row.description as string | null) ?? null,
-    assigneeId: (row.assignee_id as string | null) ?? null,
-    dueAt: row.due_at as string,
-    status: row.status as TaskStatus,
-    reliantConfirmRequested: Boolean(
-      (row as { reliant_confirm_requested?: boolean }).reliant_confirm_requested,
-    ),
-    provenance: row.provenance as CalendarTask["provenance"],
-  }));
+  const members = await getHouseholdMembers(householdId);
+
+  return data.map((row) => {
+    const assigneeId = (row.assignee_id as string | null) ?? null;
+    const assignee = resolveAssigneeDisplay(assigneeId, members);
+    return {
+      id: row.id as string,
+      title: row.title as string,
+      description: (row.description as string | null) ?? null,
+      assigneeId,
+      assigneeLabel: assignee.label,
+      assigneePersona: assignee.persona,
+      dueAt: row.due_at as string,
+      status: row.status as TaskStatus,
+      reliantConfirmRequested: Boolean(
+        (row as { reliant_confirm_requested?: boolean }).reliant_confirm_requested,
+      ),
+      provenance: row.provenance as CalendarTask["provenance"],
+    };
+  });
 }

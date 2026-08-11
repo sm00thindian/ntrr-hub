@@ -1,3 +1,4 @@
+import type { HouseholdPersona } from "@/lib/permissions/roles";
 import type { ProvenanceSource } from "@/lib/provenance/types";
 import type { TaskStatus } from "@/lib/tasks/types";
 
@@ -18,4 +19,8 @@ export type AgendaItem = {
   reliantConfirmRequested?: boolean;
   /** Underlying DB id (task uuid or event uuid) for actions */
   entityId?: string;
+  /** Task assignee short label (for multi-person households) */
+  assigneeLabel?: string | null;
+  /** Task assignee care persona */
+  assigneePersona?: HouseholdPersona | null;
 };

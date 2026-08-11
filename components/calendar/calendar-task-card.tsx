@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ListTodo } from "lucide-react";
 
+import { AssigneeChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import type { CalendarTask } from "@/lib/calendar/types";
 import {
@@ -13,9 +14,12 @@ import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
 export function CalendarTaskCard({
   task,
   timeZone,
+  showAssignee = true,
 }: {
   task: CalendarTask;
   timeZone?: string;
+  /** Coordinators/care partners: show who the task is for */
+  showAssignee?: boolean;
 }) {
   const zone = resolveHouseholdTimeZone(timeZone);
   const hasTime = !isMidnightInZone(task.dueAt, zone);
@@ -36,6 +40,15 @@ export function CalendarTaskCard({
             Task · {TASK_STATUS_LABELS[task.status]}
             {hasTime ? ` · Due ${formatTimeInZone(task.dueAt, zone)}` : ""}
           </p>
+          {showAssignee ? (
+            <div className="mt-1.5">
+              <AssigneeChip
+                label={task.assigneeLabel}
+                persona={task.assigneePersona}
+                unassigned={!task.assigneeId}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </Link>

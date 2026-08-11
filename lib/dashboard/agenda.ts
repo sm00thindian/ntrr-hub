@@ -72,6 +72,8 @@ export async function getTodayAgenda(
       href: "/tasks",
       reliantConfirmRequested: task.reliantConfirmRequested,
       entityId: task.id,
+      assigneeLabel: task.assigneeLabel,
+      assigneePersona: task.assigneePersona,
     }));
 
   const eventItems: AgendaItem[] = events.map((event) => ({

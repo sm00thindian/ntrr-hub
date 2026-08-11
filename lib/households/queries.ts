@@ -47,13 +47,21 @@ export type FamilyStatus = {
 export async function getUserMembership(userId: string): Promise<UserMembership | null> {
   const supabase = await createClient();
 
+  // Membership row is authoritative. Household name is best-effort only —
+  // never return null solely because the name join/select failed (that caused
+  // invitees to briefly see "create household" after login).
   const { data: members, error: memberError } = await supabase
     .from("household_members")
     .select("household_id, role, persona, is_focus_person")
     .eq("user_id", userId)
     .limit(1);
 
-  if (memberError || !members?.length) {
+  if (memberError) {
+    console.error("[getUserMembership] member query failed", memberError.message);
+    return null;
+  }
+
+  if (!members?.length) {
     return null;
   }
 
@@ -64,24 +72,25 @@ export async function getUserMembership(userId: string): Promise<UserMembership 
     is_focus_person: boolean | null;
   };
 
+  let householdName = "Your household";
   const { data: household, error: householdError } = await supabase
     .from("households")
     .select("name")
     .eq("id", member.household_id)
     .limit(1);
 
-  if (householdError || !household?.length) {
-    return null;
+  if (!householdError && household?.length) {
+    householdName = (household[0] as { name: string }).name;
+  } else if (householdError) {
+    console.error("[getUserMembership] household name query failed", householdError.message);
   }
-
-  const record = household[0] as { name: string };
 
   return {
     householdId: member.household_id,
     role: normalizeHouseholdRole(member.role),
     persona: member.persona ?? "coordinator",
     isFocusPerson: Boolean(member.is_focus_person),
-    householdName: record.name,
+    householdName,
   };
 }
 

@@ -1,3 +1,4 @@
+import type { HouseholdPersona } from "@/lib/permissions/roles";
 import type { Provenance } from "@/lib/provenance/types";
 
 export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
@@ -12,6 +13,10 @@ export type Task = {
   status: TaskStatus;
   assigneeId: string | null;
   assigneeEmail: string | null;
+  /** Short label for UI (display name or email local-part) */
+  assigneeLabel: string | null;
+  /** Care persona of assignee when known — helps when multiple self-advocates */
+  assigneePersona: HouseholdPersona | null;
   dueAt: string | null;
   /** When true, Reliant should request phone confirmation for this task */
   reliantConfirmRequested: boolean;

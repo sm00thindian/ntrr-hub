@@ -1,4 +1,6 @@
+import { resolveAssigneeDisplay } from "@/lib/households/member-label";
 import { getHouseholdMembers } from "@/lib/households/queries";
+import type { HouseholdPersona } from "@/lib/permissions/roles";
 import { createClient } from "@/lib/supabase/server";
 import type { Provenance } from "@/lib/provenance/types";
 import type { RecurringTaskTemplate, RecurrenceCadence, Task, TaskStatus } from "@/lib/tasks/types";
@@ -19,7 +21,11 @@ function mapTask(
     created_at: string;
     updated_at: string;
   },
-  assigneeEmail: string | null,
+  assignee: {
+    email: string | null;
+    label: string | null;
+    persona: HouseholdPersona | null;
+  },
 ): Task {
   return {
     id: row.id,
@@ -28,7 +34,9 @@ function mapTask(
     description: row.description,
     status: row.status,
     assigneeId: row.assignee_id,
-    assigneeEmail,
+    assigneeEmail: assignee.email,
+    assigneeLabel: assignee.label,
+    assigneePersona: assignee.persona,
     dueAt: row.due_at,
     reliantConfirmRequested: Boolean(row.reliant_confirm_requested),
     provenance: row.provenance,
@@ -55,11 +63,15 @@ export async function getHouseholdTasks(householdId: string): Promise<Task[]> {
   }
 
   const members = await getHouseholdMembers(householdId);
-  const emailByUserId = new Map(members.map((m) => [m.userId, m.email]));
 
   return data.map((row) => {
     const task = row as Parameters<typeof mapTask>[0];
-    return mapTask(task, task.assignee_id ? (emailByUserId.get(task.assignee_id) ?? null) : null);
+    const assignee = resolveAssigneeDisplay(task.assignee_id, members);
+    return mapTask(task, {
+      email: assignee.email,
+      label: assignee.label,
+      persona: assignee.persona,
+    });
   });
 }
 

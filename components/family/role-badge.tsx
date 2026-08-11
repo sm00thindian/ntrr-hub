@@ -69,3 +69,62 @@ export function ReliantConfirmChip({ className }: { className?: string }) {
     </span>
   );
 }
+
+/**
+ * Who owns a task — label + optional care persona so coordinators can tell
+ * multiple self-advocates (or care partners) apart at a glance.
+ */
+export function AssigneeChip({
+  label,
+  persona,
+  email,
+  unassigned,
+  className,
+}: {
+  label?: string | null;
+  persona?: HouseholdPersona | string | null;
+  email?: string | null;
+  unassigned?: boolean;
+  className?: string;
+}) {
+  if (unassigned || !label) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center rounded-full border border-dashed border-muted-foreground/40 px-2 py-0.5 text-xs text-muted-foreground",
+          className,
+        )}
+      >
+        Unassigned
+      </span>
+    );
+  }
+
+  const personaKey = (persona && persona in HOUSEHOLD_PERSONA_LABELS
+    ? persona
+    : null) as HouseholdPersona | null;
+  const titleParts = [email, personaKey ? HOUSEHOLD_PERSONA_LABELS[personaKey] : null].filter(
+    Boolean,
+  );
+
+  return (
+    <span
+      title={titleParts.length ? titleParts.join(" · ") : label}
+      className={cn(
+        "inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground",
+        personaKey === "self_advocate" &&
+          "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
+        personaKey === "care_partner" &&
+          "bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100",
+        className,
+      )}
+    >
+      <span className="truncate">{label}</span>
+      {personaKey ? (
+        <span className="text-[10px] font-normal opacity-80">
+          · {HOUSEHOLD_PERSONA_LABELS[personaKey]}
+        </span>
+      ) : null}
+    </span>
+  );
+}
