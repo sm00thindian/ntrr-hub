@@ -114,11 +114,16 @@ Instrument usage during dogfood even while free.
 
 ### Implementation later
 
+**Voice stack direction:** [ADR 0001](./adr/0001-reliant-voice-grok-primary.md) — **Grok Voice Agent primary**; Twilio only as optional number (BYON/SIP). Hub stays intent-only.
+
+- Grok Voice confirm agent (Reliant) + tools to complete / report blocker  
 - `reliant_confirm_jobs` + dial counts on **coordinator Reliant account id**  
-- Outbound dial **to** member `phone_e164`  
+- Outbound dial **to** member `phone_e164` (xAI number dogfood → optional Twilio import)  
 - Stripe meters / debit coordinator Reliant allowance  
 - Settings: “Reliant confirms used this month” for coordinator  
-- Gate live dials if coordinator has no Reliant entitlement (UI: “Connect Reliant / upgrade”)
+- Gate live dials if coordinator has no Reliant entitlement (UI: “Connect Reliant / upgrade”)  
+
+Also tracked under **Open / deferred** in [CHECKPOINT.md](./CHECKPOINT.md).
 
 ---
 

@@ -121,3 +121,17 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 - GitHub #3: Zapier webhook end-to-end test
 - Microsoft sync (1.1 preview)
 - Apple CalDAV calendar→member color mapping (same pattern as Google)
+
+### Later — Reliant voice / live confirms (not Hub MVP)
+
+**Direction locked:** [ADR 0001 — Grok Voice Agent primary, Twilio optional BYON](./adr/0001-reliant-voice-grok-primary.md)
+
+| When ready | Work |
+|------------|------|
+| Reliant product | Confirm agent in Grok Voice Agent Builder; tools → complete / blocker |
+| Telephony | xAI number for dogfood; optional Twilio/SIP import for stable line |
+| Bridge | `reliant_confirm_jobs` (or equiv.): due → dial target → agent → audit |
+| Hub (thin) | Keep intent flag + member mobiles only; no voice stack in Hub |
+| Go-live | Quiet hours, max attempts, coordinator entitlement / usage |
+
+Until then: Hub checkbox = **intent only** (see [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md)).
