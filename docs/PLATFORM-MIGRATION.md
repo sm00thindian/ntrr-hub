@@ -311,14 +311,16 @@ Owned primarily in `../reliant` docs; track only cross-platform touchpoints here
 | Confirm jobs | Enqueue series, map confirm back to Hub task/event |
 | Entitlement | Gate live dials on Reliant sub / Hub add-on / bundle quota |
 | SSO options (later) | A handoff token · B shared Auth · C parent cookies · D OIDC — pick one ADR |
+| Voice / dials | [ADR 0001](./adr/0001-reliant-voice-grok-primary.md): Grok Voice primary; Twilio optional BYON |
 
+- [x] ADR for Reliant voice stack (Grok primary) — implement later; see [CHECKPOINT deferred](./CHECKPOINT.md#later--reliant-voice--live-confirms-not-hub-mvp)  
 - [ ] ADR for identity + billing of confirm series  
 - [ ] Implement link + jobs behind feature flag  
 - [ ] Bundle SKU in Stripe when ready  
 
 **Exit Phase 6:** Phone-correlated Hub member can receive a metered Reliant confirm for a Hub task; products remain separately marketable with a clear bundle.
 
-See also: [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md).
+See also: [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md) · [ADR 0001](./adr/0001-reliant-voice-grok-primary.md).
 
 ---
 
