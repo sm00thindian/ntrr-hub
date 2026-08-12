@@ -46,9 +46,15 @@ export default async function FamilyPage() {
 
       {!canManage ? (
         <p className="text-sm text-muted-foreground">
-          Contact an admin if you need to invite someone or change roles.
+          Contact a coordinator (owner or admin) if you need to invite someone or edit member
+          details.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Use <span className="text-foreground font-medium">Edit</span> on a member to set their
+          display name, mobile for Reliant calls, access, and care persona.
+        </p>
+      )}
     </div>
   );
 }

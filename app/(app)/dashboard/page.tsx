@@ -5,7 +5,6 @@ import { DayAgenda } from "@/components/dashboard/day-agenda";
 import { MyDayPanel } from "@/components/dashboard/my-day-panel";
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
-import { SyncStatusPanel } from "@/components/dashboard/sync-status-panel";
 import { CreateHouseholdForm } from "@/components/household/create-household-form";
 import { MembershipRefresh } from "@/components/household/membership-refresh";
 
@@ -15,9 +14,8 @@ import { getMyDayAgenda, isMyDayPersona } from "@/lib/dashboard/my-day";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getUserMembership } from "@/lib/households/queries";
 import { getHouseholdSetupStatus } from "@/lib/households/setup";
-import { getHouseholdSyncStatus } from "@/lib/integrations/status";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
-import { canEditTasks, canManageIntegrations } from "@/lib/permissions/roles";
+import { canEditTasks } from "@/lib/permissions/roles";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -84,10 +82,10 @@ export default async function DashboardPage() {
   }
 
   // —— Coordinator / care partner / other: full household board ——
-  const [agenda, attention, syncStatus, setupStatus] = await Promise.all([
+  // Sync lives in the app footer (compact card), not on the dashboard.
+  const [agenda, attention, setupStatus] = await Promise.all([
     getTodayAgenda(membership.householdId, timeZone).catch(() => []),
     getNeedsAttention(membership.householdId, timeZone).catch(() => []),
-    getHouseholdSyncStatus(membership.householdId),
     getHouseholdSetupStatus(membership.householdId).catch(() => ({
       complete: true,
       steps: [],
@@ -95,8 +93,6 @@ export default async function DashboardPage() {
       totalCount: 0,
     })),
   ]);
-
-  const canSync = canManageIntegrations(membership.role);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -113,7 +109,8 @@ export default async function DashboardPage() {
         Caregiver / coordinator board:
         1. Needs attention (priority, top)
         2. Today's agenda
-        3. Sync status | AI insights
+        3. AI insights
+        Sync status → app footer (except /calendar)
       */}
       <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
         <NeedsAttentionPanel
@@ -122,15 +119,7 @@ export default async function DashboardPage() {
           canCompleteTasks={canComplete}
         />
         <DayAgenda items={agenda} timeZone={timeZone} />
-        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-          <SyncStatusPanel
-            householdId={membership.householdId}
-            status={syncStatus}
-            canSync={canSync}
-            timeZone={timeZone}
-          />
-          <AiHighlightsPanel householdId={membership.householdId} />
-        </div>
+        <AiHighlightsPanel householdId={membership.householdId} />
       </div>
     </div>
   );

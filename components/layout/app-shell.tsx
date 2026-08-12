@@ -1,6 +1,7 @@
 import { Logo } from "@/components/brand/logo";
 import { AppNav } from "@/components/layout/app-nav";
-import { SiteFooter } from "@/components/layout/site-footer";
+import { AppSiteFooter } from "@/components/layout/app-site-footer";
+import type { FooterSyncStatus } from "@/components/layout/footer-sync-card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import type { HouseholdPersona, HouseholdRole } from "@/lib/permissions/roles";
 import { prefersMyDayView } from "@/lib/permissions/roles";
@@ -13,6 +14,9 @@ type AppShellProps = {
   householdPersona?: HouseholdPersona | null;
   householdId?: string | null;
   conflictCount?: number;
+  /** Compact footer sync (hidden on /calendar and My day) */
+  syncStatus?: FooterSyncStatus | null;
+  canSync?: boolean;
 };
 
 export function AppShell({
@@ -23,6 +27,8 @@ export function AppShell({
   householdPersona,
   householdId,
   conflictCount = 0,
+  syncStatus = null,
+  canSync = false,
 }: AppShellProps) {
   const myDayMode = householdPersona ? prefersMyDayView(householdPersona) : false;
   const subtitle = householdName
@@ -101,12 +107,18 @@ export function AppShell({
             </div>
           </header>
 
-          <main className="flex-1 px-3 py-4 pb-28 sm:px-4 sm:py-6 sm:pb-24 lg:px-8 lg:pb-8">
+          {/* Extra bottom padding on small screens for bottom nav + footer sync */}
+          <main className="flex-1 px-3 py-4 pb-4 sm:px-4 sm:py-6 lg:px-8 lg:pb-8">
             {children}
           </main>
 
-          <div className="hidden lg:block">
-            <SiteFooter className="border-t border-border/60" />
+          <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+            <AppSiteFooter
+              householdId={householdId}
+              syncStatus={syncStatus}
+              canSync={canSync}
+              myDayMode={myDayMode}
+            />
           </div>
         </div>
       </div>

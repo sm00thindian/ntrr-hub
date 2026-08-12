@@ -63,12 +63,13 @@ test.describe("Authenticated smoke (optional)", () => {
     storageState: process.env.E2E_STORAGE_STATE,
   });
 
-  test("dashboard loads needs attention and sync panels", async ({ page }) => {
+  test("dashboard loads needs attention; sync lives in footer", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: /needs attention/i })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText(/sync status/i).first()).toBeVisible();
+    await expect(page.getByTestId("footer-sync")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /sync status/i })).toHaveCount(0);
   });
 
   test("tasks board shows filters", async ({ page }) => {

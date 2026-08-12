@@ -18,6 +18,8 @@ export type HouseholdMember = {
   isFocusPerson: boolean;
   email: string;
   displayName: string | null;
+  /** Call-target mobile for Reliant confirms (E.164) */
+  phoneE164: string | null;
   joinedAt: string;
 };
 
@@ -111,12 +113,17 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, email, display_name")
+    .select("id, email, display_name, phone_e164")
     .in("id", userIds);
 
   const profileMap = new Map(
     (profiles ?? []).map((p) => {
-      const row = p as { id: string; email: string; display_name: string | null };
+      const row = p as {
+        id: string;
+        email: string;
+        display_name: string | null;
+        phone_e164: string | null;
+      };
       return [row.id, row] as const;
     }),
   );
@@ -139,6 +146,7 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
       isFocusPerson: Boolean(row.is_focus_person),
       email: profile?.email ?? "Unknown",
       displayName: profile?.display_name ?? null,
+      phoneE164: profile?.phone_e164 ?? null,
       joinedAt: row.created_at,
     };
   });
