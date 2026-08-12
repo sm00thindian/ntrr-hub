@@ -1,4 +1,8 @@
-import { getHouseholdIntegration } from "@/lib/integrations/queries";
+import {
+  getAllConnectedAppleIntegrationsAdmin,
+  getAllConnectedGoogleIntegrationsAdmin,
+  getHouseholdIntegration,
+} from "@/lib/integrations/queries";
 import type { IntegrationAccount } from "@/lib/integrations/types";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 
@@ -88,11 +92,23 @@ function snapshotApple(account: IntegrationAccount | null): ProviderSyncSnapshot
 
 export async function getHouseholdSyncStatus(householdId: string): Promise<HouseholdSyncStatus> {
   try {
-    const [google, apple, conflictCount] = await Promise.all([
-      getHouseholdIntegration(householdId, "google").catch(() => null),
-      getHouseholdIntegration(householdId, "apple_caldav").catch(() => null),
-      getPendingConflictCount(householdId).catch(() => 0),
-    ]);
+    const [googleAccounts, appleAccounts, conflictCount, legacyGoogle, legacyApple] =
+      await Promise.all([
+        getAllConnectedGoogleIntegrationsAdmin(householdId).catch(() => []),
+        getAllConnectedAppleIntegrationsAdmin(householdId).catch(() => []),
+        getPendingConflictCount(householdId).catch(() => 0),
+        getHouseholdIntegration(householdId, "google").catch(() => null),
+        getHouseholdIntegration(householdId, "apple_caldav").catch(() => null),
+      ]);
+
+    const google =
+      googleAccounts.find((a) => a.status === "connected") ??
+      googleAccounts[0] ??
+      legacyGoogle;
+    const apple =
+      appleAccounts.find((a) => a.status === "connected") ??
+      appleAccounts[0] ??
+      legacyApple;
 
     const providers = [snapshotGoogle(google), snapshotApple(apple)];
 

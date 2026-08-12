@@ -7,6 +7,7 @@ import {
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import { getCalendarEventsForRange } from "@/lib/calendar/queries";
+import { filterEventsForViewer } from "@/lib/calendar/visibility";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getHouseholdTasks } from "@/lib/tasks/queries";
 import type { Task } from "@/lib/tasks/types";
@@ -18,8 +19,8 @@ export function isMyDayPersona(persona: HouseholdPersona): boolean {
 }
 
 /**
- * Calendar event is "theirs" when its Google calendar is assigned to them.
- * Events without a known assignment are household context — hidden from My day.
+ * @deprecated Prefer filterEventsForViewer (household vs personal visibility).
+ * Kept for call sites that still use assignment-only checks.
  */
 export function eventBelongsToMember(
   event: CalendarEvent,
@@ -133,7 +134,8 @@ export async function getMyDayAgenda(
   ]);
 
   const mine = filterTasksForMember(tasks, memberUserId);
-  const myEvents = filterEventsForMember(events, memberUserId, settings.googleCalendars);
+  // Shared household calendars + this member's personal calendars (ADR 0002)
+  const myEvents = filterEventsForViewer(events, memberUserId, settings);
 
   const taskItems: AgendaItem[] = mine
     .filter((task) => isActiveMyDayTask(task, rangeStart, rangeEnd, nowMs))

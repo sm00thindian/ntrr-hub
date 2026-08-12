@@ -7,17 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { connectAppleCalDav, disconnectAppleCalDav } from "@/lib/integrations/apple/actions";
+import { saveAppleCalendarVisibility } from "@/lib/integrations/actions";
+import type { CalendarVisibility } from "@/lib/calendar/colors";
 import type { IntegrationAccount } from "@/lib/integrations/types";
 
 type AppleCalDavConnectCardProps = {
   canManage: boolean;
   integration: IntegrationAccount | null;
+  visibility?: CalendarVisibility;
 };
 
-export function AppleCalDavConnectCard({ canManage, integration }: AppleCalDavConnectCardProps) {
+export function AppleCalDavConnectCard({
+  canManage,
+  integration,
+  visibility = "household",
+}: AppleCalDavConnectCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [share, setShare] = useState<CalendarVisibility>(visibility);
 
   const connected = integration?.status === "connected";
   const calendarName = integration?.metadata.apple?.caldav?.calendarName;
@@ -27,7 +35,8 @@ export function AppleCalDavConnectCard({ canManage, integration }: AppleCalDavCo
       <CardHeader>
         <CardTitle>Apple (CalDAV)</CardTitle>
         <CardDescription>
-          iCloud calendar via app-specific password. Reminders sync is one-way through Zapier.
+          Connect <span className="font-medium text-foreground">your</span> iCloud calendar
+          (app-specific password). Choose household share or personal-only.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -46,6 +55,40 @@ export function AppleCalDavConnectCard({ canManage, integration }: AppleCalDavCo
           </p>
         ) : null}
 
+        {canManage && connected ? (
+          <div className="space-y-2">
+            <Label htmlFor="apple-visibility">Visibility</Label>
+            <select
+              id="apple-visibility"
+              className="border-input bg-background flex h-11 w-full rounded-md border px-3 text-sm"
+              value={share}
+              disabled={pending}
+              onChange={(event) => {
+                const next = event.target.value as CalendarVisibility;
+                setShare(next);
+                setError(null);
+                startTransition(async () => {
+                  const formData = new FormData();
+                  formData.set("visibility", next);
+                  const result = await saveAppleCalendarVisibility(formData);
+                  if ("error" in result && result.error) {
+                    setError(result.error);
+                    return;
+                  }
+                  setMessage(
+                    next === "personal"
+                      ? "Apple calendar is personal — only you see those events."
+                      : "Apple calendar is shared with the household.",
+                  );
+                });
+              }}
+            >
+              <option value="household">Shared with household</option>
+              <option value="personal">Personal (only me)</option>
+            </select>
+          </div>
+        ) : null}
+
         {canManage && !connected ? (
           <form
             className="space-y-3"
@@ -54,17 +97,31 @@ export function AppleCalDavConnectCard({ canManage, integration }: AppleCalDavCo
               setError(null);
               setMessage(null);
               const formData = new FormData(event.currentTarget);
+              formData.set("visibility", share);
               startTransition(async () => {
                 const result = await connectAppleCalDav(formData);
                 if (result.error) {
                   setError(result.error);
                   return;
                 }
-                setMessage("Apple calendar connected. Events are syncing to your family agenda.");
+                setMessage("Apple calendar connected. Events are syncing.");
                 event.currentTarget.reset();
               });
             }}
           >
+            <div className="space-y-2">
+              <Label htmlFor="visibility">Visibility</Label>
+              <select
+                id="visibility"
+                name="visibility"
+                className="border-input bg-background flex h-11 w-full rounded-md border px-3 text-sm"
+                value={share}
+                onChange={(event) => setShare(event.target.value as CalendarVisibility)}
+              >
+                <option value="household">Shared with household</option>
+                <option value="personal">Personal (only me)</option>
+              </select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="appleId">Apple ID</Label>
               <Input

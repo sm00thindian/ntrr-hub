@@ -21,10 +21,13 @@ function getAppleCredentials(metadata: IntegrationMetadata): AppleCalDavCredenti
   return raw;
 }
 
-function syncProvenance(uid: string) {
+function syncProvenance(uid: string, integrationId: string, calendarName?: string) {
   return {
     source: "apple_caldav" as const,
     externalId: uid,
+    /** Used for household vs personal visibility (ADR 0002) */
+    calendarId: `apple:${integrationId}`,
+    calendarName: calendarName ?? "Apple Calendar",
     syncedAt: new Date().toISOString(),
     confidence: "high" as const,
     lastModifiedBy: "sync" as const,
@@ -91,7 +94,7 @@ export async function pullAppleCalDavCalendar(account: IntegrationAccount) {
       ends_at: event.endsAt,
       all_day: event.allDay,
       location: event.location ?? null,
-      provenance: syncProvenance(event.uid),
+      provenance: syncProvenance(event.uid, account.id, calendarName),
       created_by: createdBy ?? null,
       updated_at: new Date().toISOString(),
     };

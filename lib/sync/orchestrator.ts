@@ -1,6 +1,6 @@
 import {
-  getConnectedAppleCalDavIntegrationAdmin,
-  getConnectedGoogleIntegrationAdmin,
+  getAllConnectedAppleIntegrationsAdmin,
+  getAllConnectedGoogleIntegrationsAdmin,
 } from "@/lib/integrations/queries";
 import { pullAppleCalDavCalendar } from "@/lib/sync/apple/caldav";
 import { pullGoogleCalendar, pushGoogleCalendarEvent } from "@/lib/sync/google/calendar";
@@ -16,19 +16,37 @@ import { runPostSyncAgents } from "@/lib/ai/orchestrator";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function runGoogleSync(householdId: string) {
-  const account = await getConnectedGoogleIntegrationAdmin(householdId);
-  if (!account) {
+  const accounts = await getAllConnectedGoogleIntegrationsAdmin(householdId);
+  if (!accounts.length) {
     return { skipped: true as const, reason: "Google not connected" };
   }
 
   const admin = createAdminClient();
+  const errors: string[] = [];
 
   try {
-    await pullGoogleCalendar(account);
-    if (GOOGLE_TASKS_SYNC_ENABLED) {
-      await pullGoogleTasks(account);
+    for (const account of accounts) {
+      try {
+        await pullGoogleCalendar(account);
+        if (GOOGLE_TASKS_SYNC_ENABLED) {
+          await pullGoogleTasks(account);
+        }
+        await admin
+          .from("integration_accounts")
+          .update({ status: "connected", updated_at: new Date().toISOString() })
+          .eq("id", account.id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Google sync failed";
+        errors.push(message);
+        await admin
+          .from("integration_accounts")
+          .update({ status: "error", updated_at: new Date().toISOString() })
+          .eq("id", account.id);
+      }
     }
 
+    // Calendar event outbound still uses the first healthy account when present
+    const pushAccount = accounts[0]!;
     const outbox = await fetchPendingOutbox(householdId, "google");
 
     for (const entry of outbox) {
@@ -37,17 +55,16 @@ export async function runGoogleSync(householdId: string) {
       try {
         if (entry.entity_type === "task") {
           if (!GOOGLE_TASKS_SYNC_ENABLED) {
-            // Drain legacy task outbox rows without pushing to Google Tasks.
             await markOutboxDone(entry.id);
             continue;
           }
-          await pushGoogleTask(account, {
+          await pushGoogleTask(pushAccount, {
             entityId: entry.entity_id,
             operation: entry.operation,
             payload: (entry.payload ?? {}) as Record<string, unknown>,
           });
         } else if (entry.entity_type === "calendar_event") {
-          await pushGoogleCalendarEvent(account, {
+          await pushGoogleCalendarEvent(pushAccount, {
             entityId: entry.entity_id,
             operation: entry.operation,
             payload: (entry.payload ?? {}) as Record<string, unknown>,
@@ -61,44 +78,48 @@ export async function runGoogleSync(householdId: string) {
       }
     }
 
-    // Use updated_at as last successful sync time (do not rewrite metadata here —
-    // tokens may be decrypted in-memory and must stay encryptJson-encoded at rest).
-    await admin
-      .from("integration_accounts")
-      .update({ status: "connected", updated_at: new Date().toISOString() })
-      .eq("id", account.id);
+    if (errors.length && errors.length === accounts.length) {
+      return { skipped: false as const, success: false, error: errors.join(" ") };
+    }
 
     return { skipped: false as const, success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Google sync failed";
-
-    await admin
-      .from("integration_accounts")
-      .update({ status: "error", updated_at: new Date().toISOString() })
-      .eq("id", account.id);
-
     return { skipped: false as const, success: false, error: message };
   }
 }
 
 export async function runAppleCalDavSync(householdId: string) {
-  const account = await getConnectedAppleCalDavIntegrationAdmin(householdId);
-  if (!account) {
+  const accounts = await getAllConnectedAppleIntegrationsAdmin(householdId);
+  if (!accounts.length) {
     return { skipped: true as const, reason: "Apple CalDAV not connected" };
   }
 
-  try {
-    await pullAppleCalDavCalendar(account);
-    return { skipped: false as const, success: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Apple CalDAV sync failed";
-    const admin = createAdminClient();
-    await admin
-      .from("integration_accounts")
-      .update({ status: "error", updated_at: new Date().toISOString() })
-      .eq("id", account.id);
-    return { skipped: false as const, success: false, error: message };
+  const admin = createAdminClient();
+  const errors: string[] = [];
+
+  for (const account of accounts) {
+    try {
+      await pullAppleCalDavCalendar(account);
+      await admin
+        .from("integration_accounts")
+        .update({ status: "connected", updated_at: new Date().toISOString() })
+        .eq("id", account.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Apple CalDAV sync failed";
+      errors.push(message);
+      await admin
+        .from("integration_accounts")
+        .update({ status: "error", updated_at: new Date().toISOString() })
+        .eq("id", account.id);
+    }
   }
+
+  if (errors.length && errors.length === accounts.length) {
+    return { skipped: false as const, success: false, error: errors.join(" ") };
+  }
+
+  return { skipped: false as const, success: true };
 }
 
 export async function runHouseholdSync(householdId: string) {

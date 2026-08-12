@@ -4,14 +4,18 @@ import { HouseholdTimezoneCard } from "@/components/settings/household-timezone-
 import { NtrrServicesCard } from "@/components/settings/ntrr-services-card";
 import { PhoneProfileCard } from "@/components/settings/phone-profile-card";
 import { isMyDayPersona } from "@/lib/dashboard/my-day";
+import { appleCalendarKey, normalizeCalendarVisibility } from "@/lib/calendar/visibility";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { isGoogleConfigured } from "@/lib/integrations/google/scopes";
 import {
   getGoogleCalendarSettingsForUi,
   getHouseholdCalendarSettings,
 } from "@/lib/households/calendar-settings";
-import { getHouseholdIntegration } from "@/lib/integrations/queries";
-import { canManageIntegrations } from "@/lib/permissions/roles";
+import { getMemberIntegration } from "@/lib/integrations/queries";
+import {
+  canConnectCalendars,
+  canManageIntegrations,
+} from "@/lib/permissions/roles";
 import { getProfileDisplayName, getProfilePhone } from "@/lib/profiles/actions";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
@@ -30,7 +34,7 @@ function feedbackFromSearchParams(params: { [key: string]: string | string[] | u
   }
 
   if (error === "permission") {
-    return "Only owners and admins can connect Google.";
+    return "You do not have permission to connect calendars.";
   }
 
   return decodeURIComponent(error);
@@ -42,24 +46,28 @@ export default async function SettingsPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const ctx = await requireHouseholdContext();
-  const canManage = canManageIntegrations(ctx.role);
+  const canManageHousehold = canManageIntegrations(ctx.role);
+  const canConnect = canConnectCalendars(ctx.role, ctx.persona);
   const myDayMode = isMyDayPersona(ctx.persona);
   const params = await searchParams;
   const feedback = feedbackFromSearchParams(params);
 
   const [googleIntegration, appleIntegration, calendarSettings, phoneE164, displayName] =
     await Promise.all([
-      canManage ? getHouseholdIntegration(ctx.householdId, "google") : null,
-      canManage ? getHouseholdIntegration(ctx.householdId, "apple_caldav") : null,
+      canConnect ? getMemberIntegration(ctx.householdId, "google", ctx.userId) : null,
+      canConnect ? getMemberIntegration(ctx.householdId, "apple_caldav", ctx.userId) : null,
       getHouseholdCalendarSettings(ctx.householdId),
       getProfilePhone(ctx.userId),
       getProfileDisplayName(ctx.userId),
     ]);
 
   let googleCalendarSettings: Awaited<ReturnType<typeof getGoogleCalendarSettingsForUi>> = null;
-  if (canManage && googleIntegration?.status === "connected") {
+  if (canConnect && googleIntegration?.status === "connected") {
     try {
-      googleCalendarSettings = await getGoogleCalendarSettingsForUi(ctx.householdId);
+      googleCalendarSettings = await getGoogleCalendarSettingsForUi(
+        ctx.householdId,
+        ctx.userId,
+      );
     } catch {
       googleCalendarSettings = null;
     }
@@ -67,15 +75,43 @@ export default async function SettingsPage({
 
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
   const timezoneConfirmed = Boolean(calendarSettings.timezone?.trim());
+  const appleKey = appleIntegration ? appleCalendarKey(appleIntegration.id) : null;
+  const appleVisibility = appleKey
+    ? normalizeCalendarVisibility(calendarSettings.appleCalendars?.[appleKey]?.visibility)
+    : "household";
 
-  // Self-advocate: phone + quiet profile only (no integration admin)
+  const integrationsBlock = canConnect ? (
+    <>
+      <GoogleConnectCard
+        canManage={canConnect}
+        configured={isGoogleConfigured()}
+        integration={googleIntegration}
+        feedback={feedback}
+        calendars={googleCalendarSettings?.calendars}
+        selectedCalendarIds={googleCalendarSettings?.selectedCalendarIds}
+        members={googleCalendarSettings?.members}
+        memberColors={googleCalendarSettings?.memberColors}
+        calendarAssignments={googleCalendarSettings?.calendarAssignments}
+        currentUserId={ctx.userId}
+        canEditMemberColors={canManageHousehold}
+      />
+
+      <AppleCalDavConnectCard
+        canManage={canConnect}
+        integration={appleIntegration}
+        visibility={appleVisibility}
+      />
+    </>
+  ) : null;
+
+  // Self-advocate: profile + optional own calendars
   if (myDayMode) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            Your phone and profile · household calendars are managed by a coordinator
+            Your phone, profile, and optional calendars (shared with family or personal only)
           </p>
         </div>
         <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
@@ -85,6 +121,7 @@ export default async function SettingsPage({
             timezone={timeZone}
             timezoneConfirmed={timezoneConfirmed}
           />
+          {integrationsBlock}
         </div>
       </div>
     );
@@ -96,19 +133,27 @@ export default async function SettingsPage({
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
           Integrations and preferences
-          {!canManage ? " · view only" : ""}
+          {!canConnect ? " · calendar connect unavailable for viewers" : ""}
         </p>
       </div>
 
-      {!canManage ? (
+      {!canConnect ? (
         <p className="text-sm text-muted-foreground">
-          Only owners and admins can connect integrations. Ask your household admin for access.
+          Your access role cannot connect calendars. Ask a coordinator if you need to share a
+          schedule.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Connect <span className="text-foreground font-medium">your</span> Google or Apple
+          calendars. Mark each one <span className="text-foreground font-medium">shared with
+          household</span> or <span className="text-foreground font-medium">personal</span> (only
+          you, or the selected family member).
+        </p>
+      )}
 
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <HouseholdTimezoneCard
-          canManage={canManage}
+          canManage={canManageHousehold}
           timezone={timeZone}
           timezoneConfirmed={timezoneConfirmed}
         />
@@ -117,19 +162,7 @@ export default async function SettingsPage({
 
         <NtrrServicesCard />
 
-        <GoogleConnectCard
-          canManage={canManage}
-          configured={isGoogleConfigured()}
-          integration={googleIntegration}
-          feedback={feedback}
-          calendars={googleCalendarSettings?.calendars}
-          selectedCalendarIds={googleCalendarSettings?.selectedCalendarIds}
-          members={googleCalendarSettings?.members}
-          memberColors={googleCalendarSettings?.memberColors}
-          calendarAssignments={googleCalendarSettings?.calendarAssignments}
-        />
-
-        <AppleCalDavConnectCard canManage={canManage} integration={appleIntegration} />
+        {integrationsBlock}
       </div>
     </div>
   );

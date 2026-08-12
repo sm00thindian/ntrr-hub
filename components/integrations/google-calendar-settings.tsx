@@ -7,6 +7,7 @@ import { saveGoogleCalendarSettings } from "@/lib/integrations/actions";
 import {
   CALENDAR_COLOR_PALETTE,
   type CalendarColorMember,
+  type CalendarVisibility,
   type GoogleCalendarAssignment,
   memberCalendarCount,
   normalizeColor,
@@ -20,6 +21,9 @@ type GoogleCalendarSettingsProps = {
   members: CalendarColorMember[];
   memberColors: Record<string, string>;
   calendarAssignments: Record<string, GoogleCalendarAssignment>;
+  /** When false, hide household-wide member color editors (non-admin) */
+  canEditMemberColors?: boolean;
+  currentUserId: string;
 };
 
 export function GoogleCalendarSettings({
@@ -28,6 +32,8 @@ export function GoogleCalendarSettings({
   members,
   memberColors: initialMemberColors,
   calendarAssignments: initialAssignments,
+  canEditMemberColors = true,
+  currentUserId,
 }: GoogleCalendarSettingsProps) {
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState(() => new Set(selectedCalendarIds));
@@ -99,13 +105,15 @@ export function GoogleCalendarSettings({
 
       for (const calendarId of selectedIds) {
         const assignment = assignments[calendarId] ?? {
-          memberUserId: members[0]?.userId ?? "",
+          memberUserId: currentUserId || members[0]?.userId || "",
           color: CALENDAR_COLOR_PALETTE[0]!,
+          visibility: "household" as CalendarVisibility,
         };
 
         payloadAssignments[calendarId] = {
           memberUserId: assignment.memberUserId,
           color: normalizeColor(assignment.color, CALENDAR_COLOR_PALETTE[0]!),
+          visibility: assignment.visibility === "personal" ? "personal" : "household",
         };
       }
 
@@ -115,7 +123,7 @@ export function GoogleCalendarSettings({
         calendarAssignments: payloadAssignments,
       });
 
-      if (result.error) {
+      if ("error" in result && result.error) {
         setMessage(result.error);
         return;
       }
@@ -126,48 +134,57 @@ export function GoogleCalendarSettings({
 
   return (
     <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
-      <div>
-        <p className="text-sm font-medium">Calendar colors</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Assign a family color to each member. When someone has more than one calendar, give each
-          calendar its own accent color.
-        </p>
-      </div>
+      {canEditMemberColors ? (
+        <>
+          <div>
+            <p className="text-sm font-medium">Calendar colors</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Assign a family color to each member. When someone has more than one calendar, give
+              each calendar its own accent color.
+            </p>
+          </div>
 
-      <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Family members
-        </p>
-        <ul className="space-y-2">
-          {members.map((member) => (
-            <li
-              key={member.userId}
-              className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2"
-            >
-              <span className="text-sm font-medium">{member.label}</span>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                Member color
-                <input
-                  type="color"
-                  value={memberColors[member.userId] ?? "#00C853"}
-                  disabled={pending}
-                  onChange={(event) =>
-                    setMemberColors((current) => ({
-                      ...current,
-                      [member.userId]: event.target.value,
-                    }))
-                  }
-                  className="h-8 w-10 cursor-pointer rounded border bg-transparent"
-                />
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Family members
+            </p>
+            <ul className="space-y-2">
+              {members.map((member) => (
+                <li
+                  key={member.userId}
+                  className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2"
+                >
+                  <span className="text-sm font-medium">{member.label}</span>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    Member color
+                    <input
+                      type="color"
+                      value={memberColors[member.userId] ?? "#00C853"}
+                      disabled={pending}
+                      onChange={(event) =>
+                        setMemberColors((current) => ({
+                          ...current,
+                          [member.userId]: event.target.value,
+                        }))
+                      }
+                      className="h-8 w-10 cursor-pointer rounded border bg-transparent"
+                    />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : null}
 
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Calendars to sync
+        </p>
+        <p className="text-muted-foreground text-xs">
+          <span className="font-medium text-foreground">Shared with household</span> is visible to
+          everyone. <span className="font-medium text-foreground">Personal</span> is only visible to
+          the selected family member (including you).
         </p>
         <ul className="space-y-2">
           {calendars.map((calendar) => {
@@ -207,6 +224,22 @@ export function GoogleCalendarSettings({
                 {checked ? (
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <label className="space-y-1 text-xs">
+                      <span className="text-muted-foreground">Visibility</span>
+                      <select
+                        className="border-input bg-background w-full rounded-md border px-2 py-2 text-sm"
+                        value={assignment?.visibility === "personal" ? "personal" : "household"}
+                        disabled={pending}
+                        onChange={(event) =>
+                          updateAssignment(calendar.id, {
+                            visibility: event.target.value as CalendarVisibility,
+                          })
+                        }
+                      >
+                        <option value="household">Shared with household</option>
+                        <option value="personal">Personal (only selected member)</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-xs">
                       <span className="text-muted-foreground">Family member</span>
                       <select
                         className="border-input bg-background w-full rounded-md border px-2 py-2 text-sm"
@@ -225,7 +258,7 @@ export function GoogleCalendarSettings({
                     </label>
 
                     {showCalendarColor ? (
-                      <label className="space-y-1 text-xs">
+                      <label className="space-y-1 text-xs sm:col-span-2">
                         <span className="text-muted-foreground">Calendar color</span>
                         <div className="flex items-center gap-2">
                           <input

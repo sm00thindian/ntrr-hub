@@ -1,5 +1,8 @@
 import { googleFetch } from "@/lib/integrations/google/client";
-import { getConnectedGoogleIntegrationAdmin } from "@/lib/integrations/queries";
+import {
+  getConnectedGoogleIntegrationAdmin,
+  getConnectedGoogleIntegrationAdminForUser,
+} from "@/lib/integrations/queries";
 import type { GoogleCalendarInfo, IntegrationAccount } from "@/lib/integrations/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -124,8 +127,10 @@ export async function persistGoogleCalendarMetadata(
   return safeSelected;
 }
 
-export async function getGoogleCalendarSettings(householdId: string) {
-  const account = await getConnectedGoogleIntegrationAdmin(householdId);
+export async function getGoogleCalendarSettings(householdId: string, userId?: string) {
+  const account = userId
+    ? await getConnectedGoogleIntegrationAdminForUser(householdId, userId)
+    : await getConnectedGoogleIntegrationAdmin(householdId);
   if (!account) {
     return null;
   }

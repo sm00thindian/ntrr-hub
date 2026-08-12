@@ -20,14 +20,30 @@ export const CALENDAR_COLOR_PALETTE = [
 
 export const UNASSIGNED_COLOR = "#9CA3AF";
 
+/** Who can see events from this source calendar */
+export type CalendarVisibility = "household" | "personal";
+
 export type GoogleCalendarAssignment = {
   memberUserId: string;
   color: string;
+  /**
+   * household = all members see events (default).
+   * personal = only memberUserId sees events (owners do not break glass).
+   */
+  visibility?: CalendarVisibility;
+};
+
+/** Apple CalDAV assignments keyed by `apple:{integrationId}` */
+export type AppleCalendarAssignment = {
+  memberUserId: string;
+  color: string;
+  visibility?: CalendarVisibility;
 };
 
 export type HouseholdCalendarSettings = {
   memberColors?: Record<string, string>;
   googleCalendars?: Record<string, GoogleCalendarAssignment>;
+  appleCalendars?: Record<string, AppleCalendarAssignment>;
   /** IANA timezone for displaying event times household-wide (e.g. America/Chicago) */
   timezone?: string;
 };
@@ -91,6 +107,13 @@ export function defaultCalendarAssignments(
       assignments[calendarId] = {
         memberUserId: fallbackMemberId,
         color: CALENDAR_COLOR_PALETTE[index % CALENDAR_COLOR_PALETTE.length]!,
+        visibility: "household",
+      };
+    } else if (!assignments[calendarId]!.visibility) {
+      // Existing rows default to shared household visibility
+      assignments[calendarId] = {
+        ...assignments[calendarId]!,
+        visibility: "household",
       };
     }
   });

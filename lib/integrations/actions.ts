@@ -3,17 +3,21 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  type CalendarVisibility,
   type GoogleCalendarAssignment,
   defaultMemberColors,
   normalizeColor,
   CALENDAR_COLOR_PALETTE,
 } from "@/lib/calendar/colors";
+import { normalizeCalendarVisibility } from "@/lib/calendar/visibility";
 import {
   fetchGoogleCalendarList,
   getSelectedGoogleCalendarIds,
   removeSyncedEventsForCalendars,
 } from "@/lib/integrations/google/calendars";
-import { getConnectedGoogleIntegrationAdmin } from "@/lib/integrations/queries";
+import {
+  getConnectedGoogleIntegrationAdminForUser,
+} from "@/lib/integrations/queries";
 import {
   getHouseholdCalendarSettings,
   saveHouseholdCalendarSettings,
@@ -21,17 +25,25 @@ import {
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import { getHouseholdMembers } from "@/lib/households/queries";
 import { requireHouseholdContext } from "@/lib/households/context";
-import { canManageIntegrations } from "@/lib/permissions/roles";
+import { canConnectCalendars, canManageIntegrations } from "@/lib/permissions/roles";
 import { runAgentsForHousehold } from "@/lib/ai/orchestrator";
 import { runHouseholdSync } from "@/lib/sync/orchestrator";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+function assertCanConnect(ctx: Awaited<ReturnType<typeof requireHouseholdContext>>) {
+  if (!canConnectCalendars(ctx.role, ctx.persona)) {
+    return { error: "You do not have permission to manage calendar connections." };
+  }
+  return null;
+}
+
+/** Disconnect this member's Google connection only. */
 export async function disconnectGoogle() {
   const ctx = await requireHouseholdContext();
-
-  if (!canManageIntegrations(ctx.role)) {
-    return { error: "You do not have permission to manage integrations." };
+  const denied = assertCanConnect(ctx);
+  if (denied) {
+    return denied;
   }
 
   const supabase = await createClient();
@@ -44,7 +56,8 @@ export async function disconnectGoogle() {
       updated_at: new Date().toISOString(),
     })
     .eq("household_id", ctx.householdId)
-    .eq("provider", "google");
+    .eq("provider", "google")
+    .eq("created_by", ctx.userId);
 
   if (error) {
     return { error: error.message };
@@ -52,77 +65,7 @@ export async function disconnectGoogle() {
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
-  return { success: true };
-}
-
-export async function updateGoogleCalendarSelection(calendarIds: string[]) {
-  const ctx = await requireHouseholdContext();
-
-  if (!canManageIntegrations(ctx.role)) {
-    return { error: "You do not have permission to manage integrations." };
-  }
-
-  const account = await getConnectedGoogleIntegrationAdmin(ctx.householdId);
-  if (!account) {
-    return { error: "Connect Google before choosing calendars." };
-  }
-
-  const calendars = await fetchGoogleCalendarList(account);
-  const primaryId = calendars.find((calendar) => calendar.primary)?.id ?? "primary";
-  const validIds = [
-    ...new Set(
-      calendarIds
-        .map((id) => (id === "primary" ? primaryId : id))
-        .filter((id) => calendars.some((calendar) => calendar.id === id)),
-    ),
-  ];
-
-  if (!validIds.length) {
-    return { error: "Select at least one Google calendar to sync." };
-  }
-
-  const previous = getSelectedGoogleCalendarIds({
-    ...account,
-    metadata: {
-      ...account.metadata,
-      google: { ...account.metadata.google, calendars },
-    },
-  });
-  // Also treat legacy "primary" selection as the real primary when computing removals
-  const previousNormalized = [
-    ...new Set(previous.map((id) => (id === "primary" ? primaryId : id))),
-  ];
-  const removed = previousNormalized.filter((id) => !validIds.includes(id));
-  const googleState = account.metadata.google ?? {};
-  const nextTokens = { ...(googleState.calendarSyncTokens ?? {}) };
-
-  for (const calendarId of removed) {
-    delete nextTokens[calendarId];
-  }
-
-  const admin = createAdminClient();
-  await admin
-    .from("integration_accounts")
-    .update({
-      metadata: {
-        ...account.metadata,
-        google: {
-          ...googleState,
-          calendars,
-          selectedCalendarIds: validIds,
-          calendarSyncTokens: nextTokens,
-        },
-      },
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", account.id);
-
-  await removeSyncedEventsForCalendars(ctx.householdId, removed);
-
-  revalidatePath("/settings");
-  revalidatePath("/dashboard");
   revalidatePath("/calendar");
-
   return { success: true };
 }
 
@@ -134,12 +77,15 @@ type SaveGoogleCalendarSettingsInput = {
 
 export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettingsInput) {
   const ctx = await requireHouseholdContext();
-
-  if (!canManageIntegrations(ctx.role)) {
-    return { error: "You do not have permission to manage integrations." };
+  const denied = assertCanConnect(ctx);
+  if (denied) {
+    return denied;
   }
 
-  const account = await getConnectedGoogleIntegrationAdmin(ctx.householdId);
+  const account = await getConnectedGoogleIntegrationAdminForUser(
+    ctx.householdId,
+    ctx.userId,
+  );
   if (!account) {
     return { error: "Connect Google before choosing calendars." };
   }
@@ -159,15 +105,21 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
     label: memberDisplayLabel(member.email, member.displayName),
   }));
 
-  const memberColors = defaultMemberColors(colorMembers, input.memberColors);
+  // Only owners/admins edit household-wide member color palette
+  const existingSettings = await getHouseholdCalendarSettings(ctx.householdId);
+  const memberColors = canManageIntegrations(ctx.role)
+    ? defaultMemberColors(colorMembers, input.memberColors)
+    : defaultMemberColors(colorMembers, existingSettings.memberColors);
 
-  const calendarAssignments: Record<string, GoogleCalendarAssignment> = {};
+  const calendarAssignments: Record<string, GoogleCalendarAssignment> = {
+    ...(existingSettings.googleCalendars ?? {}),
+  };
+
   validIds.forEach((calendarId, index) => {
     const assignment = input.calendarAssignments[calendarId];
     const fallbackMemberId =
       colorMembers.find((member) => member.userId === assignment?.memberUserId)?.userId ??
-      colorMembers[0]?.userId ??
-      account.createdBy;
+      ctx.userId;
 
     calendarAssignments[calendarId] = {
       memberUserId: fallbackMemberId,
@@ -175,14 +127,19 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
         assignment?.color ?? CALENDAR_COLOR_PALETTE[index % CALENDAR_COLOR_PALETTE.length]!,
         CALENDAR_COLOR_PALETTE[0]!,
       ),
+      visibility: normalizeCalendarVisibility(assignment?.visibility),
     };
   });
 
+  // Drop assignments for calendars this user unselected (only their previous selection)
   const previous = getSelectedGoogleCalendarIds(account);
   const removed = previous.filter((id) => !validIds.includes(id));
+  for (const calendarId of removed) {
+    delete calendarAssignments[calendarId];
+  }
+
   const googleState = account.metadata.google ?? {};
   const nextTokens = { ...(googleState.calendarSyncTokens ?? {}) };
-
   for (const calendarId of removed) {
     delete nextTokens[calendarId];
   }
@@ -206,9 +163,8 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
 
   await removeSyncedEventsForCalendars(ctx.householdId, removed);
 
-  const existing = await getHouseholdCalendarSettings(ctx.householdId);
   await saveHouseholdCalendarSettings(ctx.householdId, {
-    ...existing,
+    ...existingSettings,
     memberColors,
     googleCalendars: calendarAssignments,
   });
@@ -220,11 +176,49 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
   return { success: true };
 }
 
+export async function saveAppleCalendarVisibility(formData: FormData) {
+  const ctx = await requireHouseholdContext();
+  const denied = assertCanConnect(ctx);
+  if (denied) {
+    return denied;
+  }
+
+  const visibility = normalizeCalendarVisibility(
+    String(formData.get("visibility") ?? "household"),
+  ) as CalendarVisibility;
+  const memberUserId = String(formData.get("memberUserId") ?? ctx.userId).trim() || ctx.userId;
+
+  const { getMemberIntegration } = await import("@/lib/integrations/queries");
+  const apple = await getMemberIntegration(ctx.householdId, "apple_caldav", ctx.userId);
+  if (!apple || apple.status !== "connected") {
+    return { error: "Connect Apple before saving calendar sharing." };
+  }
+
+  const key = `apple:${apple.id}`;
+  const existing = await getHouseholdCalendarSettings(ctx.householdId);
+  const appleCalendars = { ...(existing.appleCalendars ?? {}) };
+  appleCalendars[key] = {
+    memberUserId,
+    color: appleCalendars[key]?.color ?? CALENDAR_COLOR_PALETTE[0]!,
+    visibility,
+  };
+
+  await saveHouseholdCalendarSettings(ctx.householdId, {
+    ...existing,
+    appleCalendars,
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  return { success: true as const };
+}
+
 export async function syncGoogleNow() {
   const ctx = await requireHouseholdContext();
-
-  if (!canManageIntegrations(ctx.role)) {
-    return { error: "You do not have permission to sync integrations." };
+  const denied = assertCanConnect(ctx);
+  if (denied) {
+    return denied;
   }
 
   const result = await runHouseholdSync(ctx.householdId);
@@ -232,12 +226,13 @@ export async function syncGoogleNow() {
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   revalidatePath("/tasks");
+  revalidatePath("/calendar");
   revalidatePath("/conflicts");
 
   try {
     await runAgentsForHousehold(ctx.householdId, "daily");
   } catch {
-    // Non-blocking — /api/cron/digest remains the scheduled fallback.
+    // Non-blocking
   }
 
   const errors: string[] = [];

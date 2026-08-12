@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { buildGoogleConnectUrl } from "@/lib/integrations/google/oauth";
 import { isGoogleConfigured } from "@/lib/integrations/google/scopes";
+import { canConnectCalendars, type HouseholdPersona, type HouseholdRole } from "@/lib/permissions/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -21,13 +22,18 @@ export async function GET() {
 
   const { data: memberships } = await supabase
     .from("household_members")
-    .select("household_id, role")
+    .select("household_id, role, persona")
     .eq("user_id", user.id)
     .limit(1);
 
-  const membership = memberships?.[0];
+  const membership = memberships?.[0] as
+    | { household_id: string; role: HouseholdRole; persona: HouseholdPersona | null }
+    | undefined;
 
-  if (!membership || !["owner", "admin"].includes(membership.role as string)) {
+  if (
+    !membership ||
+    !canConnectCalendars(membership.role, membership.persona ?? undefined)
+  ) {
     return NextResponse.redirect(new URL("/settings?error=permission", process.env.NEXT_PUBLIC_SITE_URL));
   }
 

@@ -84,8 +84,8 @@ export default async function DashboardPage() {
   // —— Coordinator / care partner / other: full household board ——
   // Sync lives in the app footer (compact card), not on the dashboard.
   const [agenda, attention, setupStatus] = await Promise.all([
-    getTodayAgenda(membership.householdId, timeZone).catch(() => []),
-    getNeedsAttention(membership.householdId, timeZone).catch(() => []),
+    getTodayAgenda(membership.householdId, timeZone, user.id).catch(() => []),
+    getNeedsAttention(membership.householdId, timeZone, 6, user.id).catch(() => []),
     getHouseholdSetupStatus(membership.householdId).catch(() => ({
       complete: true,
       steps: [],

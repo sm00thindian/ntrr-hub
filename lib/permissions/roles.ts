@@ -98,6 +98,22 @@ export function canManageIntegrations(role: HouseholdRole): boolean {
   return r === "owner" || r === "admin";
 }
 
+/**
+ * Who may connect Google/Apple calendars for this household.
+ * Members and self-advocates (even as Viewer) manage their own connection;
+ * they mark each calendar household vs personal (ADR 0002).
+ */
+export function canConnectCalendars(
+  role: HouseholdRole,
+  persona?: HouseholdPersona | null,
+): boolean {
+  const r = normalizeHouseholdRole(role);
+  if (r === "owner" || r === "admin" || r === "member" || r === "caregiver") {
+    return true;
+  }
+  return persona === "self_advocate";
+}
+
 /** Future: default landing for self-advocates */
 export function prefersMyDayView(persona: HouseholdPersona): boolean {
   return persona === "self_advocate";

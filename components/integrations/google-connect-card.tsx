@@ -20,6 +20,8 @@ type GoogleConnectCardProps = {
   members?: CalendarColorMember[];
   memberColors?: Record<string, string>;
   calendarAssignments?: Record<string, GoogleCalendarAssignment>;
+  currentUserId: string;
+  canEditMemberColors?: boolean;
 };
 
 function statusLabel(integration: IntegrationAccount | null) {
@@ -49,6 +51,8 @@ export function GoogleConnectCard({
   members = [],
   memberColors = {},
   calendarAssignments = {},
+  currentUserId,
+  canEditMemberColors = true,
 }: GoogleConnectCardProps) {
   const [pending, startTransition] = useTransition();
   const connected = integration?.status === "connected";
@@ -59,8 +63,8 @@ export function GoogleConnectCard({
       <CardHeader>
         <CardTitle>Google</CardTitle>
         <CardDescription>
-          Calendar events for household context. Family tasks stay in Hub (not synced to Google
-          Tasks).
+          Connect <span className="font-medium text-foreground">your</span> Google calendars. Mark
+          each one shared with the household or personal. Hub tasks stay in Hub only.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -87,6 +91,8 @@ export function GoogleConnectCard({
             members={members}
             memberColors={memberColors}
             calendarAssignments={calendarAssignments}
+            currentUserId={currentUserId}
+            canEditMemberColors={canEditMemberColors}
           />
         ) : null}
 

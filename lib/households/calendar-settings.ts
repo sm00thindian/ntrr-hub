@@ -9,7 +9,10 @@ import {
   getGoogleCalendarSettings,
   getSelectedGoogleCalendarIds,
 } from "@/lib/integrations/google/calendars";
-import { getConnectedGoogleIntegrationAdmin } from "@/lib/integrations/queries";
+import {
+  getAllConnectedGoogleIntegrationsAdmin,
+  getConnectedGoogleIntegrationAdminForUser,
+} from "@/lib/integrations/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,10 +63,10 @@ export async function saveHouseholdCalendarSettings(
 export async function buildCalendarColorContext(
   householdId: string,
 ): Promise<CalendarColorContext> {
-  const [members, settings, googleAccount] = await Promise.all([
+  const [members, settings, googleAccounts] = await Promise.all([
     getHouseholdMembers(householdId),
     getHouseholdCalendarSettings(householdId),
-    getConnectedGoogleIntegrationAdmin(householdId),
+    getAllConnectedGoogleIntegrationsAdmin(householdId),
   ]);
 
   const colorMembers: CalendarColorMember[] = members.map((member) => ({
@@ -71,13 +74,13 @@ export async function buildCalendarColorContext(
     label: memberLabel(member.email, member.displayName),
   }));
 
-  const selectedCalendarIds = googleAccount
-    ? getSelectedGoogleCalendarIds(googleAccount)
-    : [];
+  const selectedCalendarIds = [
+    ...new Set(googleAccounts.flatMap((account) => getSelectedGoogleCalendarIds(account))),
+  ];
 
   const memberColors = defaultMemberColors(colorMembers, settings.memberColors);
   const defaultMemberUserId =
-    googleAccount?.createdBy ?? colorMembers[0]?.userId ?? "";
+    googleAccounts[0]?.createdBy ?? colorMembers[0]?.userId ?? "";
 
   const googleCalendars = defaultCalendarAssignments(
     selectedCalendarIds,
@@ -87,7 +90,7 @@ export async function buildCalendarColorContext(
   );
 
   const calendarNames: Record<string, string> = {};
-  if (googleAccount) {
+  for (const googleAccount of googleAccounts) {
     for (const calendar of googleAccount.metadata.google?.calendars ?? []) {
       calendarNames[calendar.id] = calendar.summary;
     }
@@ -102,15 +105,19 @@ export async function buildCalendarColorContext(
   };
 }
 
-export async function getGoogleCalendarSettingsForUi(householdId: string) {
-  const googleSettings = await getGoogleCalendarSettings(householdId);
+export async function getGoogleCalendarSettingsForUi(
+  householdId: string,
+  userId: string,
+) {
+  const googleSettings = await getGoogleCalendarSettings(householdId, userId);
   if (!googleSettings) {
     return null;
   }
 
-  const [members, settings] = await Promise.all([
+  const [members, settings, account] = await Promise.all([
     getHouseholdMembers(householdId),
     getHouseholdCalendarSettings(householdId),
+    getConnectedGoogleIntegrationAdminForUser(householdId, userId),
   ]);
 
   const colorMembers: CalendarColorMember[] = members.map((member) => ({
@@ -122,7 +129,7 @@ export async function getGoogleCalendarSettingsForUi(householdId: string) {
   const calendarAssignments = defaultCalendarAssignments(
     googleSettings.selectedCalendarIds,
     colorMembers,
-    googleSettings.connectedByUserId,
+    account?.createdBy ?? googleSettings.connectedByUserId,
     settings.googleCalendars,
   );
 

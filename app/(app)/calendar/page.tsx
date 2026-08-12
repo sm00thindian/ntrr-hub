@@ -17,18 +17,19 @@ import {
   parseCalendarView,
 } from "@/lib/calendar/views";
 import { toDayParam } from "@/lib/calendar/week";
-import {
-  filterCalendarTasksForMember,
-  filterEventsForMember,
-  isMyDayPersona,
-} from "@/lib/dashboard/my-day";
+import { filterCalendarTasksForMember, isMyDayPersona } from "@/lib/dashboard/my-day";
+import { filterEventsForViewer } from "@/lib/calendar/visibility";
 import {
   buildCalendarColorContext,
   getHouseholdCalendarSettings,
 } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
-import { getHouseholdIntegration } from "@/lib/integrations/queries";
-import { canManageIntegrations } from "@/lib/permissions/roles";
+import {
+  getAllConnectedAppleIntegrationsAdmin,
+  getAllConnectedGoogleIntegrationsAdmin,
+  getMemberIntegration,
+} from "@/lib/integrations/queries";
+import { canConnectCalendars, canManageIntegrations } from "@/lib/permissions/roles";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 type CalendarPageProps = {
@@ -49,20 +50,21 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const bounds = getCalendarBounds(view, anchor);
 
   const myDayMode = isMyDayPersona(ctx.persona);
+  const canConnect = canConnectCalendars(ctx.role, ctx.persona);
 
-  const [rawEvents, rawTasks, googleIntegration, appleIntegration, colorContext, calendarSettings] =
+  const [rawEvents, rawTasks, googleAccounts, appleAccounts, memberGoogle, colorContext, calendarSettings] =
     await Promise.all([
       getCalendarEventsForRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
-      getHouseholdIntegration(ctx.householdId, "google"),
-      getHouseholdIntegration(ctx.householdId, "apple_caldav"),
+      getAllConnectedGoogleIntegrationsAdmin(ctx.householdId),
+      getAllConnectedAppleIntegrationsAdmin(ctx.householdId),
+      getMemberIntegration(ctx.householdId, "google", ctx.userId),
       buildCalendarColorContext(ctx.householdId),
       getHouseholdCalendarSettings(ctx.householdId),
     ]);
 
-  const events = myDayMode
-    ? filterEventsForMember(rawEvents, ctx.userId, calendarSettings.googleCalendars)
-    : rawEvents;
+  // Household shared + this member's personal calendars only (ADR 0002)
+  const events = filterEventsForViewer(rawEvents, ctx.userId, calendarSettings);
   const tasks = myDayMode
     ? filterCalendarTasksForMember(rawTasks, ctx.userId)
     : rawTasks;
@@ -71,10 +73,14 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const dayParams = bounds.days.map((day) => toDayParam(day));
   const hasItems = events.length > 0 || tasks.length > 0;
-  const googleConnected = googleIntegration?.status === "connected";
-  const appleConnected = appleIntegration?.status === "connected";
+  const googleConnected = googleAccounts.length > 0;
+  const appleConnected = appleAccounts.length > 0;
   const hasIntegration = googleConnected || appleConnected;
-  const canSync = canManageIntegrations(ctx.role) && googleConnected && !myDayMode;
+  const canSync =
+    canConnect &&
+    (memberGoogle?.status === "connected" ||
+      canManageIntegrations(ctx.role)) &&
+    googleConnected;
   const emptyLabel = myDayMode
     ? view === "month"
       ? "Nothing on your calendar this month"
@@ -94,11 +100,11 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {myDayMode ? (
-        <p className="text-muted-foreground -mt-1 text-sm">
-          Showing only your appointments and tasks
-        </p>
-      ) : null}
+      <p className="text-muted-foreground -mt-1 text-sm">
+        {myDayMode
+          ? "Shared family calendars plus your personal calendars and tasks"
+          : "Shared household calendars plus your personal calendars — private calendars of others stay private"}
+      </p>
 
       <CalendarViewNav
         view={view}
@@ -148,10 +154,10 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             <CardTitle className="text-lg">{emptyLabel}</CardTitle>
             <CardDescription>
               {myDayMode
-                ? "When a care calendar is linked to you, or tasks are assigned to you, they appear here."
+                ? "Shared family calendars and your personal calendars or assigned tasks appear here. Connect calendars in Settings if needed."
                 : hasIntegration
-                  ? "Your calendars are connected. Run sync to pull the latest events and tasks from Google or Apple."
-                  : "Connect Google Calendar or Apple CalDAV in Settings, then run sync to see your family schedule here."}
+                  ? "Calendars are connected for the household. Run sync to pull the latest Google or Apple events."
+                  : "Connect your Google or Apple calendar in Settings (shared with household or personal)."}
             </CardDescription>
           </CardHeader>
           {!myDayMode ? (

@@ -1,10 +1,12 @@
 import { getCalendarEventsForRange } from "@/lib/calendar/queries";
+import { filterEventsForViewer } from "@/lib/calendar/visibility";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import {
   agendaSortTimeMs,
   getZonedDayBounds,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
+import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getHouseholdTasks } from "@/lib/tasks/queries";
 
 function isTaskActiveToday(
@@ -51,14 +53,20 @@ function compareAgendaItems(a: AgendaItem, b: AgendaItem) {
 export async function getTodayAgenda(
   householdId: string,
   timeZone?: string,
+  viewerUserId?: string,
 ): Promise<AgendaItem[]> {
   const zone = resolveHouseholdTimeZone(timeZone);
   const { start: rangeStart, end: rangeEnd } = getZonedDayBounds(zone);
 
-  const [tasks, events] = await Promise.all([
+  const [tasks, events, calendarSettings] = await Promise.all([
     getHouseholdTasks(householdId),
     getCalendarEventsForRange(householdId, rangeStart, rangeEnd),
+    getHouseholdCalendarSettings(householdId),
   ]);
+
+  const visibleEvents = viewerUserId
+    ? filterEventsForViewer(events, viewerUserId, calendarSettings)
+    : events;
 
   const taskItems: AgendaItem[] = tasks
     .filter((task) => isTaskActiveToday(task.dueAt, task.status, rangeStart, rangeEnd))
@@ -76,7 +84,7 @@ export async function getTodayAgenda(
       assigneePersona: task.assigneePersona,
     }));
 
-  const eventItems: AgendaItem[] = events.map((event) => ({
+  const eventItems: AgendaItem[] = visibleEvents.map((event) => ({
     id: `event-${event.id}`,
     kind: "event" as const,
     title: event.title,

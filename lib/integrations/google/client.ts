@@ -106,10 +106,7 @@ export async function connectGoogleAccount(params: {
         household_id: params.householdId,
         provider: "google",
         status: "connected",
-        scopes: [
-          "https://www.googleapis.com/auth/calendar",
-          "https://www.googleapis.com/auth/tasks",
-        ],
+        scopes: ["https://www.googleapis.com/auth/calendar"],
         metadata: {
           tokens: encryptJson(tokens),
           google: {},
@@ -117,7 +114,7 @@ export async function connectGoogleAccount(params: {
         created_by: params.userId,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "household_id,provider" },
+      { onConflict: "household_id,provider,created_by" },
     )
     .select("id, household_id, provider, status, scopes, metadata, created_at, updated_at")
     .single();

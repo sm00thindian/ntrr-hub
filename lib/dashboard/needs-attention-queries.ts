@@ -1,10 +1,12 @@
 import { getCalendarEventsForRange } from "@/lib/calendar/queries";
+import { filterEventsForViewer } from "@/lib/calendar/visibility";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import {
   rankNeedsAttention,
   type NeedsAttentionItem,
 } from "@/lib/dashboard/needs-attention";
 import { getZonedDayBounds, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
+import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 import { getHouseholdTasks } from "@/lib/tasks/queries";
 
@@ -12,17 +14,23 @@ export async function getNeedsAttention(
   householdId: string,
   timeZone?: string,
   limit = 6,
+  viewerUserId?: string,
 ): Promise<NeedsAttentionItem[]> {
   const zone = resolveHouseholdTimeZone(timeZone);
   const { start: rangeStart, end: rangeEnd } = getZonedDayBounds(zone);
 
-  const [tasks, events, conflictCount] = await Promise.all([
+  const [tasks, events, conflictCount, calendarSettings] = await Promise.all([
     getHouseholdTasks(householdId),
     getCalendarEventsForRange(householdId, rangeStart, rangeEnd),
     getPendingConflictCount(householdId),
+    getHouseholdCalendarSettings(householdId),
   ]);
 
-  const eventItems: AgendaItem[] = events.map((event) => ({
+  const visibleEvents = viewerUserId
+    ? filterEventsForViewer(events, viewerUserId, calendarSettings)
+    : events;
+
+  const eventItems: AgendaItem[] = visibleEvents.map((event) => ({
     id: `event-${event.id}`,
     kind: "event" as const,
     title: event.title,

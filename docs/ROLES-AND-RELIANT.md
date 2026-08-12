@@ -41,8 +41,8 @@ When `persona === self_advocate`:
 |---------|----------|
 | **Dashboard** | **My day** only: tasks assigned to them + events from calendars assigned to them; Reliant chips; no setup/sync/household admin |
 | **Tasks** | Default **Mine**; hide All/Unassigned; no recurring templates UI; new tasks default-assign to self |
-| **Calendar** | Filtered to their calendars + their due tasks; no sync/connect CTAs |
-| **Settings** | Phone + timezone display only (integrations stay coordinator) |
+| **Calendar** | Shared household calendars + their personal calendars + their due tasks ([ADR 0002](./adr/0002-calendar-visibility-member-integrations.md)) |
+| **Settings** | Phone, profile, and optional own Google/Apple (household vs personal visibility) |
 | **Nav** | Labels: My day · My tasks · Calendar · Family · Settings |
 
 Coordinator / care_partner / other keep the full family board.
