@@ -155,34 +155,37 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
         recurring_template_id?: string | null;
       } | null;
 
-      if (
-        local &&
-        mapping.external_etag &&
-        item.etag &&
-        mapping.external_etag !== item.etag &&
-        new Date(local.updated_at).getTime() > new Date(item.updated ?? 0).getTime()
-      ) {
-        if (local.title !== title) {
-          await recordSyncConflict({
-            householdId,
-            provider: "google",
-            entityType: "task",
-            entityId: mapping.ntrr_id,
-            fieldName: "title",
-            localValue: local.title,
-            remoteValue: title,
-          });
-        }
-        if (local.status !== status) {
-          await recordSyncConflict({
-            householdId,
-            provider: "google",
-            entityType: "task",
-            entityId: mapping.ntrr_id,
-            fieldName: "status",
-            localValue: local.status,
-            remoteValue: status,
-          });
+      const remoteUpdatedMs = item.updated ? new Date(item.updated).getTime() : 0;
+      const localUpdatedMs = local ? new Date(local.updated_at).getTime() : 0;
+      // Hub won: do not let a slower Google pull undo a local Done (common race after complete).
+      if (local && localUpdatedMs > remoteUpdatedMs) {
+        if (
+          mapping.external_etag &&
+          item.etag &&
+          mapping.external_etag !== item.etag
+        ) {
+          if (local.title !== title) {
+            await recordSyncConflict({
+              householdId,
+              provider: "google",
+              entityType: "task",
+              entityId: mapping.ntrr_id,
+              fieldName: "title",
+              localValue: local.title,
+              remoteValue: title,
+            });
+          }
+          if (local.status !== status) {
+            await recordSyncConflict({
+              householdId,
+              provider: "google",
+              entityType: "task",
+              entityId: mapping.ntrr_id,
+              fieldName: "status",
+              localValue: local.status,
+              remoteValue: status,
+            });
+          }
         }
         continue;
       }

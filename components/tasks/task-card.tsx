@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 type TaskCardProps = {
   task: Task;
   canEdit: boolean;
+  /** Done/reopen only (e.g. self-advocate viewer on own tasks). Defaults to canEdit. */
+  canComplete?: boolean;
   compact?: boolean;
   timeZone?: string;
   timeZoneLabel?: string;
@@ -39,6 +41,7 @@ function formatDue(dueAt: string | null, timeZone: string) {
 export function TaskCard({
   task,
   canEdit,
+  canComplete,
   compact,
   timeZone,
   timeZoneLabel = "Household timezone",
@@ -54,6 +57,7 @@ export function TaskCard({
   const assigneeLabel = task.assigneeLabel ?? assigneeFromMembers.label;
   const assigneePersona = task.assigneePersona ?? assigneeFromMembers.persona;
   const assigneeEmail = task.assigneeEmail ?? assigneeFromMembers.email;
+  const allowComplete = canComplete ?? canEdit;
 
   function runAction(action: () => Promise<{ error?: string; success?: boolean } | void>) {
     startTransition(async () => {
@@ -123,17 +127,19 @@ export function TaskCard({
           {task.recurringTemplateId ? <span>Recurring</span> : null}
         </div>
 
-        {canEdit ? (
+        {allowComplete || canEdit ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            <TaskDoneControl
-              title={task.title}
-              done={isDone}
-              pending={pending}
-              size="default"
-              onMarkDone={() => runAction(() => updateTaskStatus(task.id, "done"))}
-              onReopen={() => runAction(() => updateTaskStatus(task.id, "todo"))}
-            />
-            {task.status === "todo" ? (
+            {allowComplete ? (
+              <TaskDoneControl
+                title={task.title}
+                done={isDone}
+                pending={pending}
+                size="default"
+                onMarkDone={() => runAction(() => updateTaskStatus(task.id, "done"))}
+                onReopen={() => runAction(() => updateTaskStatus(task.id, "todo"))}
+              />
+            ) : null}
+            {canEdit && task.status === "todo" ? (
               <Button
                 type="button"
                 size="sm"
@@ -144,7 +150,7 @@ export function TaskCard({
                 Start
               </Button>
             ) : null}
-            {members.length ? (
+            {canEdit && members.length ? (
               <Button
                 type="button"
                 size="sm"
@@ -157,43 +163,45 @@ export function TaskCard({
               </Button>
             ) : null}
 
-            {confirmDelete ? (
-              <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
-                <span className="text-destructive text-xs font-medium">Delete this task?</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="destructive"
-                  disabled={pending}
-                  onClick={() => {
-                    setConfirmDelete(false);
-                    runAction(() => deleteTask(task.id));
-                  }}
-                >
-                  Delete
-                </Button>
+            {canEdit ? (
+              confirmDelete ? (
+                <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
+                  <span className="text-destructive text-xs font-medium">Delete this task?</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    disabled={pending}
+                    onClick={() => {
+                      setConfirmDelete(false);
+                      runAction(() => deleteTask(task.id));
+                    }}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
                   disabled={pending}
-                  onClick={() => setConfirmDelete(false)}
+                  onClick={() => setConfirmDelete(true)}
+                  aria-label={`Delete ${task.title}`}
                 >
-                  Cancel
+                  <Trash2 className="h-4 w-4" />
                 </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={pending}
-                onClick={() => setConfirmDelete(true)}
-                aria-label={`Delete ${task.title}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+              )
+            ) : null}
           </div>
         ) : null}
       </article>
@@ -217,6 +225,7 @@ export function KanbanColumn({
   status,
   tasks,
   canEdit,
+  canComplete,
   timeZone,
   timeZoneLabel,
   members,
@@ -226,6 +235,7 @@ export function KanbanColumn({
   status: TaskStatus;
   tasks: Task[];
   canEdit: boolean;
+  canComplete?: boolean;
   timeZone?: string;
   timeZoneLabel?: string;
   members?: HouseholdMember[];
@@ -245,6 +255,7 @@ export function KanbanColumn({
             <TaskCard
               task={task}
               canEdit={canEdit}
+              canComplete={canComplete}
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
               members={members}

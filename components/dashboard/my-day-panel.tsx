@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Circle } from "lucide-react";
@@ -62,10 +62,22 @@ export function MyDayPanel({
   const zone = resolveHouseholdTimeZone(timeZone);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
   const nowMs = Date.now();
 
-  const openCount = items.filter((i) => i.kind === "task" && i.status !== "done").length;
-  const doneCount = items.filter((i) => i.kind === "task" && i.status === "done").length;
+  const openCount = items.filter(
+    (i) => i.kind === "task" && i.status !== "done" && !(i.entityId && justDoneIds.has(i.entityId)),
+  ).length;
+  const doneCount =
+    items.filter((i) => i.kind === "task" && i.status === "done").length +
+    items.filter(
+      (i) =>
+        i.kind === "task" &&
+        i.status !== "done" &&
+        i.entityId &&
+        justDoneIds.has(i.entityId),
+    ).length;
 
   return (
     <div className="space-y-4">
@@ -98,7 +110,10 @@ export function MyDayPanel({
             <ul className="space-y-1">
               {items.map((item) => {
                 const isTask = item.kind === "task";
-                const isDone = isTask && item.status === "done";
+                const isDone =
+                  isTask &&
+                  (item.status === "done" ||
+                    Boolean(item.entityId && justDoneIds.has(item.entityId)));
                 const overdue =
                   isTask &&
                   !isDone &&
@@ -174,15 +189,36 @@ export function MyDayPanel({
                         className="mt-0.5"
                         onMarkDone={() => {
                           const taskId = item.entityId!;
+                          setActionError(null);
+                          setJustDoneIds((prev) => new Set(prev).add(taskId));
                           startTransition(async () => {
-                            await updateTaskStatus(taskId, "done");
+                            const result = await updateTaskStatus(taskId, "done");
+                            if (result?.error) {
+                              setJustDoneIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(taskId);
+                                return next;
+                              });
+                              setActionError(result.error);
+                              return;
+                            }
                             router.refresh();
                           });
                         }}
                         onReopen={() => {
                           const taskId = item.entityId!;
+                          setActionError(null);
+                          setJustDoneIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(taskId);
+                            return next;
+                          });
                           startTransition(async () => {
-                            await updateTaskStatus(taskId, "todo");
+                            const result = await updateTaskStatus(taskId, "todo");
+                            if (result?.error) {
+                              setActionError(result.error);
+                              return;
+                            }
                             router.refresh();
                           });
                         }}
@@ -198,6 +234,11 @@ export function MyDayPanel({
               it will show up here.
             </p>
           )}
+          {actionError ? (
+            <p className="text-destructive mt-3 text-sm" role="alert">
+              {actionError}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

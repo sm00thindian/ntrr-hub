@@ -30,6 +30,8 @@ type TaskBoardProps = {
   templates: RecurringTaskTemplate[];
   members: HouseholdMember[];
   canEdit: boolean;
+  /** Done/reopen without full edit (self-advocate). Defaults to canEdit. */
+  canComplete?: boolean;
   timeZone: string;
   timeZoneLabel: string;
   /** Self-advocate: default Mine, simpler filters, no household templates */
@@ -61,10 +63,12 @@ export function TaskBoard({
   templates,
   members,
   canEdit,
+  canComplete,
   timeZone,
   timeZoneLabel,
   myDayMode = false,
 }: TaskBoardProps) {
+  const allowComplete = canComplete ?? canEdit;
   const router = useRouter();
   const [view, setView] = useState<"kanban" | "list">("list");
   const [filter, setFilter] = useState<TaskFilter>(myDayMode ? "mine" : "all");
@@ -258,6 +262,7 @@ export function TaskBoard({
               status={status}
               tasks={displayTasks}
               canEdit={canEdit}
+              canComplete={allowComplete}
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
               members={members}
@@ -272,6 +277,7 @@ export function TaskBoard({
               <TaskCard
                 task={task}
                 canEdit={canEdit}
+                canComplete={allowComplete}
                 timeZone={timeZone}
                 timeZoneLabel={timeZoneLabel}
                 members={members}

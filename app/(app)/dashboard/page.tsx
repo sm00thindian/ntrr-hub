@@ -15,7 +15,7 @@ import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings
 import { getUserMembership } from "@/lib/households/queries";
 import { getHouseholdSetupStatus } from "@/lib/households/setup";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
-import { canEditTasks } from "@/lib/permissions/roles";
+import { canCompleteOwnOrEditTasks, canEditTasks } from "@/lib/permissions/roles";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -62,7 +62,7 @@ export default async function DashboardPage() {
 
   const calendarSettings = await getHouseholdCalendarSettings(membership.householdId);
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
-  const canComplete = canEditTasks(membership.role);
+  const canComplete = canCompleteOwnOrEditTasks(membership.role, membership.persona);
   const myDay = isMyDayPersona(membership.persona);
 
   // —— Self-advocate: My day only ——

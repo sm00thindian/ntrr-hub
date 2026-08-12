@@ -9,11 +9,14 @@ import {
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import { isMyDayPersona } from "@/lib/dashboard/my-day";
+import { canCompleteOwnOrEditTasks, canEditTasks } from "@/lib/permissions/roles";
 import { getHouseholdTasks, getRecurringTemplates } from "@/lib/tasks/queries";
 
 export default async function TasksPage() {
   const ctx = await requireHouseholdContext();
-  const canEdit = ctx.role !== "viewer";
+  const canEdit = canEditTasks(ctx.role);
+  /** Self-advocates can complete own assigned tasks even as viewers */
+  const canComplete = canCompleteOwnOrEditTasks(ctx.role, ctx.persona);
   const myDayMode = isMyDayPersona(ctx.persona);
 
   const [tasks, templates, members, calendarSettings] = await Promise.all([
@@ -52,6 +55,7 @@ export default async function TasksPage() {
         templates={templates}
         members={members}
         canEdit={canEdit}
+        canComplete={canComplete}
         timeZone={timeZone}
         timeZoneLabel={timeZoneLabel}
         myDayMode={myDayMode}

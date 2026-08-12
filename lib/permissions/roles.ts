@@ -68,10 +68,24 @@ export function normalizeHouseholdRole(role: HouseholdRole | string): HouseholdR
   return "member";
 }
 
-/** Can edit tasks, complete work, participate fully (not viewer-only) */
+/** Can create/edit/delete household tasks (not viewer-only) */
 export function canEditTasks(role: HouseholdRole): boolean {
   const r = normalizeHouseholdRole(role);
   return r === "owner" || r === "admin" || r === "member" || r === "caregiver";
+}
+
+/**
+ * My day / board: show complete controls when the member can edit tasks,
+ * or when they are a self-advocate (may complete own assigned work as viewer).
+ */
+export function canCompleteOwnOrEditTasks(
+  role: HouseholdRole,
+  persona?: HouseholdPersona | null,
+): boolean {
+  if (canEditTasks(role)) {
+    return true;
+  }
+  return persona === "self_advocate";
 }
 
 export function canManageMembers(role: HouseholdRole): boolean {

@@ -90,50 +90,77 @@ export async function createTask(formData: FormData) {
 
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const ctx = await requireHouseholdContext();
-
-  if (!canEditTasks(ctx.role)) {
-    return { error: "You do not have permission to update tasks." };
-  }
-
   const supabase = await createClient();
 
-  const { data: existing } = await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from("tasks")
-    .select("id, title, description, status, due_at")
+    .select("id, title, description, status, due_at, assignee_id")
     .eq("id", taskId)
     .eq("household_id", ctx.householdId)
     .maybeSingle();
 
-  const { error } = await supabase
+  if (fetchError || !existing) {
+    return { error: fetchError?.message ?? "Task not found." };
+  }
+
+  const row = existing as {
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    due_at: string | null;
+    assignee_id: string | null;
+  };
+
+  const isAssignee = row.assignee_id === ctx.userId;
+  // Editors can update any task; assignees (incl. self-advocate viewers) can complete their own.
+  if (!canEditTasks(ctx.role) && !isAssignee) {
+    return { error: "You do not have permission to update this task." };
+  }
+
+  if (!canEditTasks(ctx.role) && isAssignee && status !== "done" && status !== "todo") {
+    return { error: "You can mark your tasks done or reopen them." };
+  }
+
+  const { data: updated, error } = await supabase
     .from("tasks")
     .update({
       status,
       provenance: defaultProvenance(),
     })
     .eq("id", taskId)
-    .eq("household_id", ctx.householdId);
+    .eq("household_id", ctx.householdId)
+    .select("id, status")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
   }
 
-  if (existing) {
-    await enqueueGoogleTaskSync({
-      householdId: ctx.householdId,
-      taskId,
-      operation: "update",
-      payload: {
-        title: existing.title,
-        description: existing.description,
-        status,
-        dueAt: existing.due_at,
-      },
-    });
+  // RLS can fail "softly" (0 rows) — never report success unless we see the row.
+  if (!updated) {
+    return {
+      error:
+        "Could not update this task. If you are a self-advocate, ask a coordinator to set your access to Member, or ensure the task is assigned to you.",
+    };
   }
+
+  await enqueueGoogleTaskSync({
+    householdId: ctx.householdId,
+    taskId,
+    operation: "update",
+    payload: {
+      title: row.title,
+      description: row.description,
+      status,
+      dueAt: row.due_at,
+    },
+  });
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
-  return { success: true };
+  revalidatePath("/calendar");
+  return { success: true as const };
 }
 
 /** Full edit: title, notes, assignee, due, Reliant flag (not status — use updateTaskStatus). */
