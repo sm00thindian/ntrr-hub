@@ -11,6 +11,7 @@ import {
   updateMemberPersona,
   updateMemberRole,
 } from "@/lib/households/member-actions";
+import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
 import { MicroFieldHelp } from "@/components/ui/field-help";
 import {
@@ -61,7 +62,7 @@ export function MemberList({ members, currentUserId, currentUserRole }: MemberLi
               >
                 <div className="min-w-0 space-y-1">
                   <p className="truncate font-medium">
-                    {member.displayName ?? member.email}
+                    {memberDisplayLabel(member.email, member.displayName)}
                     {isSelf ? <span className="text-muted-foreground"> (you)</span> : null}
                     {member.isFocusPerson ? (
                       <span className="text-brand ml-2 text-xs font-medium">Focus</span>

@@ -1,3 +1,4 @@
+import { humanizeEmailLocalPart } from "@/lib/households/member-label";
 import { cn } from "@/lib/utils";
 import {
   HOUSEHOLD_PERSONA_HINTS,
@@ -100,6 +101,9 @@ export function AssigneeChip({
     );
   }
 
+  // Never show a raw email as the chip text
+  const displayLabel = label.includes("@") ? humanizeEmailLocalPart(label) : label;
+
   const personaKey = (persona && persona in HOUSEHOLD_PERSONA_LABELS
     ? persona
     : null) as HouseholdPersona | null;
@@ -109,7 +113,7 @@ export function AssigneeChip({
 
   return (
     <span
-      title={titleParts.length ? titleParts.join(" · ") : label}
+      title={titleParts.length ? titleParts.join(" · ") : displayLabel}
       className={cn(
         "inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground",
         personaKey === "self_advocate" &&
@@ -119,7 +123,7 @@ export function AssigneeChip({
         className,
       )}
     >
-      <span className="truncate">{label}</span>
+      <span className="truncate">{displayLabel}</span>
       {personaKey ? (
         <span className="text-[10px] font-normal opacity-80">
           · {HOUSEHOLD_PERSONA_LABELS[personaKey]}

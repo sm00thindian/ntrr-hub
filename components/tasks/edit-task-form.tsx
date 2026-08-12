@@ -7,6 +7,7 @@ import { DueDateTimeField } from "@/components/tasks/due-datetime-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
 import { updateTask } from "@/lib/tasks/actions";
 import type { Task } from "@/lib/tasks/types";
@@ -108,7 +109,7 @@ export function EditTaskForm({
               <option value="">Unassigned</option>
               {members.map((member) => (
                 <option key={member.userId} value={member.userId}>
-                  {member.displayName ?? member.email}
+                  {memberDisplayLabel(member.email, member.displayName)}
                 </option>
               ))}
             </select>

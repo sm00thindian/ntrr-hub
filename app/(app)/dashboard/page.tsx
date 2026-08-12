@@ -110,30 +110,26 @@ export default async function DashboardPage() {
       <SetupChecklist status={setupStatus} />
 
       {/*
-        Layout:
-        - Top: Today's agenda (left) | Needs attention (top right)
-        - Below agenda: Sync status | AI insights
+        Caregiver / coordinator board:
+        1. Needs attention (priority, top)
+        2. Today's agenda
+        3. Sync status | AI insights
       */}
-      <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:col-span-2">
-          <DayAgenda items={agenda} timeZone={timeZone} />
-          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-            <SyncStatusPanel
-              householdId={membership.householdId}
-              status={syncStatus}
-              canSync={canSync}
-              timeZone={timeZone}
-            />
-            <AiHighlightsPanel householdId={membership.householdId} />
-          </div>
-        </div>
-
-        <div className="min-w-0 lg:col-span-1">
-          <NeedsAttentionPanel
-            items={attention}
+      <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
+        <NeedsAttentionPanel
+          items={attention}
+          timeZone={timeZone}
+          canCompleteTasks={canComplete}
+        />
+        <DayAgenda items={agenda} timeZone={timeZone} />
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+          <SyncStatusPanel
+            householdId={membership.householdId}
+            status={syncStatus}
+            canSync={canSync}
             timeZone={timeZone}
-            canCompleteTasks={canComplete}
           />
+          <AiHighlightsPanel householdId={membership.householdId} />
         </div>
       </div>
     </div>

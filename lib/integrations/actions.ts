@@ -18,6 +18,7 @@ import {
   getHouseholdCalendarSettings,
   saveHouseholdCalendarSettings,
 } from "@/lib/households/calendar-settings";
+import { memberDisplayLabel } from "@/lib/households/member-label";
 import { getHouseholdMembers } from "@/lib/households/queries";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { canManageIntegrations } from "@/lib/permissions/roles";
@@ -155,7 +156,7 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
   const members = await getHouseholdMembers(ctx.householdId);
   const colorMembers = members.map((member) => ({
     userId: member.userId,
-    label: member.displayName?.trim() || member.email.split("@")[0] || member.email,
+    label: memberDisplayLabel(member.email, member.displayName),
   }));
 
   const memberColors = defaultMemberColors(colorMembers, input.memberColors);

@@ -1,18 +1,80 @@
 import type { HouseholdPersona } from "@/lib/permissions/roles";
 
-/** Short, human label for a household member (display name, else local-part of email). */
+/**
+ * Turn an email local-part into a readable name when no display_name is set.
+ * e.g. jane.doe+tag@example.com → "Jane Doe"
+ * Never returns a full email address.
+ */
+export function humanizeEmailLocalPart(email: string): string {
+  const local = (email.split("@")[0] ?? "").trim();
+  if (!local) {
+    return "Member";
+  }
+
+  const base = (local.split("+")[0] ?? local).replace(/[._-]+/g, " ").trim();
+  if (!base) {
+    return "Member";
+  }
+
+  return base
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/**
+ * Short, human label for a household member.
+ * Prefer display name; otherwise a humanized email local-part — never full email.
+ */
 export function memberDisplayLabel(
   email: string | null | undefined,
   displayName?: string | null,
 ): string {
-  if (displayName?.trim()) {
-    return displayName.trim();
+  const name = displayName?.trim();
+  if (name) {
+    // Guard: never surface a raw email as the "name"
+    return name.includes("@") ? humanizeEmailLocalPart(name) : name;
   }
   if (!email) {
     return "Unknown";
   }
-  const local = email.split("@")[0]?.trim();
-  return local || email;
+  return humanizeEmailLocalPart(email);
+}
+
+/** Name from auth provider metadata (Google, etc.). */
+export function displayNameFromAuthMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!metadata) {
+    return null;
+  }
+
+  const fullName = pickString(metadata, ["full_name", "name", "display_name"]);
+  if (fullName) {
+    return fullName;
+  }
+
+  const given = pickString(metadata, ["given_name", "first_name"]);
+  const family = pickString(metadata, ["family_name", "last_name"]);
+  if (given && family) {
+    return `${given} ${family}`;
+  }
+  if (given) {
+    return given;
+  }
+
+  return null;
+}
+
+function pickString(obj: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
 }
 
 export type AssigneeDisplay = {

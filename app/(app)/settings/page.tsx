@@ -12,7 +12,7 @@ import {
 } from "@/lib/households/calendar-settings";
 import { getHouseholdIntegration } from "@/lib/integrations/queries";
 import { canManageIntegrations } from "@/lib/permissions/roles";
-import { getProfilePhone } from "@/lib/profiles/actions";
+import { getProfileDisplayName, getProfilePhone } from "@/lib/profiles/actions";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 // Deferred Settings cards (do not show for dogfood):
@@ -47,12 +47,14 @@ export default async function SettingsPage({
   const params = await searchParams;
   const feedback = feedbackFromSearchParams(params);
 
-  const [googleIntegration, appleIntegration, calendarSettings, phoneE164] = await Promise.all([
-    canManage ? getHouseholdIntegration(ctx.householdId, "google") : null,
-    canManage ? getHouseholdIntegration(ctx.householdId, "apple_caldav") : null,
-    getHouseholdCalendarSettings(ctx.householdId),
-    getProfilePhone(ctx.userId),
-  ]);
+  const [googleIntegration, appleIntegration, calendarSettings, phoneE164, displayName] =
+    await Promise.all([
+      canManage ? getHouseholdIntegration(ctx.householdId, "google") : null,
+      canManage ? getHouseholdIntegration(ctx.householdId, "apple_caldav") : null,
+      getHouseholdCalendarSettings(ctx.householdId),
+      getProfilePhone(ctx.userId),
+      getProfileDisplayName(ctx.userId),
+    ]);
 
   let googleCalendarSettings: Awaited<ReturnType<typeof getGoogleCalendarSettingsForUi>> = null;
   if (canManage && googleIntegration?.status === "connected") {
@@ -77,7 +79,7 @@ export default async function SettingsPage({
           </p>
         </div>
         <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-          <PhoneProfileCard phoneE164={phoneE164} />
+          <PhoneProfileCard phoneE164={phoneE164} displayName={displayName} />
           <HouseholdTimezoneCard
             canManage={false}
             timezone={timeZone}
@@ -111,7 +113,7 @@ export default async function SettingsPage({
           timezoneConfirmed={timezoneConfirmed}
         />
 
-        <PhoneProfileCard phoneE164={phoneE164} />
+        <PhoneProfileCard phoneE164={phoneE164} displayName={displayName} />
 
         <NtrrServicesCard />
 
