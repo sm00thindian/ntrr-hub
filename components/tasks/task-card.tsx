@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Calendar, Check, Pencil, Trash2, User } from "lucide-react";
+import { Calendar, Pencil, Trash2, User } from "lucide-react";
 
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import { EditTaskForm } from "@/components/tasks/edit-task-form";
+import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import {
   formatDateTimeInZone,
@@ -61,6 +62,8 @@ export function TaskCard({
     });
   }
 
+  const isDone = task.status === "done";
+
   return (
     <>
       <article
@@ -68,19 +71,34 @@ export function TaskCard({
           "rounded-lg border bg-card p-3 shadow-sm",
           pending && "opacity-60",
           compact && "p-2.5",
+          isDone && "border-brand/25 bg-brand/5",
         )}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <h3 className="font-medium leading-snug">{task.title}</h3>
+            <h3
+              className={cn(
+                "font-medium leading-snug",
+                isDone && "text-muted-foreground line-through decoration-brand/40",
+              )}
+            >
+              {task.title}
+            </h3>
             {task.description ? (
               <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
             ) : null}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
             <SourceChip source={task.provenance.source} />
-            {task.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
+            {task.reliantConfirmRequested && !isDone ? <ReliantConfirmChip /> : null}
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
+                isDone
+                  ? "bg-brand/15 text-brand"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
               {TASK_STATUS_LABELS[task.status]}
             </span>
           </div>
@@ -107,28 +125,14 @@ export function TaskCard({
 
         {canEdit ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {task.status !== "done" ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => runAction(() => updateTaskStatus(task.id, "done"))}
-              >
-                <Check className="h-4 w-4" />
-                Done
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => runAction(() => updateTaskStatus(task.id, "todo"))}
-              >
-                Reopen
-              </Button>
-            )}
+            <TaskDoneControl
+              title={task.title}
+              done={isDone}
+              pending={pending}
+              size="default"
+              onMarkDone={() => runAction(() => updateTaskStatus(task.id, "done"))}
+              onReopen={() => runAction(() => updateTaskStatus(task.id, "todo"))}
+            />
             {task.status === "todo" ? (
               <Button
                 type="button"

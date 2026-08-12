@@ -1,5 +1,12 @@
 import { GoogleApiError, googleFetch } from "@/lib/integrations/google/client";
 import type { IntegrationAccount } from "@/lib/integrations/types";
+import {
+  provenanceAfterInboundUpdate,
+  provenanceAfterOutboundMirror,
+  provenanceFromRemoteImport,
+  taskLooksHubOriginated,
+  type Provenance,
+} from "@/lib/provenance/types";
 import { recordSyncConflict } from "@/lib/sync/conflict";
 import {
   googleDueToIso,
@@ -44,16 +51,6 @@ async function getDefaultTaskListId(account: IntegrationAccount) {
     .eq("id", account.id);
 
   return listId;
-}
-
-function syncProvenance(task: GoogleTask) {
-  return {
-    source: "google" as const,
-    externalId: task.id,
-    syncedAt: new Date().toISOString(),
-    confidence: "high" as const,
-    lastModifiedBy: "sync" as const,
-  };
 }
 
 export async function pullGoogleTasks(account: IntegrationAccount) {
@@ -113,9 +110,21 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
 
     if (item.status === "deleted") {
       if (mapping?.ntrr_id) {
+        const { data: localTask } = await admin
+          .from("tasks")
+          .select("provenance")
+          .eq("id", mapping.ntrr_id)
+          .maybeSingle();
+        const existing = (localTask as { provenance?: Provenance } | null)?.provenance;
         await admin
           .from("tasks")
-          .update({ status: "cancelled", provenance: syncProvenance(item) })
+          .update({
+            status: "cancelled",
+            provenance: provenanceAfterInboundUpdate(existing, {
+              externalId: item.id,
+              remoteSource: "google",
+            }),
+          })
           .eq("id", mapping.ntrr_id);
       }
       continue;
@@ -129,41 +138,62 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
     if (mapping?.ntrr_id) {
       const { data: localTask } = await admin
         .from("tasks")
-        .select("title, status, due_at, updated_at")
+        .select(
+          "title, status, due_at, updated_at, provenance, assignee_id, reliant_confirm_requested, recurring_template_id",
+        )
         .eq("id", mapping.ntrr_id)
         .maybeSingle();
 
+      const local = localTask as {
+        title: string;
+        status: string;
+        due_at: string | null;
+        updated_at: string;
+        provenance?: Provenance;
+        assignee_id?: string | null;
+        reliant_confirm_requested?: boolean | null;
+        recurring_template_id?: string | null;
+      } | null;
+
       if (
-        localTask &&
+        local &&
         mapping.external_etag &&
         item.etag &&
         mapping.external_etag !== item.etag &&
-        new Date(localTask.updated_at).getTime() > new Date(item.updated ?? 0).getTime()
+        new Date(local.updated_at).getTime() > new Date(item.updated ?? 0).getTime()
       ) {
-        if (localTask.title !== title) {
+        if (local.title !== title) {
           await recordSyncConflict({
             householdId,
             provider: "google",
             entityType: "task",
             entityId: mapping.ntrr_id,
             fieldName: "title",
-            localValue: localTask.title,
+            localValue: local.title,
             remoteValue: title,
           });
         }
-        if (localTask.status !== status) {
+        if (local.status !== status) {
           await recordSyncConflict({
             householdId,
             provider: "google",
             entityType: "task",
             entityId: mapping.ntrr_id,
             fieldName: "status",
-            localValue: localTask.status,
+            localValue: local.status,
             remoteValue: status,
           });
         }
         continue;
       }
+
+      const existing = local?.provenance;
+      const preferNtrrOrigin = taskLooksHubOriginated({
+        provenance: existing,
+        assignee_id: local?.assignee_id,
+        reliant_confirm_requested: local?.reliant_confirm_requested,
+        recurring_template_id: local?.recurring_template_id,
+      });
 
       await admin
         .from("tasks")
@@ -172,7 +202,11 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
           description: item.notes ?? null,
           status,
           due_at: dueAt,
-          provenance: syncProvenance(item),
+          provenance: provenanceAfterInboundUpdate(existing, {
+            externalId: item.id,
+            remoteSource: "google",
+            preferNtrrOrigin,
+          }),
         })
         .eq("id", mapping.ntrr_id);
 
@@ -196,7 +230,7 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
           description: item.notes ?? null,
           status,
           due_at: dueAt,
-          provenance: syncProvenance(item),
+          provenance: provenanceFromRemoteImport("google", item.id),
           created_by: createdBy,
         })
         .select("id")
@@ -310,6 +344,27 @@ export async function pushGoogleTask(
           external_updated_at: updated.updated ? new Date(updated.updated).toISOString() : null,
         })
         .eq("id", mapping.id);
+
+      // Hub edits push outbound — restore origin chip if a past bug rewrote it to Google.
+      const { data: localTask } = await admin
+        .from("tasks")
+        .select("provenance, assignee_id, reliant_confirm_requested, recurring_template_id")
+        .eq("id", entry.entityId)
+        .maybeSingle();
+      const row = localTask as {
+        provenance?: Provenance;
+        assignee_id?: string | null;
+        reliant_confirm_requested?: boolean | null;
+        recurring_template_id?: string | null;
+      } | null;
+      if (row) {
+        await admin
+          .from("tasks")
+          .update({
+            provenance: provenanceAfterOutboundMirror(row.provenance, mapping.external_id),
+          })
+          .eq("id", entry.entityId);
+      }
     } catch (error) {
       if (error instanceof GoogleApiError && (error.status === 412 || error.status === 409)) {
         await recordSyncConflict({
@@ -355,16 +410,18 @@ export async function pushGoogleTask(
     { onConflict: "household_id,provider,entity_type,ntrr_id" },
   );
 
+  // Keep Hub origin for family-created tasks; only attach Google external id.
+  const { data: localTask } = await admin
+    .from("tasks")
+    .select("provenance")
+    .eq("id", entry.entityId)
+    .maybeSingle();
+  const existing = (localTask as { provenance?: Provenance } | null)?.provenance;
+
   await admin
     .from("tasks")
     .update({
-      provenance: {
-        source: "google",
-        externalId: created.id,
-        syncedAt: new Date().toISOString(),
-        confidence: "high",
-        lastModifiedBy: "sync",
-      },
+      provenance: provenanceAfterOutboundMirror(existing, created.id),
     })
     .eq("id", entry.entityId);
 }

@@ -3,9 +3,9 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
 
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
+import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -118,24 +118,19 @@ export function NeedsAttentionPanel({
                   item.entityId &&
                   item.status !== "done" &&
                   item.reason !== "conflict" ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="mt-0.5 shrink-0"
-                      disabled={pending}
-                      aria-label={`Mark ${item.title} done`}
-                      onClick={() => {
+                    <TaskDoneControl
+                      title={item.title}
+                      done={false}
+                      pending={pending}
+                      className="mt-0.5"
+                      onMarkDone={() => {
                         const taskId = item.entityId!;
                         startTransition(async () => {
                           await updateTaskStatus(taskId, "done");
                           router.refresh();
                         });
                       }}
-                    >
-                      <Check className="h-3.5 w-3.5" aria-hidden />
-                      Done
-                    </Button>
+                    />
                   ) : null}
                 </li>
               );

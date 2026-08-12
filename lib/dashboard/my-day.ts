@@ -60,10 +60,30 @@ export function filterCalendarTasksForMember(
   return tasks.filter((task) => taskBelongsToMember(task, memberUserId));
 }
 
+function inZonedDay(isoMs: number, rangeStart: string, rangeEnd: string) {
+  return isoMs >= agendaSortTimeMs(rangeStart) && isoMs < agendaSortTimeMs(rangeEnd);
+}
+
+/**
+ * Open tasks (today / overdue / undated) plus tasks completed today so self-advocates
+ * still see a clear "Done" confirmation instead of the row vanishing.
+ */
 function isActiveMyDayTask(task: Task, rangeStart: string, rangeEnd: string, nowMs: number) {
-  if (task.status === "done" || task.status === "cancelled") {
+  if (task.status === "cancelled") {
     return false;
   }
+
+  if (task.status === "done") {
+    const updatedMs = Date.parse(task.updatedAt);
+    if (Number.isFinite(updatedMs) && inZonedDay(updatedMs, rangeStart, rangeEnd)) {
+      return true;
+    }
+    if (task.dueAt && inZonedDay(agendaSortTimeMs(task.dueAt), rangeStart, rangeEnd)) {
+      return true;
+    }
+    return false;
+  }
+
   if (!task.dueAt) {
     // Undated open tasks assigned to them still belong on My day
     return task.status === "todo" || task.status === "in_progress";
@@ -74,6 +94,13 @@ function isActiveMyDayTask(task: Task, rangeStart: string, rangeEnd: string, now
 }
 
 function compareAgendaItems(a: AgendaItem, b: AgendaItem) {
+  // Open work first; completed tasks sink to the bottom as proof of progress
+  const aDone = a.kind === "task" && a.status === "done" ? 1 : 0;
+  const bDone = b.kind === "task" && b.status === "done" ? 1 : 0;
+  if (aDone !== bDone) {
+    return aDone - bDone;
+  }
+
   const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
   const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
   if (aAllDay !== bAllDay) {

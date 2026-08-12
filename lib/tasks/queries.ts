@@ -2,7 +2,10 @@ import { resolveAssigneeDisplay } from "@/lib/households/member-label";
 import { getHouseholdMembers } from "@/lib/households/queries";
 import type { HouseholdPersona } from "@/lib/permissions/roles";
 import { createClient } from "@/lib/supabase/server";
-import type { Provenance } from "@/lib/provenance/types";
+import {
+  displayProvenanceSource,
+  type Provenance,
+} from "@/lib/provenance/types";
 import type { RecurringTaskTemplate, RecurrenceCadence, Task, TaskStatus } from "@/lib/tasks/types";
 
 function mapTask(
@@ -27,6 +30,14 @@ function mapTask(
     persona: HouseholdPersona | null;
   },
 ): Task {
+  const reliantConfirmRequested = Boolean(row.reliant_confirm_requested);
+  const source = displayProvenanceSource(row.provenance, {
+    provenance: row.provenance,
+    assignee_id: row.assignee_id,
+    reliant_confirm_requested: reliantConfirmRequested,
+    recurring_template_id: row.recurring_template_id,
+  });
+
   return {
     id: row.id,
     householdId: row.household_id,
@@ -38,8 +49,11 @@ function mapTask(
     assigneeLabel: assignee.label,
     assigneePersona: assignee.persona,
     dueAt: row.due_at,
-    reliantConfirmRequested: Boolean(row.reliant_confirm_requested),
-    provenance: row.provenance,
+    reliantConfirmRequested,
+    provenance: {
+      ...row.provenance,
+      source,
+    },
     recurringTemplateId: row.recurring_template_id,
     createdBy: row.created_by,
     createdAt: row.created_at,

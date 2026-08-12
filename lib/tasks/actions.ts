@@ -13,6 +13,7 @@ import type { RecurrenceCadence, TaskStatus } from "@/lib/tasks/types";
 function defaultProvenance() {
   return {
     source: "ntrr" as const,
+    originSource: "ntrr" as const,
     syncedAt: new Date().toISOString(),
     confidence: "high" as const,
     lastModifiedBy: "user" as const,
