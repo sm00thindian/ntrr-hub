@@ -24,6 +24,11 @@ export async function signInWithGoogle(formData: FormData) {
     provider: "google",
     options: {
       redirectTo: buildCallbackUrl(next || undefined),
+      // Safari often reuses the last Google session without an account picker;
+      // Chrome already prompts. Force chooser so multi-account households can switch.
+      queryParams: {
+        prompt: "select_account",
+      },
     },
   });
 

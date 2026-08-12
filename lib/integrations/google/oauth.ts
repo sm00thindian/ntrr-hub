@@ -23,7 +23,9 @@ export function buildGoogleConnectUrl(state: string, redirectUri: string) {
     response_type: "code",
     scope: GOOGLE_INTEGRATION_SCOPES.join(" "),
     access_type: "offline",
-    prompt: "consent",
+    // select_account: show chooser (Safari otherwise reuses last account)
+    // consent: ensure refresh_token for calendar sync
+    prompt: "select_account consent",
     state,
   });
 
