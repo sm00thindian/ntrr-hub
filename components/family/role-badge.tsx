@@ -72,8 +72,8 @@ export function ReliantConfirmChip({ className }: { className?: string }) {
 }
 
 /**
- * Who owns a task — label + optional care persona so coordinators can tell
- * multiple self-advocates (or care partners) apart at a glance.
+ * Who owns a task — display name only, with persona-tinted colors when known.
+ * Email may appear in the hover title; persona label is not shown in the chip.
  */
 export function AssigneeChip({
   label,
@@ -107,28 +107,27 @@ export function AssigneeChip({
   const personaKey = (persona && persona in HOUSEHOLD_PERSONA_LABELS
     ? persona
     : null) as HouseholdPersona | null;
-  const titleParts = [email, personaKey ? HOUSEHOLD_PERSONA_LABELS[personaKey] : null].filter(
-    Boolean,
-  );
+
+  const titleParts = [
+    email && email !== displayLabel ? email : null,
+    personaKey ? HOUSEHOLD_PERSONA_LABELS[personaKey] : null,
+  ].filter(Boolean);
 
   return (
     <span
       title={titleParts.length ? titleParts.join(" · ") : displayLabel}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground",
+        "inline-flex max-w-full items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground",
         personaKey === "self_advocate" &&
           "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
         personaKey === "care_partner" &&
           "bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100",
+        personaKey === "coordinator" &&
+          "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100",
         className,
       )}
     >
       <span className="truncate">{displayLabel}</span>
-      {personaKey ? (
-        <span className="text-[10px] font-normal opacity-80">
-          · {HOUSEHOLD_PERSONA_LABELS[personaKey]}
-        </span>
-      ) : null}
     </span>
   );
 }
