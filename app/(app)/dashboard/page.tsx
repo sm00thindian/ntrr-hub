@@ -119,7 +119,10 @@ export default async function DashboardPage() {
           canCompleteTasks={canComplete}
         />
         <DayAgenda items={agenda} timeZone={timeZone} />
-        <AiHighlightsPanel householdId={membership.householdId} />
+        <AiHighlightsPanel
+          householdId={membership.householdId}
+          canRefresh={canComplete}
+        />
       </div>
     </div>
   );

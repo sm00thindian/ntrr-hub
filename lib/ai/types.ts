@@ -1,4 +1,9 @@
-export type InsightType = "conflict" | "reminder" | "schedule";
+export type InsightType =
+  | "conflict"
+  | "reminder"
+  | "schedule"
+  | "workload"
+  | "hygiene";
 
 export type InsightSeverity = "info" | "warning";
 
@@ -23,3 +28,10 @@ export type AiInsight = {
 };
 
 export type AgentRunMode = "post-sync" | "daily";
+
+/** Legacy keys that duplicate Needs attention — never show in Highlights. */
+export const LEGACY_NEEDS_ATTENTION_DEDUPE_KEYS = new Set([
+  "pending-conflicts",
+  "unassigned-tasks",
+  "overdue-tasks",
+]);

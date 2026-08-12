@@ -4,19 +4,23 @@ import { runScheduleOverlapAgent } from "@/lib/ai/agents/schedule-overlap";
 import type { AgentRunMode } from "@/lib/ai/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+/**
+ * Run household highlight agents.
+ * Post-sync and daily both run the full set so the dashboard does not wait for cron
+ * for workload / schedule patterns. Conflict agent only cleans legacy cards (Needs
+ * attention owns conflict UI).
+ */
 export async function runAgentsForHousehold(householdId: string, mode: AgentRunMode) {
   const conflict = await runConflictDetectorAgent(householdId);
+  const reminder = await runReminderSuggesterAgent(householdId);
+  const schedule = await runScheduleOverlapAgent(householdId);
 
-  const results: Record<string, unknown> = { conflict };
-
-  if (mode === "daily") {
-    results.reminder = await runReminderSuggesterAgent(householdId);
-    results.schedule = await runScheduleOverlapAgent(householdId);
-  } else {
-    results.schedule = await runScheduleOverlapAgent(householdId);
-  }
-
-  return results;
+  return {
+    mode,
+    conflict,
+    reminder,
+    schedule,
+  };
 }
 
 export async function runPostSyncAgents(householdId: string) {

@@ -14,53 +14,56 @@ export function AiInsightRow({ insight }: { insight: AiInsight }) {
   return (
     <li
       className={cn(
-        "rounded-lg border px-3 py-2.5",
+        "flex h-full min-h-0 flex-col rounded-lg border px-3 py-2.5",
         insight.severity === "warning" ? "border-brand/30 bg-brand/5" : "bg-accent/30",
         pending && "opacity-60",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium">{insight.title}</p>
-          {insight.body ? (
-            <p className="text-muted-foreground text-sm">{insight.body}</p>
-          ) : null}
-          {insight.actionHref ? (
-            <Link href={insight.actionHref} className="text-brand text-xs font-medium hover:underline">
-              View details →
-            </Link>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 flex-col gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                await dismissAiInsight(insight.id);
-              })
-            }
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-medium leading-snug">{insight.title}</p>
+        {insight.body ? (
+          <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed sm:text-sm">
+            {insight.body}
+          </p>
+        ) : null}
+        {insight.actionHref ? (
+          <Link
+            href={insight.actionHref}
+            className="text-brand inline-block text-xs font-medium hover:underline"
           >
-            Dismiss
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                await snoozeAiInsight(insight.id, 24);
-              })
-            }
-          >
-            Snooze 1d
-          </Button>
-        </div>
+            View details →
+          </Link>
+        ) : null}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1 border-t border-border/50 pt-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await dismissAiInsight(insight.id);
+            })
+          }
+        >
+          Dismiss
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              await snoozeAiInsight(insight.id, 24);
+            })
+          }
+        >
+          Snooze 1d
+        </Button>
       </div>
     </li>
   );

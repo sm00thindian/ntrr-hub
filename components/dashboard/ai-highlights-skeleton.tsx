@@ -2,14 +2,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export function AiHighlightsSkeleton() {
   return (
-    <Card aria-busy="true" aria-label="Loading AI highlights">
+    <Card aria-busy="true" aria-label="Loading highlights">
       <CardHeader>
-        <CardTitle>AI insights</CardTitle>
-        <CardDescription>Loading insights…</CardDescription>
+        <CardTitle>Highlights</CardTitle>
+        <CardDescription>Loading suggestions…</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="h-16 animate-pulse rounded-lg bg-muted" />
-        <div className="h-16 animate-pulse rounded-lg bg-muted" />
+      <CardContent>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="h-24 animate-pulse rounded-lg bg-muted" />
+          <div className="h-24 animate-pulse rounded-lg bg-muted" />
+        </div>
       </CardContent>
     </Card>
   );

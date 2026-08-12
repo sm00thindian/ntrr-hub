@@ -1,27 +1,22 @@
-import { dismissInsightByDedupe, upsertInsight } from "@/lib/ai/insights";
+import { dismissInsightByDedupe } from "@/lib/ai/insights";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 
 const DEDUPE_KEY = "pending-conflicts";
 
+/**
+ * Conflicts already appear in Needs attention + the app header badge.
+ * This agent no longer creates AI insight cards — it only cleans legacy rows
+ * so Highlights stays de-duplicated.
+ */
 export async function runConflictDetectorAgent(householdId: string) {
   const count = await getPendingConflictCount(householdId);
 
-  if (count === 0) {
-    await dismissInsightByDedupe(householdId, "conflict", DEDUPE_KEY);
-    return { created: false, count: 0 };
-  }
+  // Drop any leftover conflict cards from earlier M5 behavior
+  await dismissInsightByDedupe(householdId, "conflict", DEDUPE_KEY);
 
-  await upsertInsight({
-    householdId,
-    type: "conflict",
-    dedupeKey: DEDUPE_KEY,
-    payload: {
-      title: `${count} sync conflict${count === 1 ? "" : "s"} need your review`,
-      body: "Google and NTRR disagree on some task or event fields. Pick which version to keep.",
-      actionHref: "/conflicts",
-      severity: "warning",
-    },
-  });
-
-  return { created: true, count };
+  return {
+    created: false,
+    count,
+    deferredToNeedsAttention: true as const,
+  };
 }
