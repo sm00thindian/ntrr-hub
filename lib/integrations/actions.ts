@@ -12,6 +12,7 @@ import {
 import { normalizeCalendarVisibility } from "@/lib/calendar/visibility";
 import {
   fetchGoogleCalendarList,
+  getGoogleCalendarsAlreadyInHousehold,
   getSelectedGoogleCalendarIds,
   removeSyncedEventsForCalendars,
 } from "@/lib/integrations/google/calendars";
@@ -97,6 +98,25 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
 
   if (!validIds.length) {
     return { error: "Select at least one Google calendar to sync." };
+  }
+
+  // Block re-adding a shared Family calendar already synced by someone else
+  const alreadyInHousehold = await getGoogleCalendarsAlreadyInHousehold(
+    ctx.householdId,
+    ctx.userId,
+  );
+  const duplicates = validIds.filter((id) => alreadyInHousehold[id]);
+  if (duplicates.length) {
+    const labels = duplicates
+      .map((id) => {
+        const entry = alreadyInHousehold[id]!;
+        const name = calendars.find((c) => c.id === id)?.summary ?? id;
+        return `"${name}" (already via ${entry.connectedByLabel})`;
+      })
+      .join("; ");
+    return {
+      error: `These calendars are already connected for the household: ${labels}. Leave them unchecked — Hub will keep using the existing connection.`,
+    };
   }
 
   const members = await getHouseholdMembers(ctx.householdId);

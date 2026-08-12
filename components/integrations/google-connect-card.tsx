@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GoogleCalendarSettings } from "@/components/integrations/google-calendar-settings";
 import { disconnectGoogle, syncGoogleNow } from "@/lib/integrations/actions";
 import type { CalendarColorMember, GoogleCalendarAssignment } from "@/lib/calendar/colors";
+import type { HouseholdCalendarInUse } from "@/lib/integrations/google/calendars";
 import type { GoogleCalendarInfo, IntegrationAccount } from "@/lib/integrations/types";
 
 type GoogleConnectCardProps = {
@@ -22,6 +23,7 @@ type GoogleConnectCardProps = {
   calendarAssignments?: Record<string, GoogleCalendarAssignment>;
   currentUserId: string;
   canEditMemberColors?: boolean;
+  alreadyInHousehold?: Record<string, HouseholdCalendarInUse>;
 };
 
 function statusLabel(integration: IntegrationAccount | null) {
@@ -53,10 +55,12 @@ export function GoogleConnectCard({
   calendarAssignments = {},
   currentUserId,
   canEditMemberColors = true,
+  alreadyInHousehold = {},
 }: GoogleConnectCardProps) {
   const [pending, startTransition] = useTransition();
   const connected = integration?.status === "connected";
   const email = integration?.metadata.tokens?.connectedEmail;
+  const alreadyCount = Object.keys(alreadyInHousehold).length;
 
   return (
     <Card>
@@ -64,7 +68,8 @@ export function GoogleConnectCard({
         <CardTitle>Google</CardTitle>
         <CardDescription>
           Connect <span className="font-medium text-foreground">your</span> Google calendars. Mark
-          each one shared with the household or personal. Hub tasks stay in Hub only.
+          each one shared with the household or personal. Shared calendars already connected by
+          someone else are listed as already in the household — no need to add them again.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -74,6 +79,13 @@ export function GoogleConnectCard({
           {!configured ? (
             <p className="text-muted-foreground">
               Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable connection.
+            </p>
+          ) : null}
+          {connected && alreadyCount > 0 ? (
+            <p className="text-muted-foreground text-xs">
+              {alreadyCount} calendar{alreadyCount === 1 ? "" : "s"} on your Google account{" "}
+              {alreadyCount === 1 ? "is" : "are"} already synced for this household by another
+              member.
             </p>
           ) : null}
         </div>
@@ -93,6 +105,7 @@ export function GoogleConnectCard({
             calendarAssignments={calendarAssignments}
             currentUserId={currentUserId}
             canEditMemberColors={canEditMemberColors}
+            alreadyInHousehold={alreadyInHousehold}
           />
         ) : null}
 

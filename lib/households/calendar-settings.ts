@@ -114,10 +114,15 @@ export async function getGoogleCalendarSettingsForUi(
     return null;
   }
 
-  const [members, settings, account] = await Promise.all([
+  const { getGoogleCalendarsAlreadyInHousehold } = await import(
+    "@/lib/integrations/google/calendars"
+  );
+
+  const [members, settings, account, alreadyInHousehold] = await Promise.all([
     getHouseholdMembers(householdId),
     getHouseholdCalendarSettings(householdId),
     getConnectedGoogleIntegrationAdminForUser(householdId, userId),
+    getGoogleCalendarsAlreadyInHousehold(householdId, userId),
   ]);
 
   const colorMembers: CalendarColorMember[] = members.map((member) => ({
@@ -133,11 +138,21 @@ export async function getGoogleCalendarSettingsForUi(
     settings.googleCalendars,
   );
 
+  // Don't treat calendars already owned by another member as "selected" for this user
+  const selectedCalendarIds = googleSettings.selectedCalendarIds.filter(
+    (id) => !alreadyInHousehold[id],
+  );
+
   return {
     calendars: googleSettings.calendars,
-    selectedCalendarIds: googleSettings.selectedCalendarIds,
+    selectedCalendarIds:
+      selectedCalendarIds.length > 0
+        ? selectedCalendarIds
+        : googleSettings.selectedCalendarIds.filter((id) => !alreadyInHousehold[id]),
     members: colorMembers,
     memberColors,
     calendarAssignments,
+    /** Calendars already synced via another household member's Google connection */
+    alreadyInHousehold,
   };
 }

@@ -12,6 +12,7 @@ import {
   memberCalendarCount,
   normalizeColor,
 } from "@/lib/calendar/colors";
+import type { HouseholdCalendarInUse } from "@/lib/integrations/google/calendars";
 import type { GoogleCalendarInfo } from "@/lib/integrations/types";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,8 @@ type GoogleCalendarSettingsProps = {
   /** When false, hide household-wide member color editors (non-admin) */
   canEditMemberColors?: boolean;
   currentUserId: string;
+  /** Calendars already synced via another member's Google connection */
+  alreadyInHousehold?: Record<string, HouseholdCalendarInUse>;
 };
 
 export function GoogleCalendarSettings({
@@ -34,6 +37,7 @@ export function GoogleCalendarSettings({
   calendarAssignments: initialAssignments,
   canEditMemberColors = true,
   currentUserId,
+  alreadyInHousehold = {},
 }: GoogleCalendarSettingsProps) {
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState(() => new Set(selectedCalendarIds));
@@ -66,6 +70,13 @@ export function GoogleCalendarSettings({
   ]);
 
   function toggleCalendar(calendarId: string, checked: boolean) {
+    if (checked && alreadyInHousehold[calendarId]) {
+      const entry = alreadyInHousehold[calendarId]!;
+      setMessage(
+        `"${calendars.find((c) => c.id === calendarId)?.summary ?? "That calendar"}" is already connected for the household by ${entry.connectedByLabel}. Leave it unchecked.`,
+      );
+      return;
+    }
     setSelected((current) => {
       const next = new Set(current);
       if (checked) {
@@ -184,11 +195,13 @@ export function GoogleCalendarSettings({
         <p className="text-muted-foreground text-xs">
           <span className="font-medium text-foreground">Shared with household</span> is visible to
           everyone. <span className="font-medium text-foreground">Personal</span> is only visible to
-          the selected family member (including you).
+          the selected family member (including you). Calendars already synced by another household
+          member are marked and cannot be selected again.
         </p>
         <ul className="space-y-2">
           {calendars.map((calendar) => {
-            const checked = selected.has(calendar.id);
+            const inUse = alreadyInHousehold[calendar.id];
+            const checked = selected.has(calendar.id) && !inUse;
             const disableUncheck = checked && selected.size === 1;
             const assignment = assignments[calendar.id];
             const memberId = assignment?.memberUserId ?? members[0]?.userId ?? "";
@@ -202,16 +215,30 @@ export function GoogleCalendarSettings({
                 key={calendar.id}
                 className={cn(
                   "rounded-lg border px-3 py-3",
-                  checked ? "border-brand/30 bg-brand/5" : "bg-card",
+                  inUse
+                    ? "border-muted bg-muted/30 opacity-90"
+                    : checked
+                      ? "border-brand/30 bg-brand/5"
+                      : "bg-card",
                 )}
               >
-                <label className="flex cursor-pointer items-center gap-3">
+                <label
+                  className={cn(
+                    "flex items-center gap-3",
+                    inUse ? "cursor-default" : "cursor-pointer",
+                  )}
+                >
                   <input
                     type="checkbox"
                     className="border-input text-brand focus:ring-brand h-4 w-4 rounded"
-                    checked={checked}
-                    disabled={pending || disableUncheck}
+                    checked={Boolean(inUse) || checked}
+                    disabled={pending || disableUncheck || Boolean(inUse)}
                     onChange={(event) => toggleCalendar(calendar.id, event.target.checked)}
+                    aria-label={
+                      inUse
+                        ? `${calendar.summary}, already connected by ${inUse.connectedByLabel}`
+                        : calendar.summary
+                    }
                   />
                   <span className="min-w-0 flex-1 text-sm font-medium">
                     {calendar.summary}
@@ -221,7 +248,19 @@ export function GoogleCalendarSettings({
                   </span>
                 </label>
 
-                {checked ? (
+                {inUse ? (
+                  <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+                    <span className="bg-muted text-foreground/80 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                      Already in household
+                    </span>
+                    <span className="mt-1 block">
+                      Connected by {inUse.connectedByLabel}. You do not need to add it again — Hub
+                      already shows events from this calendar when it is shared with the household.
+                    </span>
+                  </p>
+                ) : null}
+
+                {checked && !inUse ? (
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     <label className="space-y-1 text-xs">
                       <span className="text-muted-foreground">Visibility</span>

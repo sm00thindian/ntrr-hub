@@ -94,6 +94,7 @@ export default async function SettingsPage({
         calendarAssignments={googleCalendarSettings?.calendarAssignments}
         currentUserId={ctx.userId}
         canEditMemberColors={canManageHousehold}
+        alreadyInHousehold={googleCalendarSettings?.alreadyInHousehold}
       />
 
       <AppleCalDavConnectCard

@@ -1,10 +1,21 @@
 import { googleFetch } from "@/lib/integrations/google/client";
 import {
+  getAllConnectedGoogleIntegrationsAdmin,
   getConnectedGoogleIntegrationAdmin,
   getConnectedGoogleIntegrationAdminForUser,
 } from "@/lib/integrations/queries";
 import type { GoogleCalendarInfo, IntegrationAccount } from "@/lib/integrations/types";
+import { memberDisplayLabel } from "@/lib/households/member-label";
+import { getHouseholdMembers } from "@/lib/households/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/** A Google calendar already selected for sync by another household member. */
+export type HouseholdCalendarInUse = {
+  calendarId: string;
+  connectedByUserId: string;
+  /** Short label for UI, e.g. "Alex" or email local-part */
+  connectedByLabel: string;
+};
 
 type GoogleCalendarListResponse = {
   items?: Array<{
@@ -150,6 +161,55 @@ export async function getGoogleCalendarSettings(householdId: string, userId?: st
     selectedCalendarIds: safeSelected,
     connectedByUserId: account.createdBy,
   };
+}
+
+/**
+ * Google calendar ids already selected for household sync by someone other than
+ * `excludeUserId`. Used so care partners don't re-add a shared Family calendar
+ * that the coordinator already syncs.
+ */
+export async function getGoogleCalendarsAlreadyInHousehold(
+  householdId: string,
+  excludeUserId: string,
+): Promise<Record<string, HouseholdCalendarInUse>> {
+  const [accounts, members] = await Promise.all([
+    getAllConnectedGoogleIntegrationsAdmin(householdId),
+    getHouseholdMembers(householdId),
+  ]);
+
+  const labelByUserId = new Map(
+    members.map((m) => [m.userId, memberDisplayLabel(m.email, m.displayName)] as const),
+  );
+
+  const inUse: Record<string, HouseholdCalendarInUse> = {};
+
+  for (const account of accounts) {
+    if (account.createdBy === excludeUserId) {
+      continue;
+    }
+    if (account.status !== "connected") {
+      continue;
+    }
+
+    const selected = getSelectedGoogleCalendarIds(account);
+    const label =
+      labelByUserId.get(account.createdBy) ??
+      account.metadata.tokens?.connectedEmail?.split("@")[0] ??
+      "another member";
+
+    for (const calendarId of selected) {
+      if (!calendarId || inUse[calendarId]) {
+        continue;
+      }
+      inUse[calendarId] = {
+        calendarId,
+        connectedByUserId: account.createdBy,
+        connectedByLabel: label,
+      };
+    }
+  }
+
+  return inUse;
 }
 
 export async function removeSyncedEventsForCalendars(
