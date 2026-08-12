@@ -1,4 +1,5 @@
 import { getConnectedGoogleIntegration } from "@/lib/integrations/queries";
+import { GOOGLE_TASKS_SYNC_ENABLED } from "@/lib/sync/google/tasks-config";
 import { enqueueSyncOutbox } from "@/lib/sync/outbox";
 
 export async function enqueueGoogleTaskSync(params: {
@@ -7,6 +8,10 @@ export async function enqueueGoogleTaskSync(params: {
   operation: "create" | "update" | "delete";
   payload?: Record<string, unknown>;
 }) {
+  if (!GOOGLE_TASKS_SYNC_ENABLED) {
+    return;
+  }
+
   const integration = await getConnectedGoogleIntegration(params.householdId);
   if (!integration) {
     return;

@@ -5,6 +5,7 @@ import {
 import { pullAppleCalDavCalendar } from "@/lib/sync/apple/caldav";
 import { pullGoogleCalendar, pushGoogleCalendarEvent } from "@/lib/sync/google/calendar";
 import { pullGoogleTasks, pushGoogleTask } from "@/lib/sync/google/tasks";
+import { GOOGLE_TASKS_SYNC_ENABLED } from "@/lib/sync/google/tasks-config";
 import {
   fetchPendingOutbox,
   markOutboxDone,
@@ -24,7 +25,9 @@ export async function runGoogleSync(householdId: string) {
 
   try {
     await pullGoogleCalendar(account);
-    await pullGoogleTasks(account);
+    if (GOOGLE_TASKS_SYNC_ENABLED) {
+      await pullGoogleTasks(account);
+    }
 
     const outbox = await fetchPendingOutbox(householdId, "google");
 
@@ -33,6 +36,11 @@ export async function runGoogleSync(householdId: string) {
 
       try {
         if (entry.entity_type === "task") {
+          if (!GOOGLE_TASKS_SYNC_ENABLED) {
+            // Drain legacy task outbox rows without pushing to Google Tasks.
+            await markOutboxDone(entry.id);
+            continue;
+          }
           await pushGoogleTask(account, {
             entityId: entry.entity_id,
             operation: entry.operation,

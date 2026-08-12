@@ -121,6 +121,7 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 - GitHub #3: Zapier webhook end-to-end test
 - Microsoft sync (1.1 preview)
 - Apple CalDAV calendar→member color mapping (same pattern as Google)
+- **Google Tasks sync off** (2026-08): Hub is source of truth for tasks; only Google Calendar syncs. Flag: `GOOGLE_TASKS_SYNC_ENABLED` in `lib/sync/google/tasks-config.ts`
 
 ### Later — Reliant voice / live confirms (not Hub MVP)
 

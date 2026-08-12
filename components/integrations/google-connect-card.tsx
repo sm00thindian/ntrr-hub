@@ -58,7 +58,10 @@ export function GoogleConnectCard({
     <Card>
       <CardHeader>
         <CardTitle>Google</CardTitle>
-        <CardDescription>Calendar and Tasks — bidirectional sync.</CardDescription>
+        <CardDescription>
+          Calendar events for household context. Family tasks stay in Hub (not synced to Google
+          Tasks).
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1 text-sm">
