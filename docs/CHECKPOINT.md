@@ -137,3 +137,16 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 | Go-live | Quiet hours, max attempts, coordinator entitlement / usage |
 
 Until then: Hub checkbox = **intent only** (see [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md)).
+
+### Later — Reliant SMS reminders (optional)
+
+Soft text nudges on tasks/templates (e.g. due − 1h), **after** live voice confirm jobs exist.
+
+| Principle | Detail |
+|-----------|--------|
+| Boundary | Hub = intent only; **Reliant** sends SMS (not Hub → Twilio) |
+| Target | Assignee / focus mobile on Hub (`phone_e164`) |
+| Billing | Coordinator Reliant / bundle entitlement; quiet hours + daily caps |
+| UX | Optional per task or recurring default; opt-in; not a replacement for phone confirm |
+
+See [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md) Implementation later.

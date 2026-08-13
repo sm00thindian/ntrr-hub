@@ -123,6 +123,8 @@ Instrument usage during dogfood even while free.
 - Settings: “Reliant confirms used this month” for coordinator  
 - Gate live dials if coordinator has no Reliant entitlement (UI: “Connect Reliant / upgrade”)  
 
+**Optional SMS reminders (after voice path ships):** soft Reliant texts for due-soon tasks (Hub intent flag only). Same dial-target phones and coordinator metering; quiet hours + daily caps. Not Hub-owned SMS — Reliant channel next to voice confirms. Tracked in [CHECKPOINT.md](./CHECKPOINT.md) *Later — Reliant SMS reminders*.
+
 Also tracked under **Open / deferred** in [CHECKPOINT.md](./CHECKPOINT.md).
 
 ---
