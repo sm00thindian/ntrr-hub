@@ -227,121 +227,81 @@ export function TaskBoard({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div
-          className="flex flex-wrap gap-2"
-          role="tablist"
-          aria-label="Filter tasks"
-        >
-          {visibleFilters.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === item.id}
-              onClick={() => {
-                setFilter(item.id);
-                // Mine / Unassigned already imply assignee; reset person chip for clarity
-                if (item.id === "mine" || item.id === "unassigned") {
-                  setAssigneeFilter("all");
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="tablist"
+        aria-label="Filter tasks"
+      >
+        {visibleFilters.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={filter === item.id}
+            onClick={() => {
+              setFilter(item.id);
+              // Mine / Unassigned already imply assignee; reset person filter
+              if (item.id === "mine" || item.id === "unassigned") {
+                setAssigneeFilter("all");
+              }
+            }}
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              filter === item.id
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            {item.label}
+            <span
+              className={cn(
+                "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                filter === item.id ? "bg-background/20" : "bg-muted",
+              )}
+            >
+              {filterCounts[item.id]}
+            </span>
+          </button>
+        ))}
+
+        {/* Assignee dropdown — same row; scales for large households */}
+        {!myDayMode && members.length > 0 ? (
+          <label className="inline-flex h-9 items-center gap-1.5">
+            <span className="sr-only">Assigned to</span>
+            <select
+              value={assigneeFilter}
+              disabled={filter === "mine" || filter === "unassigned"}
+              aria-label="Filter by assignee"
+              onChange={(event) => {
+                const next = event.target.value as AssigneeFilterId;
+                setAssigneeFilter(next);
+                if (
+                  next !== "all" &&
+                  (filter === "mine" || filter === "unassigned")
+                ) {
+                  setFilter("all");
                 }
               }}
               className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                filter === item.id
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {item.label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
-                  filter === item.id ? "bg-background/20" : "bg-muted",
-                )}
-              >
-                {filterCounts[item.id]}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Assignee filter — coordinators / care partners only */}
-        {!myDayMode && members.length > 0 ? (
-          <div
-            className="flex flex-wrap items-center gap-2"
-            role="tablist"
-            aria-label="Filter by assignee"
-          >
-            <span className="text-muted-foreground text-xs font-medium">Assigned to</span>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={assigneeFilter === "all"}
-              disabled={filter === "mine" || filter === "unassigned"}
-              onClick={() => setAssigneeFilter("all")}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                "border-input bg-background h-9 max-w-[12rem] rounded-full border px-3 text-xs font-medium",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "disabled:cursor-not-allowed disabled:opacity-50",
-                assigneeFilter === "all" && filter !== "mine" && filter !== "unassigned"
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                assigneeFilter !== "all" &&
+                  filter !== "mine" &&
+                  filter !== "unassigned"
+                  ? "border-foreground text-foreground"
+                  : "text-muted-foreground",
               )}
             >
-              Anyone
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
-                  assigneeFilter === "all" && filter !== "mine" && filter !== "unassigned"
-                    ? "bg-background/20"
-                    : "bg-muted",
-                )}
-              >
-                {tasks.length}
-              </span>
-            </button>
-            {assigneeOptions.map((person) => {
-              const selected = assigneeFilter === person.id;
-              return (
-                <button
-                  key={person.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  disabled={filter === "mine" || filter === "unassigned"}
-                  onClick={() => {
-                    setAssigneeFilter(person.id);
-                    // If they pick a person while on Mine/Unassigned, switch to All scope
-                    if (filter === "mine" || filter === "unassigned") {
-                      setFilter("all");
-                    }
-                  }}
-                  className={cn(
-                    "inline-flex h-9 max-w-[10rem] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    "disabled:cursor-not-allowed disabled:opacity-50",
-                    selected && filter !== "mine" && filter !== "unassigned"
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <span className="truncate">{person.label}</span>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
-                      selected && filter !== "mine" && filter !== "unassigned"
-                        ? "bg-background/20"
-                        : "bg-muted",
-                    )}
-                  >
-                    {person.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+              <option value="all">Assigned to: Anyone ({tasks.length})</option>
+              {assigneeOptions.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.label} ({person.count})
+                </option>
+              ))}
+            </select>
+          </label>
         ) : null}
       </div>
 
