@@ -26,9 +26,7 @@ import { requireHouseholdContext } from "@/lib/households/context";
 import {
   getAllConnectedAppleIntegrationsAdmin,
   getAllConnectedGoogleIntegrationsAdmin,
-  getMemberIntegration,
 } from "@/lib/integrations/queries";
-import { canConnectCalendars, canManageIntegrations } from "@/lib/permissions/roles";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 type CalendarPageProps = {
@@ -49,15 +47,13 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const bounds = getCalendarBounds(view, anchor);
 
   const myDayMode = isMyDayPersona(ctx.persona);
-  const canConnect = canConnectCalendars(ctx.role, ctx.persona);
 
-  const [rawEvents, rawTasks, googleAccounts, appleAccounts, memberGoogle, colorContext, calendarSettings] =
+  const [rawEvents, rawTasks, googleAccounts, appleAccounts, colorContext, calendarSettings] =
     await Promise.all([
       getCalendarEventsForRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getAllConnectedGoogleIntegrationsAdmin(ctx.householdId),
       getAllConnectedAppleIntegrationsAdmin(ctx.householdId),
-      getMemberIntegration(ctx.householdId, "google", ctx.userId),
       buildCalendarColorContext(ctx.householdId),
       getHouseholdCalendarSettings(ctx.householdId),
     ]);
@@ -75,11 +71,6 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const googleConnected = googleAccounts.length > 0;
   const appleConnected = appleAccounts.length > 0;
   const hasIntegration = googleConnected || appleConnected;
-  const canSync =
-    canConnect &&
-    (memberGoogle?.status === "connected" ||
-      canManageIntegrations(ctx.role)) &&
-    googleConnected;
   const emptyLabel = myDayMode
     ? view === "month"
       ? "Nothing on your calendar this month"
