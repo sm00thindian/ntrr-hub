@@ -1,7 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-
 import {
   FooterSyncCard,
   type FooterSyncStatus,
@@ -20,7 +18,8 @@ type AppSiteFooterProps = {
 };
 
 /**
- * App chrome footer: quiet brand line + compact sync card (not on /calendar).
+ * App chrome footer: quiet brand line + compact sync card on all app routes
+ * (including calendar). Hidden for self-advocate My day persona.
  */
 export function AppSiteFooter({
   className,
@@ -29,11 +28,7 @@ export function AppSiteFooter({
   canSync = false,
   myDayMode = false,
 }: AppSiteFooterProps) {
-  const pathname = usePathname() ?? "";
-  const onCalendar = pathname === "/calendar" || pathname.startsWith("/calendar/");
-
-  const showSync =
-    !myDayMode && Boolean(householdId) && Boolean(syncStatus) && !onCalendar;
+  const showSync = !myDayMode && Boolean(householdId) && Boolean(syncStatus);
 
   return (
     <footer

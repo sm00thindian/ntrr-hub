@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { CalendarColorLegend } from "@/components/calendar/calendar-color-legend";
 import { CalendarDefaultView } from "@/components/calendar/calendar-default-view";
-import { CalendarSyncButton } from "@/components/calendar/calendar-sync-button";
 import { CalendarViewNav } from "@/components/calendar/calendar-view-nav";
 import { DayGridCalendar } from "@/components/calendar/day-grid-calendar";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
@@ -162,10 +161,15 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
           </CardHeader>
           {!myDayMode ? (
             <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              {canSync ? <CalendarSyncButton /> : null}
-              <Button asChild variant={canSync ? "outline" : "default"} className="w-full sm:w-auto">
+              <Button asChild variant="default" className="w-full sm:w-auto">
                 <Link href="/settings">{hasIntegration ? "Settings" : "Connect calendars"}</Link>
               </Button>
+              {hasIntegration ? (
+                <p className="text-muted-foreground text-xs sm:self-center">
+                  Use <span className="font-medium text-foreground">Sync now</span> in the footer to
+                  refresh events.
+                </p>
+              ) : null}
             </CardContent>
           ) : (
             <CardContent>
