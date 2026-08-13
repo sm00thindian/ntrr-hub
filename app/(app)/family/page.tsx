@@ -30,31 +30,31 @@ export default async function FamilyPage() {
         </p>
       </div>
 
-      {canManage ? <InviteForm /> : null}
-
       <MemberList
         members={members}
         currentUserId={ctx.userId}
         currentUserRole={ctx.role}
       />
 
+      {canManage ? (
+        <p className="text-muted-foreground text-sm">
+          Use <span className="text-foreground font-medium">Edit</span> on a member to set their
+          display name, mobile for Reliant calls, access, and care persona.
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Contact a coordinator (owner or admin) if you need to invite someone or edit member
+          details.
+        </p>
+      )}
+
+      {canManage ? <InviteForm /> : null}
+
       <PendingInvites
         invites={invites}
         canManage={canManage}
         householdName={ctx.householdName}
       />
-
-      {!canManage ? (
-        <p className="text-sm text-muted-foreground">
-          Contact a coordinator (owner or admin) if you need to invite someone or edit member
-          details.
-        </p>
-      ) : (
-        <p className="text-muted-foreground text-sm">
-          Use <span className="text-foreground font-medium">Edit</span> on a member to set their
-          display name, mobile for Reliant calls, access, and care persona.
-        </p>
-      )}
     </div>
   );
 }
