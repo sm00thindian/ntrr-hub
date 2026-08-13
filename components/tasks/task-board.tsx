@@ -9,12 +9,16 @@ import { RecurringTemplateForm } from "@/components/tasks/recurring-template-for
 import { KanbanColumn, TaskCard } from "@/components/tasks/task-card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
 import type { RecurringTaskTemplate, Task } from "@/lib/tasks/types";
 import { KANBAN_STATUSES, TASK_STATUS_LABELS } from "@/lib/tasks/types";
 import { cn } from "@/lib/utils";
 
 export type TaskFilter = "all" | "mine" | "overdue" | "unassigned";
+
+/** "all" = any assignee; otherwise a member user id */
+export type AssigneeFilterId = "all" | string;
 
 const FILTERS: { id: TaskFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -56,6 +60,13 @@ function filterTasks(tasks: Task[], filter: TaskFilter, currentUserId: string, n
   }
 }
 
+function filterByAssignee(tasks: Task[], assigneeFilter: AssigneeFilterId) {
+  if (assigneeFilter === "all") {
+    return tasks;
+  }
+  return tasks.filter((t) => t.assigneeId === assigneeFilter);
+}
+
 export function TaskBoard({
   householdId,
   currentUserId,
@@ -72,12 +83,22 @@ export function TaskBoard({
   const router = useRouter();
   const [view, setView] = useState<"kanban" | "list">("list");
   const [filter, setFilter] = useState<TaskFilter>(myDayMode ? "mine" : "all");
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterId>("all");
   const [showAdd, setShowAdd] = useState(false);
   const [, startRefresh] = useTransition();
 
   const visibleFilters = myDayMode
     ? FILTERS.filter((f) => f.id === "mine" || f.id === "overdue")
     : FILTERS;
+
+  /** People who can appear in the assignee filter (household members). */
+  const assigneeOptions = useMemo(() => {
+    return members.map((m) => ({
+      id: m.userId,
+      label: memberDisplayLabel(m.email, m.displayName),
+      count: tasks.filter((t) => t.assigneeId === m.userId).length,
+    }));
+  }, [members, tasks]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -105,24 +126,33 @@ export function TaskBoard({
 
   const refresh = () => startRefresh(() => router.refresh());
 
-  const filteredTasks = useMemo(
-    () => filterTasks(tasks, filter, currentUserId, Date.now()),
-    [tasks, filter, currentUserId],
-  );
+  const filteredTasks = useMemo(() => {
+    const byStatus = filterTasks(tasks, filter, currentUserId, Date.now());
+    // Mine / Unassigned already define assignee scope
+    if (filter === "mine" || filter === "unassigned") {
+      return byStatus;
+    }
+    return filterByAssignee(byStatus, assigneeFilter);
+  }, [tasks, filter, currentUserId, assigneeFilter]);
 
   const filterCounts = useMemo(() => {
     const nowMs = Date.now();
     const mine = tasks.filter((t) => t.assigneeId === currentUserId);
     const pool = myDayMode ? mine : tasks;
+    // Status counts respect assignee filter when not mine/unassigned
+    const scoped =
+      !myDayMode && assigneeFilter !== "all" && filter !== "mine" && filter !== "unassigned"
+        ? filterByAssignee(tasks, assigneeFilter)
+        : pool;
     return {
-      all: tasks.length,
+      all: scoped.length,
       mine: mine.length,
-      overdue: pool.filter(
+      overdue: scoped.filter(
         (t) => t.status !== "done" && t.dueAt && Date.parse(t.dueAt) < nowMs,
       ).length,
       unassigned: tasks.filter((t) => t.status !== "done" && !t.assigneeId).length,
     } satisfies Record<TaskFilter, number>;
-  }, [tasks, currentUserId, myDayMode]);
+  }, [tasks, currentUserId, myDayMode, assigneeFilter, filter]);
 
   // In My day mode, "overdue" only counts the member's tasks
   const scopedTasks = useMemo(() => {
@@ -151,7 +181,10 @@ export function TaskBoard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {displayTasks.length}
-          {!myDayMode && filter !== "all" ? ` of ${tasks.length}` : ""} active task
+          {!myDayMode && (filter !== "all" || assigneeFilter !== "all")
+            ? ` of ${tasks.length}`
+            : ""}{" "}
+          active task
           {displayTasks.length === 1 ? "" : "s"}
           {!myDayMode && templates.length
             ? ` · ${templates.length} recurring template${templates.length === 1 ? "" : "s"}`
@@ -194,37 +227,122 @@ export function TaskBoard({
         </div>
       </div>
 
-      <div
-        className="flex flex-wrap gap-2"
-        role="tablist"
-        aria-label="Filter tasks"
-      >
-        {visibleFilters.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={filter === item.id}
-            onClick={() => setFilter(item.id)}
-            className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              filter === item.id
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            {item.label}
-            <span
+      <div className="space-y-2">
+        <div
+          className="flex flex-wrap gap-2"
+          role="tablist"
+          aria-label="Filter tasks"
+        >
+          {visibleFilters.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === item.id}
+              onClick={() => {
+                setFilter(item.id);
+                // Mine / Unassigned already imply assignee; reset person chip for clarity
+                if (item.id === "mine" || item.id === "unassigned") {
+                  setAssigneeFilter("all");
+                }
+              }}
               className={cn(
-                "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
-                filter === item.id ? "bg-background/20" : "bg-muted",
+                "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                filter === item.id
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              {filterCounts[item.id]}
-            </span>
-          </button>
-        ))}
+              {item.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                  filter === item.id ? "bg-background/20" : "bg-muted",
+                )}
+              >
+                {filterCounts[item.id]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Assignee filter — coordinators / care partners only */}
+        {!myDayMode && members.length > 0 ? (
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="tablist"
+            aria-label="Filter by assignee"
+          >
+            <span className="text-muted-foreground text-xs font-medium">Assigned to</span>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={assigneeFilter === "all"}
+              disabled={filter === "mine" || filter === "unassigned"}
+              onClick={() => setAssigneeFilter("all")}
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                assigneeFilter === "all" && filter !== "mine" && filter !== "unassigned"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              Anyone
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                  assigneeFilter === "all" && filter !== "mine" && filter !== "unassigned"
+                    ? "bg-background/20"
+                    : "bg-muted",
+                )}
+              >
+                {tasks.length}
+              </span>
+            </button>
+            {assigneeOptions.map((person) => {
+              const selected = assigneeFilter === person.id;
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  disabled={filter === "mine" || filter === "unassigned"}
+                  onClick={() => {
+                    setAssigneeFilter(person.id);
+                    // If they pick a person while on Mine/Unassigned, switch to All scope
+                    if (filter === "mine" || filter === "unassigned") {
+                      setFilter("all");
+                    }
+                  }}
+                  className={cn(
+                    "inline-flex h-9 max-w-[10rem] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    selected && filter !== "mine" && filter !== "unassigned"
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span className="truncate">{person.label}</span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                      selected && filter !== "mine" && filter !== "unassigned"
+                        ? "bg-background/20"
+                        : "bg-muted",
+                    )}
+                  >
+                    {person.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       {canEdit && showAdd ? (
@@ -295,7 +413,7 @@ export function TaskBoard({
             <li className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
               {myDayMode
                 ? "No tasks assigned to you yet."
-                : filter === "all"
+                : filter === "all" && assigneeFilter === "all"
                   ? "No tasks yet. Add one to get your household coordinated."
                   : "No tasks match this filter."}
             </li>
