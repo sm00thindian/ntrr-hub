@@ -24,8 +24,11 @@ type GoogleEvent = {
   status?: string;
 };
 
-/** v4: normalize primary alias + dedupe double-synced primary events */
-const CALENDAR_SYNC_VERSION = 4;
+/**
+ * v5: delete cancelled recurring series instances; reconcile missing events after full pull
+ * (Google omits deleted events from ranged lists — they only appear as cancelled on incremental sync).
+ */
+const CALENDAR_SYNC_VERSION = 5;
 
 function getCalendarPullWindow() {
   const rangeStart = new Date();
@@ -35,15 +38,140 @@ function getCalendarPullWindow() {
   return { rangeStart, rangeEnd };
 }
 
-function buildInitialCalendarPath(calendarId: string, rangeStart: Date, rangeEnd: Date) {
+function buildInitialCalendarPath(
+  calendarId: string,
+  rangeStart: Date,
+  rangeEnd: Date,
+  pageToken?: string,
+) {
   const params = new URLSearchParams({
     singleEvents: "true",
     orderBy: "startTime",
-    maxResults: "250",
+    maxResults: "2500",
     timeMin: rangeStart.toISOString(),
     timeMax: rangeEnd.toISOString(),
   });
+  if (pageToken) {
+    params.set("pageToken", pageToken);
+  }
   return `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`;
+}
+
+function buildIncrementalCalendarPath(calendarId: string, syncToken: string, pageToken?: string) {
+  const params = new URLSearchParams({
+    syncToken,
+    maxResults: "2500",
+    // singleEvents not allowed with syncToken; Google returns cancelled rows for deletes
+  });
+  if (pageToken) {
+    params.set("pageToken", pageToken);
+  }
+  return `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`;
+}
+
+/**
+ * Remove Hub rows for a cancelled Google event. Also drops expanded recurring
+ * instances when the master series id is cancelled (`id` / `id_YYYYMMDD...`).
+ */
+async function deleteCancelledGoogleEvents(
+  admin: ReturnType<typeof createAdminClient>,
+  householdId: string,
+  calendarId: string,
+  googleEventId: string,
+) {
+  const exactExternalId = toGoogleCalendarMappingId(calendarId, googleEventId);
+
+  const { data: mappings } = await admin
+    .from("sync_mappings")
+    .select("id, ntrr_id, external_id")
+    .eq("household_id", householdId)
+    .eq("provider", "google")
+    .eq("entity_type", "calendar_event")
+    .like("external_id", `${calendarId}:%`);
+
+  const toRemove = (mappings ?? []).filter((row) => {
+    const externalId = row.external_id as string;
+    if (externalId === exactExternalId) {
+      return true;
+    }
+    // Expanded instances of a recurring series: masterId_YYYYMMDDTHHMMSSZ
+    const { eventId } = parseGoogleCalendarMappingId(externalId);
+    return eventId === googleEventId || eventId.startsWith(`${googleEventId}_`);
+  });
+
+  if (!toRemove.length) {
+    return;
+  }
+
+  const eventIds = toRemove
+    .map((row) => row.ntrr_id as string | null)
+    .filter((id): id is string => Boolean(id));
+  const mappingIds = toRemove.map((row) => row.id as string);
+
+  if (eventIds.length) {
+    await admin.from("calendar_events").delete().in("id", eventIds);
+  }
+  if (mappingIds.length) {
+    await admin.from("sync_mappings").delete().in("id", mappingIds);
+  }
+}
+
+/**
+ * After a full ranged pull, drop Hub events for this calendar that are in-window
+ * but were not returned by Google (deleted series/instances without a cancelled row).
+ */
+async function reconcileMissingGoogleEvents(
+  admin: ReturnType<typeof createAdminClient>,
+  householdId: string,
+  calendarId: string,
+  rangeStart: Date,
+  rangeEnd: Date,
+  seenExternalIds: Set<string>,
+) {
+  const { data: mappings } = await admin
+    .from("sync_mappings")
+    .select("id, ntrr_id, external_id")
+    .eq("household_id", householdId)
+    .eq("provider", "google")
+    .eq("entity_type", "calendar_event")
+    .like("external_id", `${calendarId}:%`);
+
+  const missing = (mappings ?? []).filter(
+    (row) => row.external_id && !seenExternalIds.has(row.external_id as string),
+  );
+  if (!missing.length) {
+    return;
+  }
+
+  const ntrrIds = missing
+    .map((row) => row.ntrr_id as string | null)
+    .filter((id): id is string => Boolean(id));
+  if (!ntrrIds.length) {
+    return;
+  }
+
+  // Only remove events that fall inside the pull window (we did not list outside it)
+  const { data: inWindow } = await admin
+    .from("calendar_events")
+    .select("id")
+    .in("id", ntrrIds)
+    .lt("starts_at", rangeEnd.toISOString())
+    .gt("ends_at", rangeStart.toISOString());
+
+  const deleteEventIds = (inWindow ?? []).map((row) => row.id as string);
+  if (!deleteEventIds.length) {
+    return;
+  }
+
+  const deleteIdSet = new Set(deleteEventIds);
+  const deleteMappingIds = missing
+    .filter((row) => row.ntrr_id && deleteIdSet.has(row.ntrr_id as string))
+    .map((row) => row.id as string);
+
+  await admin.from("calendar_events").delete().in("id", deleteEventIds);
+  if (deleteMappingIds.length) {
+    await admin.from("sync_mappings").delete().in("id", deleteMappingIds);
+  }
 }
 
 function eventProvenance(
@@ -194,31 +322,56 @@ async function pullGoogleCalendarEvents(
   const admin = createAdminClient();
   const householdId = account.householdId;
   const { rangeStart, rangeEnd } = getCalendarPullWindow();
+  const isFullPull = !syncToken;
 
-  const path = syncToken
-    ? `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?syncToken=${encodeURIComponent(syncToken)}`
-    : buildInitialCalendarPath(calendarId, rangeStart, rangeEnd);
-
-  let payload: {
+  type ListPayload = {
     items?: GoogleEvent[];
     nextSyncToken?: string;
+    nextPageToken?: string;
   };
 
+  const items: GoogleEvent[] = [];
+  let pageToken: string | undefined;
+  let nextSyncToken: string | undefined;
+
   try {
-    payload = (await googleFetch(account, path)) as typeof payload;
+    do {
+      const path = syncToken
+        ? buildIncrementalCalendarPath(calendarId, syncToken, pageToken)
+        : buildInitialCalendarPath(calendarId, rangeStart, rangeEnd, pageToken);
+
+      const payload = (await googleFetch(account, path)) as ListPayload;
+      if (payload.items?.length) {
+        items.push(...payload.items);
+      }
+      pageToken = payload.nextPageToken;
+      if (payload.nextSyncToken) {
+        nextSyncToken = payload.nextSyncToken;
+      }
+    } while (pageToken);
   } catch (error) {
     if (error instanceof GoogleApiError && error.status === 410) {
+      // Token expired — full resync + reconcile
       return pullGoogleCalendarEvents(account, calendarId, calendarName, undefined);
     }
     throw error;
   }
 
-  for (const item of payload.items ?? []) {
+  const seenExternalIds = new Set<string>();
+
+  for (const item of items) {
     if (!item.id) {
       continue;
     }
 
     const mappingExternalId = toGoogleCalendarMappingId(calendarId, item.id);
+
+    if (item.status === "cancelled") {
+      await deleteCancelledGoogleEvents(admin, householdId, calendarId, item.id);
+      continue;
+    }
+
+    seenExternalIds.add(mappingExternalId);
 
     const { data: mapping } = await admin
       .from("sync_mappings")
@@ -228,14 +381,6 @@ async function pullGoogleCalendarEvents(
       .eq("entity_type", "calendar_event")
       .eq("external_id", mappingExternalId)
       .maybeSingle();
-
-    if (item.status === "cancelled") {
-      if (mapping?.ntrr_id) {
-        await admin.from("calendar_events").delete().eq("id", mapping.ntrr_id);
-        await admin.from("sync_mappings").delete().eq("id", mapping.id);
-      }
-      continue;
-    }
 
     const times = parseEventTimes(item);
     if (!times) {
@@ -322,7 +467,19 @@ async function pullGoogleCalendarEvents(
     }
   }
 
-  return payload.nextSyncToken;
+  // Full pull does not list deleted events — remove Hub rows that disappeared from Google
+  if (isFullPull) {
+    await reconcileMissingGoogleEvents(
+      admin,
+      householdId,
+      calendarId,
+      rangeStart,
+      rangeEnd,
+      seenExternalIds,
+    );
+  }
+
+  return nextSyncToken;
 }
 
 export async function pullGoogleCalendar(account: IntegrationAccount) {

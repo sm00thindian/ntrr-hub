@@ -228,7 +228,13 @@ export function TaskBoard({
       </div>
 
       {canEdit && showAdd ? (
-        <div className={cn("grid gap-4", !myDayMode && "xl:grid-cols-2")}>
+        <div
+          className={cn(
+            "grid gap-4",
+            // Coordinators / care partners: one-off + recurring side by side from md up
+            !myDayMode && "md:grid-cols-2",
+          )}
+        >
           <CreateTaskForm
             members={members}
             timeZone={timeZone}
