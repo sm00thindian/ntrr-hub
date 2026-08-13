@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
-import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
+import { ItemMetaTags } from "@/components/dashboard/item-meta-tags";
+import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,58 +126,66 @@ export function NeedsAttentionPanel({
                     {isDone ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
                   </span>
                   <div className="min-w-0 flex-1 pt-0.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {item.href && !isDone ? (
-                        <Link
-                          href={item.href}
-                          className="truncate text-sm font-medium hover:underline"
-                        >
-                          {item.title}
-                        </Link>
-                      ) : (
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          {item.href && !isDone ? (
+                            <Link
+                              href={item.href}
+                              className="truncate text-sm font-medium hover:underline"
+                            >
+                              {item.title}
+                            </Link>
+                          ) : (
+                            <p
+                              className={cn(
+                                "truncate text-sm font-medium",
+                                isDone &&
+                                  "text-muted-foreground line-through decoration-brand/50",
+                              )}
+                            >
+                              {item.title}
+                            </p>
+                          )}
+                          {item.reliantConfirmRequested && !isDone ? (
+                            <ReliantConfirmChip />
+                          ) : null}
+                          {isDone ? (
+                            <span className="bg-brand/15 text-brand rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                              Done
+                            </span>
+                          ) : null}
+                        </div>
                         <p
                           className={cn(
-                            "truncate text-sm font-medium",
-                            isDone &&
-                              "text-muted-foreground line-through decoration-brand/50",
+                            "text-xs",
+                            isDone ? "text-brand/80" : "text-muted-foreground",
                           )}
                         >
-                          {item.title}
+                          <span
+                            className={cn(
+                              "font-medium",
+                              isDone ? "text-brand" : "text-foreground/80",
+                            )}
+                          >
+                            {isDone ? "Done" : attentionReasonLabel(item.reason)}
+                          </span>
+                          {" · "}
+                          {timeLabel}
                         </p>
-                      )}
-                      {item.reliantConfirmRequested && !isDone ? (
-                        <ReliantConfirmChip />
-                      ) : null}
-                      {isDone ? (
-                        <span className="bg-brand/15 text-brand rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                          Done
-                        </span>
-                      ) : null}
-                      {item.kind === "task" && item.reason !== "conflict" && !isDone ? (
-                        <AssigneeChip
-                          label={item.assigneeLabel}
-                          persona={item.assigneePersona}
-                          unassigned={!item.assigneeLabel}
+                      </div>
+
+                      {/* Fixed-width columns so assignee + source line up down the list */}
+                      {!isConflict ? (
+                        <ItemMetaTags
+                          source={item.source}
+                          showAssignee={isTask && !isDone}
+                          assigneeLabel={item.assigneeLabel}
+                          assigneePersona={item.assigneePersona}
+                          className="self-start"
                         />
                       ) : null}
                     </div>
-                    <p
-                      className={cn(
-                        "text-xs",
-                        isDone ? "text-brand/80" : "text-muted-foreground",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "font-medium",
-                          isDone ? "text-brand" : "text-foreground/80",
-                        )}
-                      >
-                        {isDone ? "Done" : attentionReasonLabel(item.reason)}
-                      </span>
-                      {" · "}
-                      {timeLabel}
-                    </p>
                   </div>
                   {isConflict && item.href && !isDone ? (
                     <Button asChild size="sm" variant="outline" className="mt-0.5 shrink-0">
