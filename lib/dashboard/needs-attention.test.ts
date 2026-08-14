@@ -5,7 +5,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { rankNeedsAttention, rankTomorrowPreview } from "./needs-attention";
+import {
+  buildCaregiverFocusToday,
+  rankNeedsAttention,
+  rankTomorrowPreview,
+} from "./needs-attention";
 import type { Task } from "../tasks/types";
 
 function task(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
@@ -121,8 +125,68 @@ describe("rankNeedsAttention", () => {
   });
 });
 
+const rangeEnd = "2026-08-11T05:00:00.000Z";
 const tomorrowStart = "2026-08-11T05:00:00.000Z";
 const tomorrowEnd = "2026-08-12T05:00:00.000Z";
+
+describe("buildCaregiverFocusToday", () => {
+  it("puts conflicts and overdue before chronological day items", () => {
+    const items = buildCaregiverFocusToday({
+      tasks: [
+        task({
+          id: "later",
+          title: "Afternoon chore",
+          dueAt: "2026-08-10T20:00:00.000Z",
+        }),
+        task({
+          id: "over",
+          title: "Overdue meds",
+          dueAt: "2026-08-09T12:00:00.000Z",
+        }),
+      ],
+      events: [
+        {
+          id: "event-1",
+          kind: "event",
+          title: "School pickup",
+          sortAt: "2026-08-10T18:00:00.000Z",
+          source: "google",
+          href: "/calendar",
+        },
+      ],
+      conflictCount: 1,
+      nowMs,
+      rangeStart,
+      rangeEnd,
+    });
+
+    assert.equal(items[0]?.reason, "conflict");
+    assert.equal(items[1]?.reason, "overdue");
+    assert.ok(items.some((i) => i.title === "School pickup" && i.reason === "calendar"));
+    assert.ok(items.some((i) => i.title === "Afternoon chore"));
+  });
+
+  it("includes household events for the full day, not only due-soon", () => {
+    const items = buildCaregiverFocusToday({
+      tasks: [],
+      events: [
+        {
+          id: "event-evening",
+          kind: "event",
+          title: "Evening practice",
+          sortAt: "2026-08-10T23:00:00.000Z",
+          source: "google",
+        },
+      ],
+      conflictCount: 0,
+      nowMs,
+      rangeStart,
+      rangeEnd,
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0]?.reason, "calendar");
+  });
+});
 
 describe("rankTomorrowPreview", () => {
   it("includes only non-recurring open tasks on the next day", () => {

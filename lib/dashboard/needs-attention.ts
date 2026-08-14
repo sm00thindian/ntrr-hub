@@ -9,13 +9,17 @@ export type AttentionReason =
   | "unassigned"
   | "reliant"
   | "in_progress"
-  | "today";
+  | "today"
+  | "calendar";
 
 export type NeedsAttentionItem = AgendaItem & {
   reason: AttentionReason;
-  /** Lower = higher priority */
+  /** Lower = higher priority for exception ordering */
   rank: number;
 };
+
+/** @deprecated Alias — caregiver Focus Today rows */
+export type FocusTodayItem = NeedsAttentionItem;
 
 /** Abbreviated next-day row — orientation only, not a second triage list. */
 export type TomorrowFocusItem = {
@@ -30,6 +34,7 @@ export type TomorrowFocusItem = {
 };
 
 export type FocusBoard = {
+  /** Chronological household day: Hub tasks + shared calendars; conflicts/overdue first */
   today: NeedsAttentionItem[];
   tomorrow: TomorrowFocusItem[];
   /** Timed items beyond the tomorrow cap (for “+N more”). */
@@ -44,6 +49,7 @@ const REASON_RANK: Record<AttentionReason, number> = {
   reliant: 4,
   in_progress: 5,
   today: 6,
+  calendar: 7,
 };
 
 const DUE_SOON_MS = 4 * 60 * 60 * 1000; // 4 hours
@@ -64,20 +70,77 @@ function taskToAgenda(task: Task, fallbackSortAt: string): AgendaItem {
   };
 }
 
+function taskReason(task: Task, nowMs: number, rangeStart: string): AttentionReason | null {
+  if (task.status !== "todo" && task.status !== "in_progress") {
+    return null;
+  }
+
+  if (task.dueAt && agendaSortTimeMs(task.dueAt) < nowMs) {
+    return "overdue";
+  }
+  if (
+    task.dueAt &&
+    agendaSortTimeMs(task.dueAt) - nowMs <= DUE_SOON_MS &&
+    agendaSortTimeMs(task.dueAt) >= nowMs
+  ) {
+    return "due_soon";
+  }
+  if (!task.assigneeId) {
+    return "unassigned";
+  }
+  if (task.reliantConfirmRequested) {
+    return "reliant";
+  }
+  if (task.status === "in_progress") {
+    return "in_progress";
+  }
+  if (
+    task.dueAt &&
+    agendaSortTimeMs(task.dueAt) >= agendaSortTimeMs(rangeStart)
+  ) {
+    return "today";
+  }
+  // Undated open
+  if (!task.dueAt) {
+    return "today";
+  }
+  return "today";
+}
+
+/** Open Hub task belongs on caregiver Focus Today. */
+export function isTaskOnFocusToday(
+  task: Task,
+  rangeStart: string,
+  rangeEnd: string,
+): boolean {
+  if (task.status === "done" || task.status === "cancelled") {
+    return false;
+  }
+
+  if (!task.dueAt) {
+    return task.status === "todo" || task.status === "in_progress";
+  }
+
+  const dueMs = agendaSortTimeMs(task.dueAt);
+  const endMs = agendaSortTimeMs(rangeEnd);
+  // Overdue + due today (exclude tomorrow and later)
+  return dueMs < endMs;
+}
+
 /**
- * Pure ranking for tests and server. `nowMs` injectable for determinism.
- * Conflicts are represented as synthetic items when conflictCount > 0.
+ * Caregiver Focus Today: household day board.
+ * Order: conflicts → overdue → chronological (all-day events first).
+ * Events must already be household-shared filtered by the caller.
  */
-export function rankNeedsAttention(params: {
+export function buildCaregiverFocusToday(params: {
   tasks: Task[];
   events: AgendaItem[];
   conflictCount: number;
   nowMs?: number;
   rangeStart: string;
-  limit?: number;
+  rangeEnd: string;
 }): NeedsAttentionItem[] {
   const nowMs = params.nowMs ?? Date.now();
-  const limit = params.limit ?? 6;
   const items: NeedsAttentionItem[] = [];
 
   if (params.conflictCount > 0) {
@@ -96,39 +159,14 @@ export function rankNeedsAttention(params: {
     });
   }
 
-  const activeTasks = params.tasks.filter(
-    (t) => t.status === "todo" || t.status === "in_progress",
-  );
-
-  for (const task of activeTasks) {
-    let reason: AttentionReason | null = null;
-
-    if (task.dueAt && agendaSortTimeMs(task.dueAt) < nowMs) {
-      reason = "overdue";
-    } else if (
-      task.dueAt &&
-      agendaSortTimeMs(task.dueAt) - nowMs <= DUE_SOON_MS &&
-      agendaSortTimeMs(task.dueAt) >= nowMs
-    ) {
-      reason = "due_soon";
-    } else if (!task.assigneeId) {
-      reason = "unassigned";
-    } else if (task.reliantConfirmRequested) {
-      reason = "reliant";
-    } else if (task.status === "in_progress") {
-      reason = "in_progress";
-    } else if (
-      task.dueAt &&
-      agendaSortTimeMs(task.dueAt) >= agendaSortTimeMs(params.rangeStart) &&
-      agendaSortTimeMs(task.dueAt) < nowMs + 24 * 60 * 60 * 1000
-    ) {
-      reason = "today";
+  for (const task of params.tasks) {
+    if (!isTaskOnFocusToday(task, params.rangeStart, params.rangeEnd)) {
+      continue;
     }
-
+    const reason = taskReason(task, nowMs, params.rangeStart);
     if (!reason) {
       continue;
     }
-
     items.push({
       ...taskToAgenda(task, params.rangeStart),
       reason,
@@ -140,23 +178,34 @@ export function rankNeedsAttention(params: {
     if (event.kind !== "event") {
       continue;
     }
-    const start = agendaSortTimeMs(event.sortAt);
-    if (start < nowMs) {
-      continue;
-    }
-    if (start - nowMs <= DUE_SOON_MS) {
-      items.push({
-        ...event,
-        reason: "due_soon",
-        rank: REASON_RANK.due_soon + 0.5,
-      });
-    }
+    items.push({
+      ...event,
+      reason: "calendar",
+      rank: REASON_RANK.calendar,
+    });
   }
 
   items.sort((a, b) => {
-    if (a.rank !== b.rank) {
-      return a.rank - b.rank;
+    // Conflicts always first
+    if (a.reason === "conflict" && b.reason !== "conflict") return -1;
+    if (b.reason === "conflict" && a.reason !== "conflict") return 1;
+
+    // Then all overdue tasks before the rest of the day
+    const aOverdue = a.reason === "overdue" ? 0 : 1;
+    const bOverdue = b.reason === "overdue" ? 0 : 1;
+    if (aOverdue !== bOverdue) {
+      return aOverdue - bOverdue;
     }
+
+    // Chronological body: all-day events first among non-overdue block
+    if (a.reason !== "overdue" && b.reason !== "overdue") {
+      const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
+      const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
+      if (aAllDay !== bAllDay) {
+        return aAllDay - bAllDay;
+      }
+    }
+
     const timeDiff = agendaSortTimeMs(a.sortAt) - agendaSortTimeMs(b.sortAt);
     if (timeDiff !== 0) {
       return timeDiff;
@@ -172,19 +221,45 @@ export function rankNeedsAttention(params: {
     }
     seen.add(item.id);
     unique.push(item);
-    if (unique.length >= limit) {
-      break;
-    }
   }
 
   return unique;
 }
 
 /**
+ * @deprecated Prefer buildCaregiverFocusToday for the day board.
+ * Kept for unit tests of pure urgency ranking.
+ */
+export function rankNeedsAttention(params: {
+  tasks: Task[];
+  events: AgendaItem[];
+  conflictCount: number;
+  nowMs?: number;
+  rangeStart: string;
+  limit?: number;
+}): NeedsAttentionItem[] {
+  const nowMs = params.nowMs ?? Date.now();
+  const limit = params.limit ?? 6;
+  const rangeEnd = new Date(agendaSortTimeMs(params.rangeStart) + 24 * 60 * 60 * 1000).toISOString();
+  const full = buildCaregiverFocusToday({
+    tasks: params.tasks,
+    // Old ranking only included soon events; pass empty for pure task tests
+    events: params.events.filter((e) => {
+      if (e.kind !== "event") return false;
+      const start = agendaSortTimeMs(e.sortAt);
+      return start >= nowMs && start - nowMs <= DUE_SOON_MS;
+    }),
+    conflictCount: params.conflictCount,
+    nowMs,
+    rangeStart: params.rangeStart,
+    rangeEnd,
+  });
+  return full.slice(0, limit);
+}
+
+/**
  * Non-recurring tasks due on the next household day — out-of-the-ordinary only.
- * Daily recurring care (meds, brush teeth, etc.) is expected routine and stays off
- * this list so the look-ahead stays calm for schedule-sensitive people.
- * Calendar events are omitted here; full day context lives under Today's agenda / Calendar.
+ * Daily recurring care stays off this list for schedule-sensitive calm.
  */
 export function rankTomorrowPreview(params: {
   tasks: Task[];
@@ -203,7 +278,6 @@ export function rankTomorrowPreview(params: {
     if (task.status === "done" || task.status === "cancelled") {
       continue;
     }
-    // Routine recurring series is expected — not a tomorrow surprise.
     if (task.recurringTemplateId) {
       continue;
     }
@@ -252,7 +326,9 @@ export function attentionReasonLabel(reason: AttentionReason): string {
       return "In progress";
     case "today":
       return "Due today";
+    case "calendar":
+      return "Calendar";
     default:
-      return "Attention";
+      return "Focus";
   }
 }

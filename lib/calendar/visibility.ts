@@ -62,3 +62,30 @@ export function filterEventsForViewer<T extends { provenance: Provenance }>(
 ): T[] {
   return events.filter((event) => eventVisibleToUser(event, viewerUserId, settings));
 }
+
+/**
+ * Family board rule: only shared (household) calendars.
+ * Personal calendars are never included — even for the calendar owner.
+ * Missing assignment / calendarId → household (legacy).
+ */
+export function eventIsHouseholdShared(
+  event: { provenance: Provenance },
+  settings: HouseholdCalendarSettings,
+): boolean {
+  const calendarId = event.provenance.calendarId;
+  const assignment = resolveAssignment(calendarId, settings);
+
+  if (!assignment) {
+    return true;
+  }
+
+  return normalizeCalendarVisibility(assignment.visibility) === "household";
+}
+
+/** Events for caregiver Focus — household/shared calendars only. */
+export function filterHouseholdCalendarEvents<T extends { provenance: Provenance }>(
+  events: T[],
+  settings: HouseholdCalendarSettings,
+): T[] {
+  return events.filter((event) => eventIsHouseholdShared(event, settings));
+}

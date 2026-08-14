@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { AiHighlightsPanel } from "@/components/dashboard/ai-highlights-panel";
-import { DayAgenda } from "@/components/dashboard/day-agenda";
 import { MyDayPanel } from "@/components/dashboard/my-day-panel";
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { CreateHouseholdForm } from "@/components/household/create-household-form";
 import { MembershipRefresh } from "@/components/household/membership-refresh";
 
-import { getTodayAgenda } from "@/lib/dashboard/agenda";
 import { getNeedsAttention } from "@/lib/dashboard/needs-attention-queries";
 import { getMyDayAgenda, isMyDayPersona } from "@/lib/dashboard/my-day";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
@@ -83,10 +81,9 @@ export default async function DashboardPage() {
     );
   }
 
-  // —— Coordinator / care partner / other: full household board ——
-  // Sync lives in the app footer (compact card), not on the dashboard.
-  const [agenda, attention, setupStatus] = await Promise.all([
-    getTodayAgenda(membership.householdId, timeZone, user.id).catch(() => []),
+  // —— Coordinator / care partner / other: Focus = household day board ——
+  // Shared calendars + Hub tasks in one card; sync lives in the app footer.
+  const [attention, setupStatus] = await Promise.all([
     getNeedsAttention(membership.householdId, timeZone, 6, user.id).catch(() => ({
       today: [],
       tomorrow: [],
@@ -105,7 +102,7 @@ export default async function DashboardPage() {
       <div className="min-w-0">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Dashboard</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
-          {membership.householdName} · scan first, then the day
+          {membership.householdName} · today&apos;s board
         </p>
       </div>
 
@@ -113,9 +110,8 @@ export default async function DashboardPage() {
 
       {/*
         Caregiver / coordinator board:
-        1. Focus (priority, top)
-        2. Today's agenda
-        3. AI insights
+        1. Focus (Today timeline + Tomorrow one-offs)
+        2. Highlights
         Sync status → app footer (except /calendar)
       */}
       <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
@@ -126,7 +122,6 @@ export default async function DashboardPage() {
           timeZone={timeZone}
           canCompleteTasks={canComplete}
         />
-        <DayAgenda items={agenda} timeZone={timeZone} />
         <AiHighlightsPanel
           householdId={membership.householdId}
           canRefresh={canComplete}

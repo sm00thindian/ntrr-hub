@@ -68,6 +68,8 @@ test.describe("Authenticated smoke (optional)", () => {
     await expect(page.getByRole("heading", { name: /^focus$/i })).toBeVisible({
       timeout: 15_000,
     });
+    // Agenda is merged into Focus — no separate card
+    await expect(page.getByRole("heading", { name: /today.?s agenda/i })).toHaveCount(0);
     await expect(page.getByTestId("footer-sync")).toBeVisible();
     await expect(page.getByRole("heading", { name: /sync status/i })).toHaveCount(0);
   });
