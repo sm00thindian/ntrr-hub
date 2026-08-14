@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { Calendar, Pause, Pencil, Trash2, User } from "lucide-react";
 
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
-import { SourceChip } from "@/components/provenance/source-chip";
 import { EditTaskForm } from "@/components/tasks/edit-task-form";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
@@ -100,7 +99,6 @@ export function TaskCard({
             ) : null}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <SourceChip source={task.provenance.source} />
             {task.reliantConfirmRequested && !isDone ? <ReliantConfirmChip /> : null}
             <span
               className={cn(
