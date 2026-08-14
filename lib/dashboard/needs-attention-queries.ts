@@ -3,7 +3,8 @@ import { filterEventsForViewer } from "@/lib/calendar/visibility";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import {
   rankNeedsAttention,
-  type NeedsAttentionItem,
+  rankTomorrowPreview,
+  type FocusBoard,
 } from "@/lib/dashboard/needs-attention";
 import { getZonedDayBounds, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
@@ -15,40 +16,58 @@ export async function getNeedsAttention(
   timeZone?: string,
   limit = 6,
   viewerUserId?: string,
-): Promise<NeedsAttentionItem[]> {
+  tomorrowLimit = 3,
+): Promise<FocusBoard> {
   const zone = resolveHouseholdTimeZone(timeZone);
-  const { start: rangeStart, end: rangeEnd } = getZonedDayBounds(zone);
+  const todayBounds = getZonedDayBounds(zone);
+  // todayBounds.end is the first instant of tomorrow in the household zone
+  const tomorrowBounds = getZonedDayBounds(zone, new Date(todayBounds.end));
 
-  const [tasks, events, conflictCount, calendarSettings] = await Promise.all([
-    getHouseholdTasks(householdId),
-    getCalendarEventsForRange(householdId, rangeStart, rangeEnd),
-    getPendingConflictCount(householdId),
-    getHouseholdCalendarSettings(householdId),
-  ]);
+  const [tasks, todayEvents, tomorrowEvents, conflictCount, calendarSettings] =
+    await Promise.all([
+      getHouseholdTasks(householdId),
+      getCalendarEventsForRange(householdId, todayBounds.start, todayBounds.end),
+      getCalendarEventsForRange(householdId, tomorrowBounds.start, tomorrowBounds.end),
+      getPendingConflictCount(householdId),
+      getHouseholdCalendarSettings(householdId),
+    ]);
 
-  const visibleEvents = viewerUserId
-    ? filterEventsForViewer(events, viewerUserId, calendarSettings)
-    : events;
+  const toAgenda = (
+    events: Awaited<ReturnType<typeof getCalendarEventsForRange>>,
+  ): AgendaItem[] => {
+    const visible = viewerUserId
+      ? filterEventsForViewer(events, viewerUserId, calendarSettings)
+      : events;
+    return visible.map((event) => ({
+      id: `event-${event.id}`,
+      kind: "event" as const,
+      title: event.title,
+      sortAt: event.startsAt,
+      endsAt: event.endsAt,
+      allDay: event.allDay,
+      location: event.location,
+      source: event.provenance.source,
+      href: "/calendar",
+      reliantConfirmRequested: event.reliantConfirmRequested,
+      entityId: event.id,
+    }));
+  };
 
-  const eventItems: AgendaItem[] = visibleEvents.map((event) => ({
-    id: `event-${event.id}`,
-    kind: "event" as const,
-    title: event.title,
-    sortAt: event.startsAt,
-    endsAt: event.endsAt,
-    allDay: event.allDay,
-    location: event.location,
-    source: event.provenance.source,
-    href: "/calendar",
-    reliantConfirmRequested: event.reliantConfirmRequested,
-    entityId: event.id,
-  }));
-
-  return rankNeedsAttention({
+  const today = rankNeedsAttention({
     tasks,
-    events: eventItems,
+    events: toAgenda(todayEvents),
     conflictCount,
-    rangeStart,
+    rangeStart: todayBounds.start,
     limit,
   });
+
+  const { items: tomorrow, overflow: tomorrowOverflow } = rankTomorrowPreview({
+    tasks,
+    events: toAgenda(tomorrowEvents),
+    rangeStart: tomorrowBounds.start,
+    rangeEnd: tomorrowBounds.end,
+    limit: tomorrowLimit,
+  });
+
+  return { today, tomorrow, tomorrowOverflow };
 }

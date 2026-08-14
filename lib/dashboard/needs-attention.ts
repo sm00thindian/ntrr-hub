@@ -17,6 +17,23 @@ export type NeedsAttentionItem = AgendaItem & {
   rank: number;
 };
 
+/** Abbreviated next-day row — orientation only, not a second triage list. */
+export type TomorrowFocusItem = {
+  id: string;
+  kind: "task" | "event";
+  title: string;
+  sortAt: string;
+  allDay?: boolean;
+  href?: string;
+};
+
+export type FocusBoard = {
+  today: NeedsAttentionItem[];
+  tomorrow: TomorrowFocusItem[];
+  /** Timed items beyond the tomorrow cap (for “+N more”). */
+  tomorrowOverflow: number;
+};
+
 const REASON_RANK: Record<AttentionReason, number> = {
   conflict: 0,
   overdue: 1,
@@ -159,6 +176,77 @@ export function rankNeedsAttention(params: {
   }
 
   return unique;
+}
+
+/**
+ * Timed tasks + events on the next household day, chronological, capped.
+ * No ranking by urgency — a light look ahead only.
+ */
+export function rankTomorrowPreview(params: {
+  tasks: Task[];
+  events: AgendaItem[];
+  rangeStart: string;
+  rangeEnd: string;
+  limit?: number;
+}): { items: TomorrowFocusItem[]; overflow: number } {
+  const limit = params.limit ?? 3;
+  const startMs = agendaSortTimeMs(params.rangeStart);
+  const endMs = agendaSortTimeMs(params.rangeEnd);
+  const items: TomorrowFocusItem[] = [];
+
+  for (const task of params.tasks) {
+    if (task.status === "done" || task.status === "cancelled") {
+      continue;
+    }
+    if (!task.dueAt) {
+      continue;
+    }
+    const dueMs = agendaSortTimeMs(task.dueAt);
+    if (dueMs < startMs || dueMs >= endMs) {
+      continue;
+    }
+    items.push({
+      id: `task-${task.id}`,
+      kind: "task",
+      title: task.title,
+      sortAt: task.dueAt,
+      href: "/tasks",
+    });
+  }
+
+  for (const event of params.events) {
+    if (event.kind !== "event") {
+      continue;
+    }
+    const start = agendaSortTimeMs(event.sortAt);
+    if (start < startMs || start >= endMs) {
+      continue;
+    }
+    items.push({
+      id: event.id,
+      kind: "event",
+      title: event.title,
+      sortAt: event.sortAt,
+      allDay: event.allDay,
+      href: event.href ?? "/calendar",
+    });
+  }
+
+  items.sort((a, b) => {
+    const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
+    const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
+    if (aAllDay !== bAllDay) {
+      return aAllDay - bAllDay;
+    }
+    const timeDiff = agendaSortTimeMs(a.sortAt) - agendaSortTimeMs(b.sortAt);
+    if (timeDiff !== 0) {
+      return timeDiff;
+    }
+    return a.title.localeCompare(b.title);
+  });
+
+  const overflow = Math.max(0, items.length - limit);
+  return { items: items.slice(0, limit), overflow };
 }
 
 export function attentionReasonLabel(reason: AttentionReason): string {

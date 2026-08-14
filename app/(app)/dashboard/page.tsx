@@ -85,7 +85,11 @@ export default async function DashboardPage() {
   // Sync lives in the app footer (compact card), not on the dashboard.
   const [agenda, attention, setupStatus] = await Promise.all([
     getTodayAgenda(membership.householdId, timeZone, user.id).catch(() => []),
-    getNeedsAttention(membership.householdId, timeZone, 6, user.id).catch(() => []),
+    getNeedsAttention(membership.householdId, timeZone, 6, user.id).catch(() => ({
+      today: [],
+      tomorrow: [],
+      tomorrowOverflow: 0,
+    })),
     getHouseholdSetupStatus(membership.householdId).catch(() => ({
       complete: true,
       steps: [],
@@ -114,7 +118,9 @@ export default async function DashboardPage() {
       */}
       <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
         <NeedsAttentionPanel
-          items={attention}
+          items={attention.today}
+          tomorrow={attention.tomorrow}
+          tomorrowOverflow={attention.tomorrowOverflow}
           timeZone={timeZone}
           canCompleteTasks={canComplete}
         />
