@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AiHighlightsPanel } from "@/components/dashboard/ai-highlights-panel";
+import { DashboardLiveRefresh } from "@/components/dashboard/dashboard-live-refresh";
 import { MyDayPanel } from "@/components/dashboard/my-day-panel";
 import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-panel";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
@@ -13,7 +14,10 @@ import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings
 import { getUserMembership } from "@/lib/households/queries";
 import { getHouseholdSetupStatus } from "@/lib/households/setup";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
-import { canCompleteOwnOrEditTasks } from "@/lib/permissions/roles";
+import {
+  canCompleteOwnOrEditTasks,
+  canManageIntegrations,
+} from "@/lib/permissions/roles";
 import { upsertProfile } from "@/lib/profiles/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -70,19 +74,23 @@ export default async function DashboardPage() {
     );
 
     return (
-      <MyDayPanel
-        items={board.today}
-        tomorrow={board.tomorrow}
-        tomorrowOverflow={board.tomorrowOverflow}
-        timeZone={timeZone}
-        canCompleteTasks={canComplete}
-        householdName={membership.householdName}
-      />
+      <>
+        <DashboardLiveRefresh householdId={membership.householdId} />
+        <MyDayPanel
+          items={board.today}
+          tomorrow={board.tomorrow}
+          tomorrowOverflow={board.tomorrowOverflow}
+          timeZone={timeZone}
+          canCompleteTasks={canComplete}
+          householdName={membership.householdName}
+        />
+      </>
     );
   }
 
   // —— Coordinator / care partner / other: Focus = household day board ——
   // Shared calendars + Hub tasks in one card; sync lives in the app footer.
+  const canSync = canManageIntegrations(membership.role);
   const [attention, setupStatus] = await Promise.all([
     getNeedsAttention(membership.householdId, timeZone, 6, user.id).catch(() => ({
       today: [],
@@ -99,6 +107,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <DashboardLiveRefresh
+        householdId={membership.householdId}
+        enableCalendarSync={canSync}
+      />
       <div className="min-w-0">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Dashboard</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
