@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
-import { ItemMetaTags } from "@/components/dashboard/item-meta-tags";
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,7 +150,18 @@ export function NeedsAttentionPanel({
                       {isDone ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : null}
                     </span>
                     <div className="min-w-0 flex-1 pt-0.5">
-                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="flex min-w-0 items-start gap-2">
+                        {/* Assignee left of title — no source chip (Hub tasks are NTRR) */}
+                        {isTask && !isDone ? (
+                          <div className="flex h-6 w-[6.5rem] shrink-0 items-center overflow-hidden pt-0.5">
+                            <AssigneeChip
+                              label={item.assigneeLabel}
+                              persona={item.assigneePersona}
+                              unassigned={!item.assigneeLabel}
+                              className="max-w-full"
+                            />
+                          </div>
+                        ) : null}
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                             {item.href && !isDone ? (
@@ -199,16 +209,6 @@ export function NeedsAttentionPanel({
                             {timeLabel}
                           </p>
                         </div>
-
-                        {!isConflict ? (
-                          <ItemMetaTags
-                            source={item.source}
-                            showAssignee={isTask && !isDone}
-                            assigneeLabel={item.assigneeLabel}
-                            assigneePersona={item.assigneePersona}
-                            className="self-start"
-                          />
-                        ) : null}
                       </div>
                     </div>
                     {isConflict && item.href && !isDone ? (
