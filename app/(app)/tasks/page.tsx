@@ -10,7 +10,7 @@ import {
 } from "@/lib/datetime/timezone";
 import { isMyDayPersona } from "@/lib/dashboard/my-day";
 import { canCompleteOwnOrEditTasks, canEditTasks } from "@/lib/permissions/roles";
-import { getHouseholdTasks, getRecurringTemplates } from "@/lib/tasks/queries";
+import { getHouseholdTasks, getRecurringTemplates, selectBoardTasks } from "@/lib/tasks/queries";
 
 export default async function TasksPage() {
   const ctx = await requireHouseholdContext();
@@ -19,12 +19,14 @@ export default async function TasksPage() {
   const canComplete = canCompleteOwnOrEditTasks(ctx.role, ctx.persona);
   const myDayMode = isMyDayPersona(ctx.persona);
 
-  const [tasks, templates, members, calendarSettings] = await Promise.all([
+  const [rawTasks, templates, members, calendarSettings] = await Promise.all([
     getHouseholdTasks(ctx.householdId),
     getRecurringTemplates(ctx.householdId),
     getHouseholdMembers(ctx.householdId),
     getHouseholdCalendarSettings(ctx.householdId),
   ]);
+  // One open card per recurring series; hide stacked done history on the board
+  const tasks = selectBoardTasks(rawTasks);
 
   if (!members.length) {
     redirect("/dashboard");

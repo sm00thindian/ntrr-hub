@@ -47,6 +47,47 @@ type TemplateRow = {
   is_active: boolean;
 };
 
+type OpenRecurringRow = {
+  id: string;
+  recurring_template_id: string | null;
+  due_at: string | null;
+  created_at: string;
+  status: string;
+};
+
+/** Prefer latest due, then newest created — one current card per series. */
+export function pickOpenRecurringKeeper<T extends { due_at: string | null; created_at: string; status: string }>(
+  opens: T[],
+): T {
+  return [...opens].sort((a, b) => {
+    // in_progress before todo
+    if (a.status !== b.status) {
+      if (a.status === "in_progress") return -1;
+      if (b.status === "in_progress") return 1;
+    }
+    const aDue = a.due_at ? Date.parse(a.due_at) : Number.NEGATIVE_INFINITY;
+    const bDue = b.due_at ? Date.parse(b.due_at) : Number.NEGATIVE_INFINITY;
+    if (aDue !== bDue) {
+      return bDue - aDue;
+    }
+    return Date.parse(b.created_at) - Date.parse(a.created_at);
+  })[0]!;
+}
+
+async function countOpenForTemplate(
+  admin: ReturnType<typeof createAdminClient>,
+  householdId: string,
+  templateId: string,
+): Promise<number> {
+  const { count } = await admin
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("household_id", householdId)
+    .eq("recurring_template_id", templateId)
+    .in("status", ["todo", "in_progress"]);
+  return count ?? 0;
+}
+
 async function insertSpawnedTask(params: {
   householdId: string;
   template: TemplateRow;
@@ -54,6 +95,12 @@ async function insertSpawnedTask(params: {
   createdBy: string;
 }): Promise<{ id: string; title: string; description: string | null; status: string; due_at: string | null } | null> {
   const admin = createAdminClient();
+
+  // Re-check immediately before insert (dashboard can call ensure in parallel).
+  if ((await countOpenForTemplate(admin, params.householdId, params.template.id)) > 0) {
+    return null;
+  }
+
   const { data, error } = await admin
     .from("tasks")
     .insert({
@@ -72,6 +119,10 @@ async function insertSpawnedTask(params: {
     .single();
 
   if (error || !data) {
+    // Unique partial index or race — treat as "already has an open instance"
+    if (error?.code === "23505") {
+      return null;
+    }
     console.error("[spawn-recurring] insert failed", error?.message);
     return null;
   }
@@ -93,6 +144,62 @@ async function insertSpawnedTask(params: {
   }
 
   return data;
+}
+
+/**
+ * Cancel extra open instances so each template has at most one.
+ * Keeps the most current open card (latest due / in progress).
+ */
+export async function collapseDuplicateOpenRecurring(householdId: string): Promise<number> {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return 0;
+  }
+
+  const { data: openRows } = await admin
+    .from("tasks")
+    .select("id, recurring_template_id, due_at, created_at, status")
+    .eq("household_id", householdId)
+    .in("status", ["todo", "in_progress"])
+    .not("recurring_template_id", "is", null);
+
+  if (!openRows?.length) {
+    return 0;
+  }
+
+  const byTemplate = new Map<string, OpenRecurringRow[]>();
+  for (const raw of openRows) {
+    const row = raw as OpenRecurringRow;
+    if (!row.recurring_template_id) continue;
+    const list = byTemplate.get(row.recurring_template_id) ?? [];
+    list.push(row);
+    byTemplate.set(row.recurring_template_id, list);
+  }
+
+  let cancelled = 0;
+  for (const [, opens] of byTemplate) {
+    if (opens.length <= 1) continue;
+    const keeper = pickOpenRecurringKeeper(opens);
+    const extras = opens.filter((o) => o.id !== keeper.id);
+    for (const extra of extras) {
+      const { error } = await admin
+        .from("tasks")
+        .update({
+          status: "cancelled",
+          provenance: systemProvenance(),
+        })
+        .eq("id", extra.id)
+        .eq("household_id", householdId)
+        .in("status", ["todo", "in_progress"]);
+      if (!error) {
+        cancelled += 1;
+      }
+    }
+  }
+
+  return cancelled;
 }
 
 /**
@@ -125,16 +232,10 @@ export async function spawnNextAfterCompletion(params: {
     return { spawned: false };
   }
 
-  // One open instance at a time per template
-  const { data: openRows } = await admin
-    .from("tasks")
-    .select("id")
-    .eq("household_id", params.householdId)
-    .eq("recurring_template_id", params.templateId)
-    .in("status", ["todo", "in_progress"])
-    .limit(1);
+  // Collapse any prior race dups, then ensure at most one open.
+  await collapseDuplicateOpenRecurring(params.householdId);
 
-  if (openRows && openRows.length > 0) {
+  if ((await countOpenForTemplate(admin, params.householdId, params.templateId)) > 0) {
     return { spawned: false };
   }
 
@@ -150,23 +251,45 @@ export async function spawnNextAfterCompletion(params: {
     now: after,
   });
 
-  // Templates without due_time still need a next open task (undated).
+  const spawnDueAt = row.due_time ? dueAt : null;
+  if (row.due_time && !spawnDueAt) {
+    return { spawned: false };
+  }
+
   const spawned = await insertSpawnedTask({
     householdId: params.householdId,
     template: row,
-    dueAt,
+    dueAt: spawnDueAt,
     createdBy: params.createdBy,
   });
 
   return spawned ? { spawned: true, taskId: spawned.id } : { spawned: false };
 }
 
+/** Dedupe concurrent ensure() calls for the same household in one server process. */
+const ensureInFlight = new Map<string, Promise<number>>();
+
 /**
- * Recovery: any active template with no open instance gets the next occurrence.
- * Safe to call on board/dashboard load so yesterday’s completions reappear today
- * even if spawn-on-complete was missing historically.
+ * Recovery: collapse dups, then any active template with no open instance gets the next occurrence.
+ * Safe to call on board/dashboard load; parallel callers share one in-flight run.
  */
 export async function ensureHouseholdRecurringInstances(
+  householdId: string,
+  createdBy: string,
+): Promise<number> {
+  const existing = ensureInFlight.get(householdId);
+  if (existing) {
+    return existing;
+  }
+
+  const run = runEnsureHouseholdRecurringInstances(householdId, createdBy).finally(() => {
+    ensureInFlight.delete(householdId);
+  });
+  ensureInFlight.set(householdId, run);
+  return run;
+}
+
+async function runEnsureHouseholdRecurringInstances(
   householdId: string,
   createdBy: string,
 ): Promise<number> {
@@ -177,6 +300,9 @@ export async function ensureHouseholdRecurringInstances(
     // Local/dev without service role — skip recovery rather than break reads.
     return 0;
   }
+
+  // First: clean race duplicates so we never stack multiple brush-teeth cards.
+  await collapseDuplicateOpenRecurring(householdId);
 
   const { data: templates } = await admin
     .from("recurring_task_templates")
@@ -214,17 +340,18 @@ export async function ensureHouseholdRecurringInstances(
       continue;
     }
 
-    // Advance from the most recently touched instance so we don't skip a day.
-    const { data: latest } = await admin
+    // Advance from the latest *completed* instance (done), not cancelled dups.
+    const { data: latestDone } = await admin
       .from("tasks")
       .select("due_at, updated_at")
       .eq("household_id", householdId)
       .eq("recurring_template_id", template.id)
+      .eq("status", "done")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const latestRow = latest as { due_at: string | null; updated_at: string } | null;
+    const latestRow = latestDone as { due_at: string | null; updated_at: string } | null;
     const after = latestRow
       ? afterInstantForNextSpawn(latestRow.due_at, new Date(latestRow.updated_at))
       : new Date(Date.now() - 1);
@@ -238,9 +365,14 @@ export async function ensureHouseholdRecurringInstances(
       now: after,
     });
 
-    // Templates without due_time always get an undated open task when none is open.
     const spawnDueAt = template.due_time ? dueAt : null;
     if (template.due_time && !spawnDueAt) {
+      continue;
+    }
+
+    // Final open check right before insert
+    if ((await countOpenForTemplate(admin, householdId, template.id)) > 0) {
+      openTemplateIds.add(template.id);
       continue;
     }
 

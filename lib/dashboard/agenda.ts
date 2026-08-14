@@ -7,7 +7,7 @@ import {
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
-import { getHouseholdTasks } from "@/lib/tasks/queries";
+import { getHouseholdTasks, oneOpenPerRecurringTemplate } from "@/lib/tasks/queries";
 
 function isTaskActiveToday(
   dueAt: string | null,
@@ -68,7 +68,9 @@ export async function getTodayAgenda(
     ? filterEventsForViewer(events, viewerUserId, calendarSettings)
     : events;
 
-  const taskItems: AgendaItem[] = tasks
+  const uniqueTasks = oneOpenPerRecurringTemplate(tasks);
+
+  const taskItems: AgendaItem[] = uniqueTasks
     .filter((task) => isTaskActiveToday(task.dueAt, task.status, rangeStart, rangeEnd))
     .map((task) => ({
       id: `task-${task.id}`,

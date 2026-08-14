@@ -61,11 +61,68 @@ function mapTask(
   };
 }
 
+/** Keep a single open instance per recurring template (latest due / in progress). */
+export function oneOpenPerRecurringTemplate(tasks: Task[]): Task[] {
+  const openByTemplate = new Map<string, Task[]>();
+  const result: Task[] = [];
+
+  for (const task of tasks) {
+    if (!task.recurringTemplateId || task.status === "done" || task.status === "cancelled") {
+      result.push(task);
+      continue;
+    }
+    const list = openByTemplate.get(task.recurringTemplateId) ?? [];
+    list.push(task);
+    openByTemplate.set(task.recurringTemplateId, list);
+  }
+
+  for (const opens of openByTemplate.values()) {
+    if (opens.length === 1) {
+      result.push(opens[0]!);
+      continue;
+    }
+    const sorted = [...opens].sort((a, b) => {
+      if (a.status !== b.status) {
+        if (a.status === "in_progress") return -1;
+        if (b.status === "in_progress") return 1;
+      }
+      const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.NEGATIVE_INFINITY;
+      const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.NEGATIVE_INFINITY;
+      if (aDue !== bDue) return bDue - aDue;
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
+    result.push(sorted[0]!);
+  }
+
+  return result;
+}
+
+/**
+ * Board rule for recurring series:
+ * - one open card (todo / in_progress)
+ * - hide done history so the board is not a stack of past meds / brush-teeth
+ */
+export function selectBoardTasks(tasks: Task[]): Task[] {
+  const deduped = oneOpenPerRecurringTemplate(tasks).filter((task) => {
+    if (!task.recurringTemplateId) {
+      return true;
+    }
+    // Recurring series: only surface the open card on the board
+    return task.status !== "done" && task.status !== "cancelled";
+  });
+
+  return deduped.sort((a, b) => {
+    const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
+    const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) return aDue - bDue;
+    return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+  });
+}
+
 export async function getHouseholdTasks(householdId: string): Promise<Task[]> {
   const supabase = await createClient();
 
-  // Recover next instances for active templates with no open task (e.g. completed
-  // before spawn-on-complete existed). Uses service role when available.
+  // Collapse dups + spawn missing open instance once per load (deduped in-process).
   try {
     const {
       data: { user },

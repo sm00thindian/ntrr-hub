@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { nextRecurringDueAt, parseDueTime } from "./recurrence";
-import { afterInstantForNextSpawn } from "./spawn-recurring";
+import { afterInstantForNextSpawn, pickOpenRecurringKeeper } from "./spawn-recurring";
+import { selectBoardTasks } from "./queries";
+import type { Task } from "./types";
 
 describe("parseDueTime", () => {
   it("normalizes HH:mm", () => {
@@ -96,5 +98,82 @@ describe("afterInstantForNextSpawn", () => {
     const completedAt = new Date("2026-08-13T18:00:00.000Z");
     const d = afterInstantForNextSpawn(null, completedAt);
     assert.equal(d.toISOString(), completedAt.toISOString());
+  });
+});
+
+describe("pickOpenRecurringKeeper", () => {
+  it("keeps the latest due among open dups", () => {
+    const keeper = pickOpenRecurringKeeper([
+      { id: "a", due_at: "2026-08-12T14:00:00.000Z", created_at: "2026-08-12T10:00:00.000Z", status: "todo" },
+      { id: "b", due_at: "2026-08-14T14:00:00.000Z", created_at: "2026-08-13T10:00:00.000Z", status: "todo" },
+      { id: "c", due_at: "2026-08-13T14:00:00.000Z", created_at: "2026-08-13T11:00:00.000Z", status: "todo" },
+    ]);
+    assert.equal(keeper.id, "b");
+  });
+});
+
+function boardTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
+  return {
+    householdId: "hh",
+    description: null,
+    status: "todo",
+    assigneeId: "u1",
+    assigneeEmail: "a@example.com",
+    assigneeLabel: "Noah",
+    assigneePersona: "self_advocate",
+    dueAt: null,
+    reliantConfirmRequested: false,
+    provenance: {
+      source: "ntrr",
+      syncedAt: new Date().toISOString(),
+      confidence: "high",
+      lastModifiedBy: "user",
+    },
+    recurringTemplateId: null,
+    createdBy: "u1",
+    createdAt: "2026-08-14T10:00:00.000Z",
+    updatedAt: "2026-08-14T10:00:00.000Z",
+    ...partial,
+  };
+}
+
+describe("selectBoardTasks", () => {
+  it("shows one open card per recurring template and hides done series history", () => {
+    const tasks = selectBoardTasks([
+      boardTask({
+        id: "done-old",
+        title: "Brush teeth",
+        status: "done",
+        recurringTemplateId: "tmpl-teeth",
+        dueAt: "2026-08-13T14:00:00.000Z",
+      }),
+      boardTask({
+        id: "open-1",
+        title: "Brush teeth",
+        status: "todo",
+        recurringTemplateId: "tmpl-teeth",
+        dueAt: "2026-08-13T14:00:00.000Z",
+        createdAt: "2026-08-13T08:00:00.000Z",
+      }),
+      boardTask({
+        id: "open-2",
+        title: "Brush teeth",
+        status: "todo",
+        recurringTemplateId: "tmpl-teeth",
+        dueAt: "2026-08-14T14:00:00.000Z",
+        createdAt: "2026-08-14T08:00:00.000Z",
+      }),
+      boardTask({
+        id: "one-off",
+        title: "Call dentist",
+        status: "todo",
+      }),
+    ]);
+
+    assert.equal(tasks.length, 2);
+    assert.ok(tasks.some((t) => t.id === "one-off"));
+    assert.ok(tasks.some((t) => t.id === "open-2"));
+    assert.ok(!tasks.some((t) => t.id === "done-old"));
+    assert.ok(!tasks.some((t) => t.id === "open-1"));
   });
 });

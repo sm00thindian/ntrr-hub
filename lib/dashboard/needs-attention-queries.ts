@@ -9,7 +9,7 @@ import {
 import { getZonedDayBounds, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
-import { getHouseholdTasks } from "@/lib/tasks/queries";
+import { getHouseholdTasks, oneOpenPerRecurringTemplate } from "@/lib/tasks/queries";
 
 export async function getNeedsAttention(
   householdId: string,
@@ -53,8 +53,11 @@ export async function getNeedsAttention(
     }));
   };
 
+  // Never show three "brush teeth" overdue rows for one series
+  const uniqueTasks = oneOpenPerRecurringTemplate(tasks);
+
   const today = rankNeedsAttention({
-    tasks,
+    tasks: uniqueTasks,
     events: toAgenda(todayEvents),
     conflictCount,
     rangeStart: todayBounds.start,
@@ -62,7 +65,7 @@ export async function getNeedsAttention(
   });
 
   const { items: tomorrow, overflow: tomorrowOverflow } = rankTomorrowPreview({
-    tasks,
+    tasks: uniqueTasks,
     events: toAgenda(tomorrowEvents),
     rangeStart: tomorrowBounds.start,
     rangeEnd: tomorrowBounds.end,
