@@ -125,7 +125,7 @@ const tomorrowStart = "2026-08-11T05:00:00.000Z";
 const tomorrowEnd = "2026-08-12T05:00:00.000Z";
 
 describe("rankTomorrowPreview", () => {
-  it("includes timed tasks and events on the next day only", () => {
+  it("includes only non-recurring open tasks on the next day", () => {
     const { items, overflow } = rankTomorrowPreview({
       tasks: [
         task({
@@ -137,6 +137,13 @@ describe("rankTomorrowPreview", () => {
           id: "tm1",
           title: "Tomorrow pickup",
           dueAt: "2026-08-11T14:00:00.000Z",
+          assigneeLabel: "Noah",
+        }),
+        task({
+          id: "recurring-meds",
+          title: "Morning meds",
+          dueAt: "2026-08-11T13:00:00.000Z",
+          recurringTemplateId: "tmpl-meds",
         }),
         task({
           id: "done",
@@ -145,51 +152,22 @@ describe("rankTomorrowPreview", () => {
           dueAt: "2026-08-11T10:00:00.000Z",
         }),
       ],
-      events: [
-        {
-          id: "event-1",
-          kind: "event",
-          title: "IEP meeting",
-          sortAt: "2026-08-11T15:00:00.000Z",
-          source: "google",
-          href: "/calendar",
-        },
-      ],
       rangeStart: tomorrowStart,
       rangeEnd: tomorrowEnd,
     });
 
     assert.equal(overflow, 0);
-    assert.equal(items.length, 2);
+    assert.equal(items.length, 1);
     assert.equal(items[0]?.title, "Tomorrow pickup");
-    assert.equal(items[1]?.title, "IEP meeting");
+    assert.equal(items[0]?.assigneeLabel, "Noah");
   });
 
-  it("caps list and reports overflow", () => {
-    const tasks = Array.from({ length: 5 }, (_, i) =>
-      task({
-        id: `t${i}`,
-        title: `Task ${i}`,
-        dueAt: `2026-08-11T${String(10 + i).padStart(2, "0")}:00:00.000Z`,
-      }),
-    );
-    const { items, overflow } = rankTomorrowPreview({
-      tasks,
-      events: [],
-      rangeStart: tomorrowStart,
-      rangeEnd: tomorrowEnd,
-      limit: 3,
-    });
-    assert.equal(items.length, 3);
-    assert.equal(overflow, 2);
-  });
-
-  it("sorts all-day events before timed items", () => {
+  it("ignores calendar events — Focus tomorrow is one-off tasks only", () => {
     const { items } = rankTomorrowPreview({
       tasks: [
         task({
           id: "t1",
-          title: "Timed task",
+          title: "Dentist form",
           dueAt: "2026-08-11T12:00:00.000Z",
         }),
       ],
@@ -206,7 +184,25 @@ describe("rankTomorrowPreview", () => {
       rangeStart: tomorrowStart,
       rangeEnd: tomorrowEnd,
     });
-    assert.equal(items[0]?.title, "All-day trip");
-    assert.equal(items[1]?.title, "Timed task");
+    assert.equal(items.length, 1);
+    assert.equal(items[0]?.title, "Dentist form");
+  });
+
+  it("caps list and reports overflow", () => {
+    const tasks = Array.from({ length: 5 }, (_, i) =>
+      task({
+        id: `t${i}`,
+        title: `Task ${i}`,
+        dueAt: `2026-08-11T${String(10 + i).padStart(2, "0")}:00:00.000Z`,
+      }),
+    );
+    const { items, overflow } = rankTomorrowPreview({
+      tasks,
+      rangeStart: tomorrowStart,
+      rangeEnd: tomorrowEnd,
+      limit: 3,
+    });
+    assert.equal(items.length, 3);
+    assert.equal(overflow, 2);
   });
 });

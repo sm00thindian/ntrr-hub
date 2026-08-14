@@ -23,14 +23,12 @@ export async function getNeedsAttention(
   // todayBounds.end is the first instant of tomorrow in the household zone
   const tomorrowBounds = getZonedDayBounds(zone, new Date(todayBounds.end));
 
-  const [tasks, todayEvents, tomorrowEvents, conflictCount, calendarSettings] =
-    await Promise.all([
-      getHouseholdTasks(householdId),
-      getCalendarEventsForRange(householdId, todayBounds.start, todayBounds.end),
-      getCalendarEventsForRange(householdId, tomorrowBounds.start, tomorrowBounds.end),
-      getPendingConflictCount(householdId),
-      getHouseholdCalendarSettings(householdId),
-    ]);
+  const [tasks, todayEvents, conflictCount, calendarSettings] = await Promise.all([
+    getHouseholdTasks(householdId),
+    getCalendarEventsForRange(householdId, todayBounds.start, todayBounds.end),
+    getPendingConflictCount(householdId),
+    getHouseholdCalendarSettings(householdId),
+  ]);
 
   const toAgenda = (
     events: Awaited<ReturnType<typeof getCalendarEventsForRange>>,
@@ -66,7 +64,6 @@ export async function getNeedsAttention(
 
   const { items: tomorrow, overflow: tomorrowOverflow } = rankTomorrowPreview({
     tasks: uniqueTasks,
-    events: toAgenda(tomorrowEvents),
     rangeStart: tomorrowBounds.start,
     rangeEnd: tomorrowBounds.end,
     limit: tomorrowLimit,

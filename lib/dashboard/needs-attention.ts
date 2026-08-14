@@ -25,6 +25,8 @@ export type TomorrowFocusItem = {
   sortAt: string;
   allDay?: boolean;
   href?: string;
+  /** Plain-text assignee for caregiver Focus (e.g. "Noah - Dentist form") */
+  assigneeLabel?: string | null;
 };
 
 export type FocusBoard = {
@@ -179,12 +181,15 @@ export function rankNeedsAttention(params: {
 }
 
 /**
- * Timed tasks + events on the next household day, chronological, capped.
- * No ranking by urgency — a light look ahead only.
+ * Non-recurring tasks due on the next household day — out-of-the-ordinary only.
+ * Daily recurring care (meds, brush teeth, etc.) is expected routine and stays off
+ * this list so the look-ahead stays calm for schedule-sensitive people.
+ * Calendar events are omitted here; full day context lives under Today's agenda / Calendar.
  */
 export function rankTomorrowPreview(params: {
   tasks: Task[];
-  events: AgendaItem[];
+  /** @deprecated Ignored — tomorrow Focus is tasks-only (non-recurring). */
+  events?: AgendaItem[];
   rangeStart: string;
   rangeEnd: string;
   limit?: number;
@@ -196,6 +201,10 @@ export function rankTomorrowPreview(params: {
 
   for (const task of params.tasks) {
     if (task.status === "done" || task.status === "cancelled") {
+      continue;
+    }
+    // Routine recurring series is expected — not a tomorrow surprise.
+    if (task.recurringTemplateId) {
       continue;
     }
     if (!task.dueAt) {
@@ -211,33 +220,11 @@ export function rankTomorrowPreview(params: {
       title: task.title,
       sortAt: task.dueAt,
       href: "/tasks",
-    });
-  }
-
-  for (const event of params.events) {
-    if (event.kind !== "event") {
-      continue;
-    }
-    const start = agendaSortTimeMs(event.sortAt);
-    if (start < startMs || start >= endMs) {
-      continue;
-    }
-    items.push({
-      id: event.id,
-      kind: "event",
-      title: event.title,
-      sortAt: event.sortAt,
-      allDay: event.allDay,
-      href: event.href ?? "/calendar",
+      assigneeLabel: task.assigneeLabel,
     });
   }
 
   items.sort((a, b) => {
-    const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
-    const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
-    if (aAllDay !== bAllDay) {
-      return aAllDay - bAllDay;
-    }
     const timeDiff = agendaSortTimeMs(a.sortAt) - agendaSortTimeMs(b.sortAt);
     if (timeDiff !== 0) {
       return timeDiff;

@@ -67,13 +67,15 @@ export default async function DashboardPage() {
 
   // —— Self-advocate: My day only ——
   if (myDay) {
-    const items = await getMyDayAgenda(membership.householdId, user.id, timeZone).catch(
-      () => [],
+    const board = await getMyDayAgenda(membership.householdId, user.id, timeZone).catch(
+      () => ({ today: [], tomorrow: [], tomorrowOverflow: 0 }),
     );
 
     return (
       <MyDayPanel
-        items={items}
+        items={board.today}
+        tomorrow={board.tomorrow}
+        tomorrowOverflow={board.tomorrowOverflow}
         timeZone={timeZone}
         canCompleteTasks={canComplete}
         householdName={membership.householdName}

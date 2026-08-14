@@ -2,6 +2,10 @@ import type { CalendarEvent, CalendarTask } from "@/lib/calendar/types";
 import type { GoogleCalendarAssignment } from "@/lib/calendar/colors";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import {
+  rankTomorrowPreview,
+  type TomorrowFocusItem,
+} from "@/lib/dashboard/needs-attention";
+import {
   agendaSortTimeMs,
   getZonedDayBounds,
   resolveHouseholdTimeZone,
@@ -12,6 +16,13 @@ import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings
 import { getHouseholdTasks, oneOpenPerRecurringTemplate } from "@/lib/tasks/queries";
 import type { Task } from "@/lib/tasks/types";
 import { prefersMyDayView, type HouseholdPersona } from "@/lib/permissions/roles";
+
+export type MyDayBoard = {
+  today: AgendaItem[];
+  /** One-off tasks due tomorrow assigned to this member */
+  tomorrow: TomorrowFocusItem[];
+  tomorrowOverflow: number;
+};
 
 /** True when this member should land on the simplified My day experience. */
 export function isMyDayPersona(persona: HouseholdPersona): boolean {
@@ -115,16 +126,20 @@ function compareAgendaItems(a: AgendaItem, b: AgendaItem) {
 }
 
 /**
- * Self-advocate day board: their tasks (today + overdue + undated open) and
- * calendar events from calendars assigned to them.
+ * Self-advocate day board: their tasks (today + overdue + undated open),
+ * calendar events from calendars assigned to them, plus a calm tomorrow look-ahead
+ * of one-off (non-recurring) tasks only.
  */
 export async function getMyDayAgenda(
   householdId: string,
   memberUserId: string,
   timeZone?: string,
-): Promise<AgendaItem[]> {
+): Promise<MyDayBoard> {
   const zone = resolveHouseholdTimeZone(timeZone);
-  const { start: rangeStart, end: rangeEnd } = getZonedDayBounds(zone);
+  const todayBounds = getZonedDayBounds(zone);
+  const { start: rangeStart, end: rangeEnd } = todayBounds;
+  // First instant of tomorrow in household zone
+  const tomorrowBounds = getZonedDayBounds(zone, new Date(todayBounds.end));
   const nowMs = Date.now();
 
   const [tasks, events, settings] = await Promise.all([
@@ -170,6 +185,15 @@ export async function getMyDayAgenda(
     entityId: event.id,
   }));
 
-  return [...taskItems, ...eventItems].sort(compareAgendaItems);
+  const today = [...taskItems, ...eventItems].sort(compareAgendaItems);
+
+  const { items: tomorrow, overflow: tomorrowOverflow } = rankTomorrowPreview({
+    tasks: mine,
+    rangeStart: tomorrowBounds.start,
+    rangeEnd: tomorrowBounds.end,
+    limit: 3,
+  });
+
+  return { today, tomorrow, tomorrowOverflow };
 }
 

@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Circle } from "lucide-react";
 
+import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
 import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { TomorrowFocusItem } from "@/lib/dashboard/needs-attention";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import {
   agendaSortTimeMs,
@@ -20,6 +22,8 @@ import { cn } from "@/lib/utils";
 
 type MyDayPanelProps = {
   items: AgendaItem[];
+  tomorrow?: TomorrowFocusItem[];
+  tomorrowOverflow?: number;
   timeZone?: string;
   canCompleteTasks?: boolean;
   householdName: string;
@@ -55,6 +59,8 @@ function timeLabel(item: AgendaItem, zone: string, nowMs: number) {
  */
 export function MyDayPanel({
   items,
+  tomorrow = [],
+  tomorrowOverflow = 0,
   timeZone,
   canCompleteTasks = true,
   householdName,
@@ -102,10 +108,10 @@ export function MyDayPanel({
             What you need to do. Tap <span className="text-foreground font-medium">Done</span> when
             finished — it turns green so you can see your progress. Items marked{" "}
             <span className="text-foreground font-medium">Reliant</span> may get a phone
-            confirmation call.
+            confirmation call. Tomorrow only lists one-off tasks (not daily routines).
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-5">
           {items.length ? (
             <ul className="space-y-1">
               {items.map((item) => {
@@ -239,6 +245,13 @@ export function MyDayPanel({
               {actionError}
             </p>
           ) : null}
+
+          <TomorrowPreview
+            items={tomorrow}
+            overflow={tomorrowOverflow}
+            timeZone={zone}
+            headingId="my-day-tomorrow-heading"
+          />
         </CardContent>
       </Card>
 

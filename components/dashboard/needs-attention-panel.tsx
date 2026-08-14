@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
+import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,7 @@ import {
   type NeedsAttentionItem,
   type TomorrowFocusItem,
 } from "@/lib/dashboard/needs-attention";
-import {
-  formatClockCompactInZone,
-  formatTimeInZone,
-  resolveHouseholdTimeZone,
-} from "@/lib/datetime/timezone";
+import { formatTimeInZone, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { updateTaskStatus } from "@/lib/tasks/actions";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +36,6 @@ function SectionLabel({ id, children }: { id?: string; children: ReactNode }) {
       {children}
     </h3>
   );
-}
-
-function tomorrowTimeLabel(item: TomorrowFocusItem, zone: string) {
-  if (item.kind === "event" && item.allDay) {
-    return "All day";
-  }
-  return formatClockCompactInZone(item.sortAt, zone);
 }
 
 export function NeedsAttentionPanel({
@@ -85,7 +75,8 @@ export function NeedsAttentionPanel({
       <CardHeader>
         <CardTitle>Focus</CardTitle>
         <CardDescription className="line-clamp-2 sm:line-clamp-none">
-          Today first — decisions, handoffs, and timing. Tomorrow is a light look ahead.
+          Today first — decisions, handoffs, and timing. Tomorrow only flags one-off tasks so
+          schedule changes are easy to see.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -262,40 +253,13 @@ export function NeedsAttentionPanel({
           )}
         </section>
 
-        <section
-          aria-labelledby="focus-tomorrow-heading"
-          className="border-border/70 space-y-2 border-t pt-4"
-        >
-          <SectionLabel id="focus-tomorrow-heading">Tomorrow</SectionLabel>
-          {tomorrow.length ? (
-            <ul className="space-y-1.5">
-              {tomorrow.map((item) => (
-                <li key={item.id} className="flex min-w-0 items-baseline gap-2.5 text-sm">
-                  <span className="text-muted-foreground w-14 shrink-0 tabular-nums text-xs">
-                    {tomorrowTimeLabel(item, zone)}
-                  </span>
-                  {item.href ? (
-                    <Link
-                      href={item.href}
-                      className="text-muted-foreground hover:text-foreground min-w-0 truncate hover:underline"
-                    >
-                      {item.title}
-                    </Link>
-                  ) : (
-                    <span className="text-muted-foreground min-w-0 truncate">{item.title}</span>
-                  )}
-                </li>
-              ))}
-              {tomorrowOverflow > 0 ? (
-                <li className="text-muted-foreground pl-[4.25rem] text-xs">
-                  +{tomorrowOverflow} more
-                </li>
-              ) : null}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground text-sm">Nothing timed for tomorrow yet.</p>
-          )}
-        </section>
+        <TomorrowPreview
+          items={tomorrow}
+          overflow={tomorrowOverflow}
+          timeZone={zone}
+          headingId="focus-tomorrow-heading"
+          showAssignee
+        />
       </CardContent>
     </Card>
   );
