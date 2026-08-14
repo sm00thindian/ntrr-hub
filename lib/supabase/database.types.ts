@@ -352,9 +352,11 @@ export type Database = {
           day_of_week: number | null
           default_assignee_id: string | null
           description: string | null
+          due_time: string | null
           household_id: string
           id: string
           is_active: boolean
+          reliant_confirm_requested: boolean
           title: string
           updated_at: string
         }
@@ -366,9 +368,11 @@ export type Database = {
           day_of_week?: number | null
           default_assignee_id?: string | null
           description?: string | null
+          due_time?: string | null
           household_id: string
           id?: string
           is_active?: boolean
+          reliant_confirm_requested?: boolean
           title: string
           updated_at?: string
         }
@@ -380,9 +384,11 @@ export type Database = {
           day_of_week?: number | null
           default_assignee_id?: string | null
           description?: string | null
+          due_time?: string | null
           household_id?: string
           id?: string
           is_active?: boolean
+          reliant_confirm_requested?: boolean
           title?: string
           updated_at?: string
         }
@@ -572,6 +578,7 @@ export type Database = {
           id: string
           provenance: Json
           recurring_template_id: string | null
+          reliant_confirm_requested: boolean
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -586,6 +593,7 @@ export type Database = {
           id?: string
           provenance?: Json
           recurring_template_id?: string | null
+          reliant_confirm_requested?: boolean
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -600,6 +608,7 @@ export type Database = {
           id?: string
           provenance?: Json
           recurring_template_id?: string | null
+          reliant_confirm_requested?: boolean
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string

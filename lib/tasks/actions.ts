@@ -94,7 +94,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
 
   const { data: existing, error: fetchError } = await supabase
     .from("tasks")
-    .select("id, title, description, status, due_at, assignee_id")
+    .select("id, title, description, status, due_at, assignee_id, recurring_template_id")
     .eq("id", taskId)
     .eq("household_id", ctx.householdId)
     .maybeSingle();
@@ -110,6 +110,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     status: string;
     due_at: string | null;
     assignee_id: string | null;
+    recurring_template_id: string | null;
   };
 
   const isAssignee = row.assignee_id === ctx.userId;
@@ -122,6 +123,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     return { error: "You can mark your tasks done or reopen them." };
   }
 
+  const previousStatus = row.status;
   const { data: updated, error } = await supabase
     .from("tasks")
     .update({
@@ -143,6 +145,25 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
       error:
         "Could not update this task. If you are a self-advocate, ask a coordinator to set your access to Member, or ensure the task is assigned to you.",
     };
+  }
+
+  // Completing a recurring instance must open the next occurrence (daily meds, etc.).
+  if (
+    status === "done" &&
+    previousStatus !== "done" &&
+    row.recurring_template_id
+  ) {
+    try {
+      const { spawnNextAfterCompletion } = await import("@/lib/tasks/spawn-recurring");
+      await spawnNextAfterCompletion({
+        householdId: ctx.householdId,
+        templateId: row.recurring_template_id,
+        completedDueAt: row.due_at,
+        createdBy: ctx.userId,
+      });
+    } catch (err) {
+      console.error("[updateTaskStatus] spawn next recurring failed", err);
+    }
   }
 
   await enqueueGoogleTaskSync({

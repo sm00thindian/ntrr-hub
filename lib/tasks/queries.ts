@@ -64,6 +64,20 @@ function mapTask(
 export async function getHouseholdTasks(householdId: string): Promise<Task[]> {
   const supabase = await createClient();
 
+  // Recover next instances for active templates with no open task (e.g. completed
+  // before spawn-on-complete existed). Uses service role when available.
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id) {
+      const { ensureHouseholdRecurringInstances } = await import("@/lib/tasks/spawn-recurring");
+      await ensureHouseholdRecurringInstances(householdId, user.id);
+    }
+  } catch {
+    // Never block the board on recovery failures.
+  }
+
   const { data, error } = await supabase
     .from("tasks")
     .select("*")
