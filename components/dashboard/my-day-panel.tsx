@@ -108,7 +108,7 @@ export function MyDayPanel({
             What you need to do. Tap <span className="text-foreground font-medium">Done</span> when
             finished — it turns green so you can see your progress. Items marked{" "}
             <span className="text-foreground font-medium">Reliant</span> may get a phone
-            confirmation call. Tomorrow only lists one-off tasks (not daily routines).
+            confirmation call. Tomorrow shows what&apos;s outside the usual.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">

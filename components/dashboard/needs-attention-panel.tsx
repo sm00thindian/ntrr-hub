@@ -111,7 +111,7 @@ export function NeedsAttentionPanel({
         <div className="min-w-0 space-y-1">
           <CardTitle>Focus</CardTitle>
           <CardDescription className="line-clamp-3 sm:line-clamp-none">
-            Household day — Hub tasks and shared calendars. Tomorrow flags one-off changes only.
+            Household day — Hub tasks and shared calendars. Tomorrow: outside the usual only.
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">

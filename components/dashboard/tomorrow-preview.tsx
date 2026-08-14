@@ -62,8 +62,7 @@ export function TomorrowPreview({
         Tomorrow
       </h3>
       <p className="text-muted-foreground text-[11px] leading-snug">
-        One-off only — not daily routines. Helps set expectations when something different is coming
-        up.
+        Outside the usual only — not daily routines.
       </p>
       {items.length ? (
         <ul className="space-y-1.5">
@@ -93,7 +92,7 @@ export function TomorrowPreview({
         </ul>
       ) : (
         <p className="text-muted-foreground text-sm">
-          No one-off tasks tomorrow — a quieter day for the usual routine.
+          Nothing outside the usual tomorrow — a quieter day for the usual routine.
         </p>
       )}
     </section>
