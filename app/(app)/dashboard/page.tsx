@@ -99,7 +99,7 @@ export default async function DashboardPage() {
       <div className="min-w-0">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Dashboard</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
-          {membership.householdName} · what needs you now
+          {membership.householdName} · scan first, then the day
         </p>
       </div>
 
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
 
       {/*
         Caregiver / coordinator board:
-        1. Needs attention (priority, top)
+        1. Focus (priority, top)
         2. Today's agenda
         3. AI insights
         Sync status → app footer (except /calendar)

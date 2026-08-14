@@ -63,9 +63,9 @@ test.describe("Authenticated smoke (optional)", () => {
     storageState: process.env.E2E_STORAGE_STATE,
   });
 
-  test("dashboard loads needs attention; sync lives in footer", async ({ page }) => {
+  test("dashboard loads Focus panel; sync lives in footer", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: /needs attention/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /^focus$/i })).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByTestId("footer-sync")).toBeVisible();

@@ -60,10 +60,10 @@ export function NeedsAttentionPanel({
   return (
     <Card className="border-brand/20">
       <CardHeader>
-        <CardTitle>Needs attention</CardTitle>
+        <CardTitle>Focus</CardTitle>
         <CardDescription className="line-clamp-2 sm:line-clamp-none">
-          Overdue, unassigned, conflicts, and what is due soon. Done turns green, then the item
-          leaves this list.
+          Short list for a quick scan — decisions, handoffs, and timing. Mark done when you&apos;ve
+          handled it; it leaves this list.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -233,7 +233,8 @@ export function NeedsAttentionPanel({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Nothing urgent. Add Hub tasks or connect calendars in Settings for today&apos;s context.
+            All clear for now. When something needs a decision or a quick action, it&apos;ll show up
+            here. Add Hub tasks or connect calendars in Settings for today&apos;s context.
           </p>
         )}
       </CardContent>

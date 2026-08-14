@@ -106,7 +106,7 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 |------|--------|
 | Task edit + delete confirm | Done |
 | Mine / Overdue / Unassigned filters | Done |
-| Needs attention ranking (dashboard) | Done |
+| Focus ranking (dashboard) | Done |
 | Last sync + reconnect banners + near-realtime refresh | Done |
 | Conflict badge + one-tap resolve path | Done |
 | Post-household setup checklist | Done |

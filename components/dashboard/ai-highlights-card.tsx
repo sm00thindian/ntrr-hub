@@ -59,7 +59,7 @@ export function AiHighlightsCard({
           <CardTitle>Highlights</CardTitle>
           <CardDescription>
             Schedule patterns and household suggestions from simple rules — not automated actions.
-            Item-level overdue and conflicts stay in Needs attention.
+            Item-level overdue and conflicts stay under Focus.
           </CardDescription>
           {lastLabel ? (
             <p className="text-muted-foreground text-xs">Last refresh · {lastLabel}</p>
@@ -102,7 +102,7 @@ export function AiHighlightsCard({
             <p>No pattern highlights right now.</p>
             <p className="text-xs leading-relaxed">
               Overlaps, multi-task workloads, and Reliant phone gaps appear here after sync or a
-              refresh. Day-to-day overdue and conflicts are listed under Needs attention.
+              refresh. Day-to-day overdue and conflicts are listed under Focus.
             </p>
           </div>
         ) : null}

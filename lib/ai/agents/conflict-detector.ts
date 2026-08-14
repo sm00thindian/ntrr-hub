@@ -4,7 +4,7 @@ import { getPendingConflictCount } from "@/lib/sync/conflict";
 const DEDUPE_KEY = "pending-conflicts";
 
 /**
- * Conflicts already appear in Needs attention + the app header badge.
+ * Conflicts already appear under Focus + the app header badge.
  * This agent no longer creates AI insight cards — it only cleans legacy rows
  * so Highlights stays de-duplicated.
  */

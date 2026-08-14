@@ -7,7 +7,7 @@ const OVERDUE_KEY = "overdue-tasks";
 const RELIANT_PHONE_KEY = "reliant-missing-phone";
 
 /**
- * Pattern-level reminders — not a second copy of Needs attention line items.
+ * Pattern-level reminders — not a second copy of Focus line items.
  * - Multi-item overdue per person (workload)
  * - Reliant-flagged tasks with no call-target mobile
  * Legacy unassigned/overdue summary cards are dismissed.
@@ -16,7 +16,7 @@ export async function runReminderSuggesterAgent(householdId: string) {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // Clean legacy cards that duplicated Needs attention
+  // Clean legacy cards that duplicated Focus items
   await Promise.all([
     dismissInsightByDedupe(householdId, "reminder", UNASSIGNED_KEY),
     dismissInsightByDedupe(householdId, "reminder", OVERDUE_KEY),
@@ -100,7 +100,7 @@ export async function runReminderSuggesterAgent(householdId: string) {
       dedupeKey,
       payload: {
         title: `${name} has ${list.length} overdue tasks`,
-        body: `${sample}${more}. Needs attention lists each item; this is the pattern.`,
+        body: `${sample}${more}. Focus lists each item; this is the pattern.`,
         actionHref: "/tasks",
         severity: "warning",
       },

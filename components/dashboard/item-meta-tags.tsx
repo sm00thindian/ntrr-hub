@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Fixed-width meta columns so assignee + source chips line up vertically
- * across Needs attention and Today's agenda rows (predictable for scan/OCD-friendly layout).
+ * across Focus and Today's agenda rows (predictable for scan/OCD-friendly layout).
  *
  * Column order (right side of row): [assignee 7.5rem] [source 4rem]
  * Events leave the assignee column empty so source still sits in the same place.

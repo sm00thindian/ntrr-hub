@@ -36,7 +36,7 @@ function isDisplayableInsight(row: {
   dedupe_key: string | null;
   snoozed_until: string | null;
 }): boolean {
-  // Conflicts + simple overdue/unassigned lists live in Needs attention
+  // Conflicts + simple overdue/unassigned lists live under Focus
   if (row.type === "conflict") {
     return false;
   }

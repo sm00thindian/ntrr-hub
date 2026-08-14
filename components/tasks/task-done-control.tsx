@@ -9,7 +9,7 @@ type TaskDoneControlProps = {
   title: string;
   done: boolean;
   pending?: boolean;
-  /** Compact for dense lists (My day, Needs attention) */
+  /** Compact for dense lists (My day, Focus) */
   size?: "sm" | "default";
   className?: string;
   onMarkDone: () => void;
