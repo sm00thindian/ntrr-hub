@@ -340,20 +340,35 @@ async function runEnsureHouseholdRecurringInstances(
       continue;
     }
 
-    // Advance from the latest *completed* instance (done), not cancelled dups.
-    const { data: latestDone } = await admin
+    // Latest instance for this series (any status).
+    const { data: latestAny } = await admin
       .from("tasks")
-      .select("due_at, updated_at")
+      .select("status, due_at, updated_at")
       .eq("household_id", householdId)
       .eq("recurring_template_id", template.id)
-      .eq("status", "done")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    const latestRow = latestDone as { due_at: string | null; updated_at: string } | null;
-    const after = latestRow
-      ? afterInstantForNextSpawn(latestRow.due_at, new Date(latestRow.updated_at))
+    const latest = latestAny as {
+      status: string;
+      due_at: string | null;
+      updated_at: string;
+    } | null;
+
+    // User deleted the open card (cancelled) → leave the series paused.
+    // Only recover when the latest instance is *done* (spawn-on-complete missed)
+    // or there is no history yet (template created but first task failed).
+    if (latest?.status === "cancelled") {
+      continue;
+    }
+    if (latest && latest.status !== "done") {
+      // Unexpected open status that wasn't in openTemplateIds — skip.
+      continue;
+    }
+
+    const after = latest
+      ? afterInstantForNextSpawn(latest.due_at, new Date(latest.updated_at))
       : new Date(Date.now() - 1);
 
     const dueAt = nextRecurringDueAt({

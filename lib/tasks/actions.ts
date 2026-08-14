@@ -271,11 +271,16 @@ export async function updateTask(formData: FormData) {
   return { success: true };
 }
 
-export async function deleteTask(taskId: string) {
+/**
+ * Pause this card: cancel the open instance without advancing the series.
+ * For recurring tasks, ensure() will not re-spawn while the latest instance is cancelled.
+ * Done is what advances the series; deleteRecurringSeries removes the whole series.
+ */
+export async function pauseTask(taskId: string) {
   const ctx = await requireHouseholdContext();
 
   if (!canEditTasks(ctx.role)) {
-    return { error: "You do not have permission to delete tasks." };
+    return { error: "You do not have permission to pause tasks." };
   }
 
   const supabase = await createClient();
@@ -298,6 +303,90 @@ export async function deleteTask(taskId: string) {
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+  return { success: true };
+}
+
+/** @deprecated Prefer pauseTask — kept so older call sites keep working. */
+export async function deleteTask(taskId: string) {
+  return pauseTask(taskId);
+}
+
+/**
+ * Delete an entire recurring series: deactivate the template and cancel open instances.
+ * Done history stays for audit; no further occurrences will spawn.
+ */
+export async function deleteRecurringSeries(templateId: string) {
+  const ctx = await requireHouseholdContext();
+
+  if (!canEditTasks(ctx.role)) {
+    return { error: "You do not have permission to delete recurring series." };
+  }
+
+  if (!templateId.trim()) {
+    return { error: "Series is required." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: template, error: templateFetchError } = await supabase
+    .from("recurring_task_templates")
+    .select("id")
+    .eq("id", templateId)
+    .eq("household_id", ctx.householdId)
+    .maybeSingle();
+
+  if (templateFetchError || !template) {
+    return { error: templateFetchError?.message ?? "Recurring series not found." };
+  }
+
+  const { error: deactivateError } = await supabase
+    .from("recurring_task_templates")
+    .update({ is_active: false })
+    .eq("id", templateId)
+    .eq("household_id", ctx.householdId);
+
+  if (deactivateError) {
+    return { error: deactivateError.message };
+  }
+
+  const { data: openRows } = await supabase
+    .from("tasks")
+    .select("id")
+    .eq("household_id", ctx.householdId)
+    .eq("recurring_template_id", templateId)
+    .in("status", ["todo", "in_progress"]);
+
+  const openIds = (openRows ?? []).map((r) => r.id as string);
+
+  if (openIds.length) {
+    const { error: cancelError } = await supabase
+      .from("tasks")
+      .update({ status: "cancelled", provenance: defaultProvenance() })
+      .eq("household_id", ctx.householdId)
+      .eq("recurring_template_id", templateId)
+      .in("status", ["todo", "in_progress"]);
+
+    if (cancelError) {
+      return { error: cancelError.message };
+    }
+
+    for (const taskId of openIds) {
+      try {
+        await enqueueGoogleTaskSync({
+          householdId: ctx.householdId,
+          taskId,
+          operation: "delete",
+        });
+      } catch {
+        // Series already deactivated; sync can retry later.
+      }
+    }
+  }
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
   return { success: true };
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Calendar, Pencil, Trash2, User } from "lucide-react";
+import { Calendar, Pause, Pencil, Trash2, User } from "lucide-react";
 
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
@@ -14,7 +14,11 @@ import {
 } from "@/lib/datetime/timezone";
 import type { HouseholdMember } from "@/lib/households/queries";
 import { resolveAssigneeDisplay } from "@/lib/households/member-label";
-import { deleteTask, updateTaskStatus } from "@/lib/tasks/actions";
+import {
+  deleteRecurringSeries,
+  pauseTask,
+  updateTaskStatus,
+} from "@/lib/tasks/actions";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
 import { cn } from "@/lib/utils";
@@ -30,6 +34,8 @@ type TaskCardProps = {
   members?: HouseholdMember[];
   onUpdated?: () => void;
 };
+
+type ConfirmMode = null | "pause" | "delete-series" | "delete-one";
 
 function formatDue(dueAt: string | null, timeZone: string) {
   if (!dueAt) {
@@ -49,7 +55,7 @@ export function TaskCard({
   onUpdated,
 }: TaskCardProps) {
   const [pending, startTransition] = useTransition();
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirm, setConfirm] = useState<ConfirmMode>(null);
   const [editing, setEditing] = useState(false);
   const zone = resolveHouseholdTimeZone(timeZone);
   const dueLabel = formatDue(task.dueAt, zone);
@@ -58,6 +64,7 @@ export function TaskCard({
   const assigneePersona = task.assigneePersona ?? assigneeFromMembers.persona;
   const assigneeEmail = task.assigneeEmail ?? assigneeFromMembers.email;
   const allowComplete = canComplete ?? canEdit;
+  const isRecurring = Boolean(task.recurringTemplateId);
 
   function runAction(action: () => Promise<{ error?: string; success?: boolean } | void>) {
     startTransition(async () => {
@@ -124,7 +131,7 @@ export function TaskCard({
               {dueLabel}
             </span>
           ) : null}
-          {task.recurringTemplateId ? <span>Recurring</span> : null}
+          {isRecurring ? <span>Recurring</span> : null}
         </div>
 
         {allowComplete || canEdit ? (
@@ -163,44 +170,133 @@ export function TaskCard({
               </Button>
             ) : null}
 
-            {canEdit ? (
-              confirmDelete ? (
-                <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
-                  <span className="text-destructive text-xs font-medium">Delete this task?</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    disabled={pending}
-                    onClick={() => {
-                      setConfirmDelete(false);
-                      runAction(() => deleteTask(task.id));
-                    }}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={pending}
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
+            {canEdit && confirm === "pause" ? (
+              <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-2 sm:w-auto">
+                <span className="text-xs font-medium">
+                  Pause this occurrence? It leaves the board and won’t auto-return.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => {
+                    setConfirm(null);
+                    runAction(() => pauseTask(task.id));
+                  }}
+                >
+                  Pause
+                </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
                   disabled={pending}
-                  onClick={() => setConfirmDelete(true)}
-                  aria-label={`Delete ${task.title}`}
+                  onClick={() => setConfirm(null)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  Cancel
                 </Button>
-              )
+              </div>
+            ) : null}
+
+            {canEdit && confirm === "delete-series" && task.recurringTemplateId ? (
+              <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
+                <span className="text-destructive text-xs font-medium">
+                  Delete the whole recurring series? Open cards stop; no future occurrences.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  disabled={pending}
+                  onClick={() => {
+                    const templateId = task.recurringTemplateId!;
+                    setConfirm(null);
+                    runAction(() => deleteRecurringSeries(templateId));
+                  }}
+                >
+                  Delete series
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setConfirm(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : null}
+
+            {canEdit && confirm === "delete-one" ? (
+              <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
+                <span className="text-destructive text-xs font-medium">Delete this task?</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  disabled={pending}
+                  onClick={() => {
+                    setConfirm(null);
+                    runAction(() => pauseTask(task.id));
+                  }}
+                >
+                  Delete
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setConfirm(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : null}
+
+            {canEdit && !confirm ? (
+              <>
+                {isRecurring ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={pending}
+                      onClick={() => setConfirm("pause")}
+                      aria-label={`Pause ${task.title}`}
+                    >
+                      <Pause className="h-4 w-4" />
+                      Pause
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={pending}
+                      onClick={() => setConfirm("delete-series")}
+                      aria-label={`Delete series ${task.title}`}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete series
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => setConfirm("delete-one")}
+                    aria-label={`Delete ${task.title}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </>
             ) : null}
           </div>
         ) : null}
