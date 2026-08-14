@@ -139,12 +139,24 @@ export function GoogleCalendarSettings({
         return;
       }
 
-      setMessage("Calendar settings saved. Run sync to refresh events.");
+      setMessage(
+        "Saved. Hub is pulling events from the calendars you checked — refresh Dashboard or Calendar in a moment.",
+      );
     });
   }
 
   return (
     <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
+      <div className="rounded-lg border border-border/80 bg-card px-3 py-2.5">
+        <p className="text-sm font-medium">Which calendars sync into Hub</p>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          Only <span className="text-foreground font-medium">checked</span> calendars are pulled.
+          Shared family calendars (for example a household Google calendar) must be checked here
+          and set to <span className="text-foreground font-medium">Shared with household</span> —
+          otherwise events stay in Google and never appear on Calendar or Focus.
+        </p>
+      </div>
+
       {canEditMemberColors ? (
         <>
           <div>

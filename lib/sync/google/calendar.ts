@@ -482,14 +482,25 @@ async function pullGoogleCalendarEvents(
   return nextSyncToken;
 }
 
-export async function pullGoogleCalendar(account: IntegrationAccount) {
+export async function pullGoogleCalendar(
+  account: IntegrationAccount,
+  options?: { forceFull?: boolean },
+) {
   const admin = createAdminClient();
   const googleState = account.metadata.google ?? {};
-  const needsResync = (googleState.calendarSyncVersion ?? 1) < CALENDAR_SYNC_VERSION;
+  const needsResync =
+    options?.forceFull === true ||
+    (googleState.calendarSyncVersion ?? 1) < CALENDAR_SYNC_VERSION;
 
-  let calendars = googleState.calendars;
-  if (!calendars?.length) {
+  // Always refresh the calendar list so newly shared family calendars appear
+  let calendars: Awaited<ReturnType<typeof fetchGoogleCalendarList>>;
+  try {
     calendars = await fetchGoogleCalendarList(account);
+  } catch (error) {
+    calendars = googleState.calendars ?? [];
+    if (!calendars.length) {
+      throw error;
+    }
   }
 
   // Account with freshest calendar list so primary resolution works
@@ -510,6 +521,7 @@ export async function pullGoogleCalendar(account: IntegrationAccount) {
 
   let syncTokens = migrateSyncTokens(googleState, primaryId);
   if (needsResync) {
+    // Full pull of every selected calendar (manual Sync now, or version bump)
     syncTokens = {};
     await dedupePrimaryAliasEvents(account.householdId, primaryId);
   }

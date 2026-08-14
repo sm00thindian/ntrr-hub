@@ -15,7 +15,10 @@ import {
 import { runPostSyncAgents } from "@/lib/ai/orchestrator";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function runGoogleSync(householdId: string) {
+export async function runGoogleSync(
+  householdId: string,
+  options?: { forceFullCalendarPull?: boolean },
+) {
   const accounts = await getAllConnectedGoogleIntegrationsAdmin(householdId);
   if (!accounts.length) {
     return { skipped: true as const, reason: "Google not connected" };
@@ -23,11 +26,12 @@ export async function runGoogleSync(householdId: string) {
 
   const admin = createAdminClient();
   const errors: string[] = [];
+  const forceFull = options?.forceFullCalendarPull === true;
 
   try {
     for (const account of accounts) {
       try {
-        await pullGoogleCalendar(account);
+        await pullGoogleCalendar(account, { forceFull });
         if (GOOGLE_TASKS_SYNC_ENABLED) {
           await pullGoogleTasks(account);
         }
@@ -122,8 +126,11 @@ export async function runAppleCalDavSync(householdId: string) {
   return { skipped: false as const, success: true };
 }
 
-export async function runHouseholdSync(householdId: string) {
-  const google = await runGoogleSync(householdId);
+export async function runHouseholdSync(
+  householdId: string,
+  options?: { forceFullCalendarPull?: boolean },
+) {
+  const google = await runGoogleSync(householdId, options);
   const apple = await runAppleCalDavSync(householdId);
 
   let agents: Record<string, unknown> | null = null;

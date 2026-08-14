@@ -189,6 +189,13 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
     googleCalendars: calendarAssignments,
   });
 
+  // Pull events for newly selected calendars immediately (full pull)
+  try {
+    await runHouseholdSync(ctx.householdId, { forceFullCalendarPull: true });
+  } catch {
+    // Settings already saved; user can Sync now if pull fails
+  }
+
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
@@ -241,7 +248,11 @@ export async function syncGoogleNow() {
     return denied;
   }
 
-  const result = await runHouseholdSync(ctx.householdId);
+  // Manual Sync now: full calendar pull so new family-calendar events are not missed
+  // by a stale incremental token.
+  const result = await runHouseholdSync(ctx.householdId, {
+    forceFullCalendarPull: true,
+  });
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
