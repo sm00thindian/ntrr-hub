@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, Check, ListTodo, MapPin } from "lucide-react";
@@ -85,7 +85,9 @@ export function NeedsAttentionPanel({
   const zone = resolveHouseholdTimeZone(timeZone);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
+  /** Optimistic Done only while the mark-done request is in flight — never override server "todo". */
+  const [optimisticDoneIds, setOptimisticDoneIds] = useState<Set<string>>(() => new Set());
+  const inflightDoneIds = useRef(new Set<string>());
   /** Prefer showing green Done progress; hide when the board feels cluttered. */
   const [hideDone, setHideDone] = useState(false);
   const nowMs = Date.now();
@@ -98,30 +100,51 @@ export function NeedsAttentionPanel({
     }
   }, []);
 
+  // Align optimistic green with server status (live refresh must not leave false Done).
   useEffect(() => {
-    const liveIds = new Set(
-      items.map((i) => i.entityId).filter((id): id is string => Boolean(id)),
-    );
-    setJustDoneIds((prev) => {
+    setOptimisticDoneIds((prev) => {
+      if (prev.size === 0) {
+        return prev;
+      }
       let changed = false;
       const next = new Set<string>();
       for (const id of prev) {
-        if (liveIds.has(id)) {
-          next.add(id);
-        } else {
+        const item = items.find((i) => i.entityId === id);
+        if (!item) {
+          // Dropped from the list
           changed = true;
+          continue;
         }
+        if (item.status === "done") {
+          // Server confirmed — status alone is enough
+          changed = true;
+          continue;
+        }
+        if (item.status === "todo" || item.status === "in_progress") {
+          // Still open on server: keep green only if mark-done is in flight
+          if (inflightDoneIds.current.has(id)) {
+            next.add(id);
+          } else {
+            changed = true;
+          }
+          continue;
+        }
+        changed = true;
       }
       return changed ? next : prev;
     });
   }, [items]);
 
+  /** Green Done only when the task row is actually done (or briefly optimistic). */
   function isItemDone(item: NeedsAttentionItem) {
-    return (
-      item.status === "done" ||
-      item.reason === "done" ||
-      Boolean(item.entityId && justDoneIds.has(item.entityId))
-    );
+    if (item.status === "done") {
+      return true;
+    }
+    // Never paint open tasks green from a stale optimistic set
+    if (item.status === "todo" || item.status === "in_progress") {
+      return Boolean(item.entityId && optimisticDoneIds.has(item.entityId));
+    }
+    return false;
   }
 
   const doneCount = items.filter((item) => isItemDone(item)).length;
@@ -321,9 +344,19 @@ export function NeedsAttentionPanel({
                         className="mt-0.5"
                         onMarkDone={() => {
                           const taskId = item.entityId!;
-                          setJustDoneIds((prev) => new Set(prev).add(taskId));
+                          inflightDoneIds.current.add(taskId);
+                          setOptimisticDoneIds((prev) => new Set(prev).add(taskId));
                           startTransition(async () => {
-                            await updateTaskStatus(taskId, "done");
+                            const result = await updateTaskStatus(taskId, "done");
+                            inflightDoneIds.current.delete(taskId);
+                            if (result && "error" in result && result.error) {
+                              setOptimisticDoneIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(taskId);
+                                return next;
+                              });
+                              return;
+                            }
                             window.setTimeout(() => {
                               router.refresh();
                             }, DONE_FEEDBACK_MS);
@@ -333,7 +366,8 @@ export function NeedsAttentionPanel({
                           isDone
                             ? () => {
                                 const taskId = item.entityId!;
-                                setJustDoneIds((prev) => {
+                                inflightDoneIds.current.delete(taskId);
+                                setOptimisticDoneIds((prev) => {
                                   const next = new Set(prev);
                                   next.delete(taskId);
                                   return next;

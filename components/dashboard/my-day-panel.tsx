@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Circle } from "lucide-react";
@@ -69,21 +69,56 @@ export function MyDayPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
-  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
+  const [optimisticDoneIds, setOptimisticDoneIds] = useState<Set<string>>(() => new Set());
+  const inflightDoneIds = useRef(new Set<string>());
   const nowMs = Date.now();
 
-  const openCount = items.filter(
-    (i) => i.kind === "task" && i.status !== "done" && !(i.entityId && justDoneIds.has(i.entityId)),
-  ).length;
-  const doneCount =
-    items.filter((i) => i.kind === "task" && i.status === "done").length +
-    items.filter(
-      (i) =>
-        i.kind === "task" &&
-        i.status !== "done" &&
-        i.entityId &&
-        justDoneIds.has(i.entityId),
-    ).length;
+  useEffect(() => {
+    setOptimisticDoneIds((prev) => {
+      if (prev.size === 0) {
+        return prev;
+      }
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        const item = items.find((i) => i.entityId === id);
+        if (!item) {
+          changed = true;
+          continue;
+        }
+        if (item.status === "done") {
+          changed = true;
+          continue;
+        }
+        if (item.status === "todo" || item.status === "in_progress") {
+          if (inflightDoneIds.current.has(id)) {
+            next.add(id);
+          } else {
+            changed = true;
+          }
+          continue;
+        }
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [items]);
+
+  function isTaskDone(item: (typeof items)[number]) {
+    if (item.kind !== "task") {
+      return false;
+    }
+    if (item.status === "done") {
+      return true;
+    }
+    if (item.status === "todo" || item.status === "in_progress") {
+      return Boolean(item.entityId && optimisticDoneIds.has(item.entityId));
+    }
+    return false;
+  }
+
+  const openCount = items.filter((i) => i.kind === "task" && !isTaskDone(i)).length;
+  const doneCount = items.filter((i) => isTaskDone(i)).length;
 
   return (
     <div className="space-y-4">
@@ -116,10 +151,7 @@ export function MyDayPanel({
             <ul className="space-y-1">
               {items.map((item) => {
                 const isTask = item.kind === "task";
-                const isDone =
-                  isTask &&
-                  (item.status === "done" ||
-                    Boolean(item.entityId && justDoneIds.has(item.entityId)));
+                const isDone = isTaskDone(item);
                 const overdue =
                   isTask &&
                   !isDone &&
@@ -196,11 +228,13 @@ export function MyDayPanel({
                         onMarkDone={() => {
                           const taskId = item.entityId!;
                           setActionError(null);
-                          setJustDoneIds((prev) => new Set(prev).add(taskId));
+                          inflightDoneIds.current.add(taskId);
+                          setOptimisticDoneIds((prev) => new Set(prev).add(taskId));
                           startTransition(async () => {
                             const result = await updateTaskStatus(taskId, "done");
+                            inflightDoneIds.current.delete(taskId);
                             if (result?.error) {
-                              setJustDoneIds((prev) => {
+                              setOptimisticDoneIds((prev) => {
                                 const next = new Set(prev);
                                 next.delete(taskId);
                                 return next;
@@ -214,7 +248,8 @@ export function MyDayPanel({
                         onReopen={() => {
                           const taskId = item.entityId!;
                           setActionError(null);
-                          setJustDoneIds((prev) => {
+                          inflightDoneIds.current.delete(taskId);
+                          setOptimisticDoneIds((prev) => {
                             const next = new Set(prev);
                             next.delete(taskId);
                             return next;
