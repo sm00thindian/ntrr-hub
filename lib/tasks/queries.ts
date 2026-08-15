@@ -130,12 +130,117 @@ export function isTaskDoneToday(
   return false;
 }
 
+export type TaskBoardSections = {
+  /** Open, past due */
+  overdue: Task[];
+  /** Open, due today or undated */
+  today: Task[];
+  /** Open, due after today (incl. next recurring) */
+  upcoming: Task[];
+  /** Completed during the current household day */
+  doneToday: Task[];
+  /** One-off tasks finished before today (archive) */
+  history: Task[];
+};
+
+function attachCadence(
+  tasks: Task[],
+  cadenceMap: Record<string, RecurrenceCadence>,
+): Task[] {
+  return tasks.map((task) => ({
+    ...task,
+    recurrenceCadence: task.recurringTemplateId
+      ? (cadenceMap[task.recurringTemplateId] ?? task.recurrenceCadence ?? null)
+      : null,
+  }));
+}
+
+function sortByDueAsc(tasks: Task[]) {
+  return [...tasks].sort((a, b) => {
+    const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
+    const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) {
+      return aDue - bDue;
+    }
+    return a.title.localeCompare(b.title);
+  });
+}
+
+function sortDoneRecentFirst(tasks: Task[]) {
+  return [...tasks].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+}
+
 /**
- * Tasks board list:
- * - one open card per recurring series
- * - done only if completed today (hide older done history)
- * - open work first, done today at the bottom
- * - optional cadence from templates for Daily/Weekly/Monthly chips
+ * Split tasks into scannable board sections for the Tasks page.
+ * Recurring: one open instance per series. One-off done before today → history.
+ */
+export function buildTaskBoardSections(
+  tasks: Task[],
+  options: {
+    rangeStart: string;
+    rangeEnd: string;
+    nowMs?: number;
+    cadenceByTemplateId?: Record<string, RecurrenceCadence>;
+  },
+): TaskBoardSections {
+  const nowMs = options.nowMs ?? Date.now();
+  const endMs = Date.parse(options.rangeEnd);
+  const cadenceMap = options.cadenceByTemplateId ?? {};
+  const withCadence = attachCadence(tasks, cadenceMap);
+
+  const openOnly = withCadence.filter(
+    (t) => t.status === "todo" || t.status === "in_progress",
+  );
+  // oneOpenPerRecurringTemplate keeps non-recurring opens + one open per series
+  const open = oneOpenPerRecurringTemplate(openOnly);
+
+  const overdue: Task[] = [];
+  const today: Task[] = [];
+  const upcoming: Task[] = [];
+
+  for (const task of open) {
+    if (!task.dueAt) {
+      today.push(task);
+      continue;
+    }
+    const dueMs = Date.parse(task.dueAt);
+    if (dueMs < nowMs) {
+      overdue.push(task);
+    } else if (Number.isFinite(endMs) && dueMs < endMs) {
+      today.push(task);
+    } else {
+      upcoming.push(task);
+    }
+  }
+
+  const doneToday = sortDoneRecentFirst(
+    withCadence.filter((t) =>
+      isTaskDoneToday(t, options.rangeStart, options.rangeEnd),
+    ),
+  );
+
+  // One-off finished before today — archive, not the active board
+  const history = sortDoneRecentFirst(
+    withCadence.filter(
+      (t) =>
+        t.status === "done" &&
+        !t.recurringTemplateId &&
+        !isTaskDoneToday(t, options.rangeStart, options.rangeEnd),
+    ),
+  );
+
+  return {
+    overdue: sortByDueAsc(overdue),
+    today: sortByDueAsc(today),
+    upcoming: sortByDueAsc(upcoming),
+    doneToday,
+    history,
+  };
+}
+
+/**
+ * Flat list: open sections then done today (no history).
+ * Prefer buildTaskBoardSections for the Tasks UI.
  */
 export function selectBoardTasks(
   tasks: Task[],
@@ -145,47 +250,30 @@ export function selectBoardTasks(
     cadenceByTemplateId?: Record<string, RecurrenceCadence>;
   },
 ): Task[] {
-  const rangeStart = options?.rangeStart;
-  const rangeEnd = options?.rangeEnd;
-  const cadenceMap = options?.cadenceByTemplateId ?? {};
+  if (!options?.rangeStart || !options?.rangeEnd) {
+    const open = oneOpenPerRecurringTemplate(
+      tasks.filter((t) => t.status === "todo" || t.status === "in_progress"),
+    );
+    return attachCadence(open, options?.cadenceByTemplateId ?? {}).sort((a, b) => {
+      const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
+      const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
+      if (aDue !== bDue) return aDue - bDue;
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
+  }
 
-  const deduped = oneOpenPerRecurringTemplate(tasks).filter((task) => {
-    if (task.status === "cancelled") {
-      return false;
-    }
-    if (task.status === "done") {
-      if (!rangeStart || !rangeEnd) {
-        return false;
-      }
-      return isTaskDoneToday(task, rangeStart, rangeEnd);
-    }
-    return true;
+  const sections = buildTaskBoardSections(tasks, {
+    rangeStart: options.rangeStart,
+    rangeEnd: options.rangeEnd,
+    cadenceByTemplateId: options.cadenceByTemplateId,
   });
 
-  const withCadence = deduped.map((task) => ({
-    ...task,
-    recurrenceCadence: task.recurringTemplateId
-      ? (cadenceMap[task.recurringTemplateId] ?? task.recurrenceCadence ?? null)
-      : null,
-  }));
-
-  return withCadence.sort((a, b) => {
-    const aDone = a.status === "done" ? 1 : 0;
-    const bDone = b.status === "done" ? 1 : 0;
-    if (aDone !== bDone) {
-      return aDone - bDone;
-    }
-    if (aDone) {
-      // Most recently completed first within the done block
-      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
-    }
-    const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
-    const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
-    if (aDue !== bDue) {
-      return aDue - bDue;
-    }
-    return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-  });
+  return [
+    ...sections.overdue,
+    ...sections.today,
+    ...sections.upcoming,
+    ...sections.doneToday,
+  ];
 }
 
 export async function getHouseholdTasks(householdId: string): Promise<Task[]> {

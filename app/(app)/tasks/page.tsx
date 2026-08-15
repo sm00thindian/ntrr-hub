@@ -11,7 +11,11 @@ import {
 } from "@/lib/datetime/timezone";
 import { isMyDayPersona } from "@/lib/dashboard/my-day";
 import { canCompleteOwnOrEditTasks, canEditTasks } from "@/lib/permissions/roles";
-import { getHouseholdTasks, getRecurringTemplates, selectBoardTasks } from "@/lib/tasks/queries";
+import {
+  buildTaskBoardSections,
+  getHouseholdTasks,
+  getRecurringTemplates,
+} from "@/lib/tasks/queries";
 import type { RecurrenceCadence } from "@/lib/tasks/types";
 
 export default async function TasksPage() {
@@ -28,6 +32,10 @@ export default async function TasksPage() {
     getHouseholdCalendarSettings(ctx.householdId),
   ]);
 
+  if (!members.length) {
+    redirect("/dashboard");
+  }
+
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
   const dayBounds = getZonedDayBounds(timeZone);
   const cadenceByTemplateId: Record<string, RecurrenceCadence> = {};
@@ -35,16 +43,11 @@ export default async function TasksPage() {
     cadenceByTemplateId[template.id] = template.cadence;
   }
 
-  // Open work + done today only; done older than today hidden; cadence for chips
-  const tasks = selectBoardTasks(rawTasks, {
+  const sections = buildTaskBoardSections(rawTasks, {
     rangeStart: dayBounds.start,
     rangeEnd: dayBounds.end,
     cadenceByTemplateId,
   });
-
-  if (!members.length) {
-    redirect("/dashboard");
-  }
 
   const timeZoneLabel = householdTimeZoneLabel(timeZone);
 
@@ -57,7 +60,9 @@ export default async function TasksPage() {
         <p className="text-muted-foreground mt-0.5 text-sm">
           {ctx.householdName}
           <span className="hidden sm:inline">
-            {myDayMode ? " · assigned to you" : " · shared family task board"}
+            {myDayMode
+              ? " · your open work, done today, and history"
+              : " · open work first, then done today and history"}
           </span>
           <span className="text-muted-foreground/80"> · {timeZoneLabel}</span>
         </p>
@@ -66,7 +71,7 @@ export default async function TasksPage() {
       <TaskBoard
         householdId={ctx.householdId}
         currentUserId={ctx.userId}
-        tasks={tasks}
+        sections={sections}
         templates={templates}
         members={members}
         canEdit={canEdit}

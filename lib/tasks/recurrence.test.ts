@@ -3,7 +3,10 @@ import { describe, it } from "node:test";
 
 import { nextRecurringDueAt, parseDueTime } from "./recurrence";
 import { afterInstantForNextSpawn, pickOpenRecurringKeeper } from "./spawn-recurring";
-import { selectBoardTasks } from "./queries";
+import {
+  buildTaskBoardSections,
+  selectBoardTasks,
+} from "./queries";
 import type { Task } from "./types";
 
 describe("parseDueTime", () => {
@@ -17,7 +20,6 @@ describe("parseDueTime", () => {
 
 describe("nextRecurringDueAt", () => {
   it("picks later today for daily when time is still ahead", () => {
-    // 2026-08-10 14:00 UTC = 09:00 America/Chicago (CDT, UTC-5)
     const now = new Date("2026-08-10T14:00:00.000Z");
     const iso = nextRecurringDueAt({
       cadence: "daily",
@@ -28,12 +30,11 @@ describe("nextRecurringDueAt", () => {
       now,
     });
     assert.ok(iso);
-    // 15:00 CDT = 20:00 UTC
     assert.equal(iso, "2026-08-10T20:00:00.000Z");
   });
 
   it("rolls to tomorrow for daily when time has passed", () => {
-    const now = new Date("2026-08-10T21:00:00.000Z"); // 16:00 CDT
+    const now = new Date("2026-08-10T21:00:00.000Z");
     const iso = nextRecurringDueAt({
       cadence: "daily",
       dayOfWeek: null,
@@ -60,7 +61,6 @@ describe("nextRecurringDueAt", () => {
   });
 
   it("after completion of yesterday's instance, next daily is today", () => {
-    // Yesterday 09:00 CDT completed → next is today 09:00 CDT
     const after = afterInstantForNextSpawn("2026-08-13T14:00:00.000Z");
     const iso = nextRecurringDueAt({
       cadence: "daily",
@@ -74,7 +74,6 @@ describe("nextRecurringDueAt", () => {
   });
 
   it("early complete still advances past that due, not a same-slot duplicate", () => {
-    // Due 15:00 CDT; complete earlier in the day — next must be tomorrow, not today again
     const after = afterInstantForNextSpawn("2026-08-13T20:00:00.000Z");
     const iso = nextRecurringDueAt({
       cadence: "daily",
@@ -137,82 +136,111 @@ function boardTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
   };
 }
 
-describe("selectBoardTasks", () => {
-  const rangeStart = "2026-08-14T05:00:00.000Z";
-  const rangeEnd = "2026-08-15T05:00:00.000Z";
+const rangeStart = "2026-08-14T05:00:00.000Z";
+const rangeEnd = "2026-08-15T05:00:00.000Z";
+const nowMs = Date.parse("2026-08-14T15:00:00.000Z");
 
-  it("shows one open card per recurring template and hides older done history", () => {
-    const tasks = selectBoardTasks(
+describe("buildTaskBoardSections", () => {
+  it("splits overdue, today, upcoming, done today, and one-off history", () => {
+    const sections = buildTaskBoardSections(
       [
         boardTask({
-          id: "done-old",
-          title: "Brush teeth",
-          status: "done",
-          recurringTemplateId: "tmpl-teeth",
+          id: "overdue",
+          title: "Late pickup",
           dueAt: "2026-08-13T14:00:00.000Z",
-          updatedAt: "2026-08-13T15:00:00.000Z",
         }),
         boardTask({
-          id: "open-1",
-          title: "Brush teeth",
-          status: "todo",
-          recurringTemplateId: "tmpl-teeth",
-          dueAt: "2026-08-13T14:00:00.000Z",
-          createdAt: "2026-08-13T08:00:00.000Z",
+          id: "today",
+          title: "School form",
+          dueAt: "2026-08-14T18:00:00.000Z",
         }),
         boardTask({
-          id: "open-2",
-          title: "Brush teeth",
-          status: "todo",
-          recurringTemplateId: "tmpl-teeth",
-          dueAt: "2026-08-14T14:00:00.000Z",
-          createdAt: "2026-08-14T08:00:00.000Z",
+          id: "upcoming",
+          title: "Morning meds",
+          dueAt: "2026-08-15T14:00:00.000Z",
+          recurringTemplateId: "tmpl-meds",
         }),
-        boardTask({
-          id: "one-off",
-          title: "Call dentist",
-          status: "todo",
-        }),
-      ],
-      { rangeStart, rangeEnd },
-    );
-
-    assert.equal(tasks.length, 2);
-    assert.ok(tasks.some((t) => t.id === "one-off"));
-    // Earliest open due wins (open-1 before open-2) so today is not dropped for tomorrow
-    assert.ok(tasks.some((t) => t.id === "open-1"));
-    assert.ok(!tasks.some((t) => t.id === "done-old"));
-    assert.ok(!tasks.some((t) => t.id === "open-2"));
-  });
-
-  it("keeps done-today at the bottom and attaches cadence chips", () => {
-    const tasks = selectBoardTasks(
-      [
         boardTask({
           id: "done-today",
           title: "Brush teeth",
           status: "done",
+          dueAt: "2026-08-14T12:00:00.000Z",
+          updatedAt: "2026-08-14T12:30:00.000Z",
           recurringTemplateId: "tmpl-teeth",
-          dueAt: "2026-08-14T14:00:00.000Z",
-          updatedAt: "2026-08-14T16:00:00.000Z",
         }),
         boardTask({
-          id: "open",
-          title: "Pickup Rx",
-          status: "todo",
-          dueAt: "2026-08-14T18:00:00.000Z",
+          id: "history-one-off",
+          title: "Old errand",
+          status: "done",
+          dueAt: "2026-08-10T12:00:00.000Z",
+          updatedAt: "2026-08-10T13:00:00.000Z",
+        }),
+        boardTask({
+          id: "old-recurring-done",
+          title: "Old meds done",
+          status: "done",
+          dueAt: "2026-08-10T12:00:00.000Z",
+          updatedAt: "2026-08-10T13:00:00.000Z",
+          recurringTemplateId: "tmpl-meds",
         }),
       ],
       {
         rangeStart,
         rangeEnd,
-        cadenceByTemplateId: { "tmpl-teeth": "daily" },
+        nowMs,
+        cadenceByTemplateId: { "tmpl-meds": "daily", "tmpl-teeth": "daily" },
       },
     );
 
-    assert.equal(tasks.length, 2);
-    assert.equal(tasks[0]?.id, "open");
-    assert.equal(tasks[1]?.id, "done-today");
-    assert.equal(tasks[1]?.recurrenceCadence, "daily");
+    assert.deepEqual(
+      sections.overdue.map((t) => t.id),
+      ["overdue"],
+    );
+    assert.deepEqual(
+      sections.today.map((t) => t.id),
+      ["today"],
+    );
+    assert.equal(sections.upcoming[0]?.id, "upcoming");
+    assert.equal(sections.upcoming[0]?.recurrenceCadence, "daily");
+    assert.deepEqual(
+      sections.doneToday.map((t) => t.id),
+      ["done-today"],
+    );
+    assert.deepEqual(
+      sections.history.map((t) => t.id),
+      ["history-one-off"],
+    );
+    // Recurring old done is not history noise
+    assert.ok(!sections.history.some((t) => t.id === "old-recurring-done"));
+  });
+});
+
+describe("selectBoardTasks", () => {
+  it("flattens active + done today without history", () => {
+    const tasks = selectBoardTasks(
+      [
+        boardTask({
+          id: "open",
+          title: "Open",
+          dueAt: "2026-08-14T18:00:00.000Z",
+        }),
+        boardTask({
+          id: "history",
+          title: "Old",
+          status: "done",
+          updatedAt: "2026-08-10T12:00:00.000Z",
+        }),
+        boardTask({
+          id: "done-today",
+          title: "Done",
+          status: "done",
+          updatedAt: "2026-08-14T16:00:00.000Z",
+        }),
+      ],
+      { rangeStart, rangeEnd },
+    );
+    assert.ok(tasks.some((t) => t.id === "open"));
+    assert.ok(tasks.some((t) => t.id === "done-today"));
+    assert.ok(!tasks.some((t) => t.id === "history"));
   });
 });

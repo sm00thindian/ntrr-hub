@@ -8,7 +8,9 @@ import { EditTaskForm } from "@/components/tasks/edit-task-form";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import {
+  calendarDateKeyInZone,
   formatDateTimeInZone,
+  formatTimeInZone,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import type { HouseholdMember } from "@/lib/households/queries";
@@ -36,11 +38,41 @@ type TaskCardProps = {
 
 type ConfirmMode = null | "pause" | "delete-series" | "delete-one";
 
-function formatDue(dueAt: string | null, timeZone: string) {
+function dueMeta(dueAt: string | null, timeZone: string, status: TaskStatus) {
   if (!dueAt) {
-    return null;
+    return { label: "No due date", tone: "muted" as const };
   }
-  return formatDateTimeInZone(dueAt, timeZone);
+  const zone = resolveHouseholdTimeZone(timeZone);
+  const now = new Date();
+  const dueMs = Date.parse(dueAt);
+  const todayKey = calendarDateKeyInZone(now.toISOString(), zone);
+  const dueKey = calendarDateKeyInZone(dueAt, zone);
+  const time = formatTimeInZone(dueAt, zone);
+
+  if (status !== "done" && dueMs < now.getTime()) {
+    return { label: `Overdue · ${time}`, tone: "danger" as const };
+  }
+  if (dueKey === todayKey) {
+    return { label: `Today · ${time}`, tone: "default" as const };
+  }
+
+  // Tomorrow key
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowKey = calendarDateKeyInZone(tomorrow.toISOString(), zone);
+  if (dueKey === tomorrowKey) {
+    return { label: `Tomorrow · ${time}`, tone: "default" as const };
+  }
+
+  return {
+    label: formatDateTimeInZone(dueAt, zone, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+    tone: "muted" as const,
+  };
 }
 
 export function TaskCard({
@@ -57,7 +89,7 @@ export function TaskCard({
   const [confirm, setConfirm] = useState<ConfirmMode>(null);
   const [editing, setEditing] = useState(false);
   const zone = resolveHouseholdTimeZone(timeZone);
-  const dueLabel = formatDue(task.dueAt, zone);
+  const due = dueMeta(task.dueAt, zone, task.status);
   const assigneeFromMembers = resolveAssigneeDisplay(task.assigneeId, members);
   const assigneeLabel = task.assigneeLabel ?? assigneeFromMembers.label;
   const assigneePersona = task.assigneePersona ?? assigneeFromMembers.persona;
@@ -87,39 +119,50 @@ export function TaskCard({
           pending && "opacity-60",
           compact && "p-2.5",
           isDone && "border-brand/25 bg-brand/5",
+          due.tone === "danger" && !isDone && "border-destructive/30",
         )}
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
-            <h3
-              className={cn(
-                "font-medium leading-snug",
-                isDone && "text-muted-foreground line-through decoration-brand/40",
-              )}
-            >
-              {task.title}
-            </h3>
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <h3
+                className={cn(
+                  "font-medium leading-snug",
+                  isDone && "text-muted-foreground line-through decoration-brand/40",
+                )}
+              >
+                {task.title}
+              </h3>
+              {cadenceLabel ? (
+                <span
+                  className="bg-brand/10 text-brand inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                  title="Recurring series"
+                >
+                  {cadenceLabel}
+                </span>
+              ) : null}
+              {task.reliantConfirmRequested && !isDone ? <ReliantConfirmChip /> : null}
+            </div>
             {task.description ? (
               <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
             ) : null}
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            {task.reliantConfirmRequested && !isDone ? <ReliantConfirmChip /> : null}
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
-                isDone
-                  ? "bg-brand/15 text-brand"
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+              isDone
+                ? "bg-brand/15 text-brand"
+                : task.status === "in_progress"
+                  ? "bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100"
                   : "bg-muted text-muted-foreground",
-              )}
-            >
-              {TASK_STATUS_LABELS[task.status]}
-            </span>
-          </div>
+            )}
+          >
+            {TASK_STATUS_LABELS[task.status]}
+          </span>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground inline-flex items-center gap-1.5">
             <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <AssigneeChip
               label={assigneeLabel}
@@ -128,20 +171,17 @@ export function TaskCard({
               unassigned={!task.assigneeId}
             />
           </span>
-          {dueLabel ? (
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-              {dueLabel}
-            </span>
-          ) : null}
-          {cadenceLabel ? (
-            <span
-              className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-              title="Recurring task"
-            >
-              {cadenceLabel}
-            </span>
-          ) : null}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1",
+              due.tone === "danger" && "text-destructive font-medium",
+              due.tone === "muted" && "text-muted-foreground",
+              due.tone === "default" && "text-foreground/80",
+            )}
+          >
+            <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+            {due.label}
+          </span>
         </div>
 
         {allowComplete || canEdit ? (
