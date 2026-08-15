@@ -102,13 +102,13 @@ describe("afterInstantForNextSpawn", () => {
 });
 
 describe("pickOpenRecurringKeeper", () => {
-  it("keeps the latest due among open dups", () => {
+  it("keeps the earliest due among open dups (today before tomorrow)", () => {
     const keeper = pickOpenRecurringKeeper([
       { id: "a", due_at: "2026-08-12T14:00:00.000Z", created_at: "2026-08-12T10:00:00.000Z", status: "todo" },
       { id: "b", due_at: "2026-08-14T14:00:00.000Z", created_at: "2026-08-13T10:00:00.000Z", status: "todo" },
       { id: "c", due_at: "2026-08-13T14:00:00.000Z", created_at: "2026-08-13T11:00:00.000Z", status: "todo" },
     ]);
-    assert.equal(keeper.id, "b");
+    assert.equal(keeper.id, "a");
   });
 });
 
@@ -172,8 +172,9 @@ describe("selectBoardTasks", () => {
 
     assert.equal(tasks.length, 2);
     assert.ok(tasks.some((t) => t.id === "one-off"));
-    assert.ok(tasks.some((t) => t.id === "open-2"));
+    // Earliest open due wins (open-1 before open-2) so today is not dropped for tomorrow
+    assert.ok(tasks.some((t) => t.id === "open-1"));
     assert.ok(!tasks.some((t) => t.id === "done-old"));
-    assert.ok(!tasks.some((t) => t.id === "open-1"));
+    assert.ok(!tasks.some((t) => t.id === "open-2"));
   });
 });

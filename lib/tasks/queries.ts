@@ -81,14 +81,15 @@ export function oneOpenPerRecurringTemplate(tasks: Task[]): Task[] {
       result.push(opens[0]!);
       continue;
     }
+    // Earliest due first (today before tomorrow) — matches pickOpenRecurringKeeper
     const sorted = [...opens].sort((a, b) => {
       if (a.status !== b.status) {
         if (a.status === "in_progress") return -1;
         if (b.status === "in_progress") return 1;
       }
-      const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.NEGATIVE_INFINITY;
-      const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.NEGATIVE_INFINITY;
-      if (aDue !== bDue) return bDue - aDue;
+      const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
+      const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
+      if (aDue !== bDue) return aDue - bDue;
       return Date.parse(b.createdAt) - Date.parse(a.createdAt);
     });
     result.push(sorted[0]!);

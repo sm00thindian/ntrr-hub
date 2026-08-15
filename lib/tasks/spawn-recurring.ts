@@ -55,7 +55,10 @@ type OpenRecurringRow = {
   status: string;
 };
 
-/** Prefer latest due, then newest created — one current card per series. */
+/**
+ * Prefer the earliest due among open dups (today/overdue before tomorrow).
+ * Keeping "latest due" cancelled today's care instances when a future open existed.
+ */
 export function pickOpenRecurringKeeper<T extends { due_at: string | null; created_at: string; status: string }>(
   opens: T[],
 ): T {
@@ -65,10 +68,11 @@ export function pickOpenRecurringKeeper<T extends { due_at: string | null; creat
       if (a.status === "in_progress") return -1;
       if (b.status === "in_progress") return 1;
     }
-    const aDue = a.due_at ? Date.parse(a.due_at) : Number.NEGATIVE_INFINITY;
-    const bDue = b.due_at ? Date.parse(b.due_at) : Number.NEGATIVE_INFINITY;
+    const aDue = a.due_at ? Date.parse(a.due_at) : Number.POSITIVE_INFINITY;
+    const bDue = b.due_at ? Date.parse(b.due_at) : Number.POSITIVE_INFINITY;
+    // Earliest due first — do not drop "today" for a tomorrow spawn
     if (aDue !== bDue) {
-      return bDue - aDue;
+      return aDue - bDue;
     }
     return Date.parse(b.created_at) - Date.parse(a.created_at);
   })[0]!;

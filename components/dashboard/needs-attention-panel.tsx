@@ -33,6 +33,7 @@ type NeedsAttentionPanelProps = {
 };
 
 const DONE_FEEDBACK_MS = 900;
+const HIDE_DONE_KEY = "hub-focus-hide-done";
 
 function SectionLabel({ id, children }: { id?: string; children: ReactNode }) {
   return (
@@ -85,7 +86,17 @@ export function NeedsAttentionPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
+  /** Prefer showing green Done progress; hide when the board feels cluttered. */
+  const [hideDone, setHideDone] = useState(false);
   const nowMs = Date.now();
+
+  useEffect(() => {
+    try {
+      setHideDone(window.sessionStorage.getItem(HIDE_DONE_KEY) === "1");
+    } catch {
+      // private mode / SSR
+    }
+  }, []);
 
   useEffect(() => {
     const liveIds = new Set(
@@ -105,13 +116,37 @@ export function NeedsAttentionPanel({
     });
   }, [items]);
 
+  function isItemDone(item: NeedsAttentionItem) {
+    return (
+      item.status === "done" ||
+      item.reason === "done" ||
+      Boolean(item.entityId && justDoneIds.has(item.entityId))
+    );
+  }
+
+  const doneCount = items.filter((item) => isItemDone(item)).length;
+  const visibleItems = hideDone ? items.filter((item) => !isItemDone(item)) : items;
+
+  function toggleHideDone() {
+    setHideDone((prev) => {
+      const next = !prev;
+      try {
+        window.sessionStorage.setItem(HIDE_DONE_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
   return (
     <Card className="border-brand/20">
       <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <CardTitle>Focus</CardTitle>
           <CardDescription className="line-clamp-3 sm:line-clamp-none">
-            Household day — Hub tasks and shared calendars. Tomorrow: outside the usual only.
+            Household day — Hub tasks and shared calendars. Done stays green until you hide it.
+            Tomorrow: outside the usual only.
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -125,15 +160,29 @@ export function NeedsAttentionPanel({
       </CardHeader>
       <CardContent className="space-y-5">
         <section aria-labelledby="focus-today-heading" className="space-y-3">
-          <SectionLabel id="focus-today-heading">Today</SectionLabel>
-          {items.length ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionLabel id="focus-today-heading">Today</SectionLabel>
+            {doneCount > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground h-8 px-2 text-xs"
+                onClick={toggleHideDone}
+              >
+                {hideDone
+                  ? `Show done (${doneCount})`
+                  : `Hide done (${doneCount})`}
+              </Button>
+            ) : null}
+          </div>
+          {visibleItems.length ? (
             <ul className="space-y-1.5">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const isConflict = item.reason === "conflict";
                 const isEvent = item.kind === "event" && item.reason === "calendar";
                 const isTask = item.kind === "task" && !isConflict;
-                const isJustDone = Boolean(item.entityId && justDoneIds.has(item.entityId));
-                const isDone = item.status === "done" || isJustDone;
+                const isDone = isItemDone(item);
                 const isException =
                   !isDone && (item.reason === "overdue" || item.reason === "conflict");
                 const isPastEvent =
@@ -174,7 +223,7 @@ export function NeedsAttentionPanel({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-2">
-                        {isTask && !isDone ? (
+                        {isTask ? (
                           <div className="flex h-6 w-full max-w-[7rem] shrink-0 items-center overflow-hidden sm:w-[6.5rem]">
                             <AssigneeChip
                               label={item.assigneeLabel}
@@ -304,8 +353,9 @@ export function NeedsAttentionPanel({
             </ul>
           ) : (
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Quiet day for shared calendars and Hub tasks. When something is due or on the family
-              calendar, it shows up here.
+              {hideDone && doneCount > 0
+                ? `All caught up on open work — ${doneCount} done ${doneCount === 1 ? "task is" : "tasks are"} hidden.`
+                : "Quiet day for shared calendars and Hub tasks. When something is due or on the family calendar, it shows up here."}
             </p>
           )}
         </section>
