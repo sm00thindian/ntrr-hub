@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, Check, ListTodo, MapPin } from "lucide-react";
@@ -33,7 +33,6 @@ type NeedsAttentionPanelProps = {
 };
 
 const DONE_FEEDBACK_MS = 900;
-const HIDE_DONE_KEY = "hub-focus-hide-done";
 
 function SectionLabel({ id, children }: { id?: string; children: ReactNode }) {
   return (
@@ -85,82 +84,26 @@ export function NeedsAttentionPanel({
   const zone = resolveHouseholdTimeZone(timeZone);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  /** Optimistic Done only while the mark-done request is in flight — never override server "todo". */
-  const [optimisticDoneIds, setOptimisticDoneIds] = useState<Set<string>>(() => new Set());
-  const inflightDoneIds = useRef(new Set<string>());
-  /** Prefer showing green Done progress; hide when the board feels cluttered. */
-  const [hideDone, setHideDone] = useState(false);
+  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
   const nowMs = Date.now();
 
   useEffect(() => {
-    try {
-      setHideDone(window.sessionStorage.getItem(HIDE_DONE_KEY) === "1");
-    } catch {
-      // private mode / SSR
-    }
-  }, []);
-
-  // Align optimistic green with server status (live refresh must not leave false Done).
-  useEffect(() => {
-    setOptimisticDoneIds((prev) => {
-      if (prev.size === 0) {
-        return prev;
-      }
+    const liveIds = new Set(
+      items.map((i) => i.entityId).filter((id): id is string => Boolean(id)),
+    );
+    setJustDoneIds((prev) => {
       let changed = false;
       const next = new Set<string>();
       for (const id of prev) {
-        const item = items.find((i) => i.entityId === id);
-        if (!item) {
-          // Dropped from the list
+        if (liveIds.has(id)) {
+          next.add(id);
+        } else {
           changed = true;
-          continue;
         }
-        if (item.status === "done") {
-          // Server confirmed — status alone is enough
-          changed = true;
-          continue;
-        }
-        if (item.status === "todo" || item.status === "in_progress") {
-          // Still open on server: keep green only if mark-done is in flight
-          if (inflightDoneIds.current.has(id)) {
-            next.add(id);
-          } else {
-            changed = true;
-          }
-          continue;
-        }
-        changed = true;
       }
       return changed ? next : prev;
     });
   }, [items]);
-
-  /** Green Done only when the task row is actually done (or briefly optimistic). */
-  function isItemDone(item: NeedsAttentionItem) {
-    if (item.status === "done") {
-      return true;
-    }
-    // Never paint open tasks green from a stale optimistic set
-    if (item.status === "todo" || item.status === "in_progress") {
-      return Boolean(item.entityId && optimisticDoneIds.has(item.entityId));
-    }
-    return false;
-  }
-
-  const doneCount = items.filter((item) => isItemDone(item)).length;
-  const visibleItems = hideDone ? items.filter((item) => !isItemDone(item)) : items;
-
-  function toggleHideDone() {
-    setHideDone((prev) => {
-      const next = !prev;
-      try {
-        window.sessionStorage.setItem(HIDE_DONE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }
 
   return (
     <Card className="border-brand/20">
@@ -168,8 +111,7 @@ export function NeedsAttentionPanel({
         <div className="min-w-0 space-y-1">
           <CardTitle>Focus</CardTitle>
           <CardDescription className="line-clamp-3 sm:line-clamp-none">
-            Household day — Hub tasks and shared calendars. Done stays green until you hide it.
-            Tomorrow: outside the usual only.
+            Household day — Hub tasks and shared calendars. Tomorrow: outside the usual only.
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -183,29 +125,15 @@ export function NeedsAttentionPanel({
       </CardHeader>
       <CardContent className="space-y-5">
         <section aria-labelledby="focus-today-heading" className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionLabel id="focus-today-heading">Today</SectionLabel>
-            {doneCount > 0 ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-muted-foreground h-8 px-2 text-xs"
-                onClick={toggleHideDone}
-              >
-                {hideDone
-                  ? `Show done (${doneCount})`
-                  : `Hide done (${doneCount})`}
-              </Button>
-            ) : null}
-          </div>
-          {visibleItems.length ? (
+          <SectionLabel id="focus-today-heading">Today</SectionLabel>
+          {items.length ? (
             <ul className="space-y-1.5">
-              {visibleItems.map((item) => {
+              {items.map((item) => {
                 const isConflict = item.reason === "conflict";
                 const isEvent = item.kind === "event" && item.reason === "calendar";
                 const isTask = item.kind === "task" && !isConflict;
-                const isDone = isItemDone(item);
+                const isJustDone = Boolean(item.entityId && justDoneIds.has(item.entityId));
+                const isDone = item.status === "done" || isJustDone;
                 const isException =
                   !isDone && (item.reason === "overdue" || item.reason === "conflict");
                 const isPastEvent =
@@ -246,7 +174,7 @@ export function NeedsAttentionPanel({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-2">
-                        {isTask ? (
+                        {isTask && !isDone ? (
                           <div className="flex h-6 w-full max-w-[7rem] shrink-0 items-center overflow-hidden sm:w-[6.5rem]">
                             <AssigneeChip
                               label={item.assigneeLabel}
@@ -344,19 +272,9 @@ export function NeedsAttentionPanel({
                         className="mt-0.5"
                         onMarkDone={() => {
                           const taskId = item.entityId!;
-                          inflightDoneIds.current.add(taskId);
-                          setOptimisticDoneIds((prev) => new Set(prev).add(taskId));
+                          setJustDoneIds((prev) => new Set(prev).add(taskId));
                           startTransition(async () => {
-                            const result = await updateTaskStatus(taskId, "done");
-                            inflightDoneIds.current.delete(taskId);
-                            if (result && "error" in result && result.error) {
-                              setOptimisticDoneIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(taskId);
-                                return next;
-                              });
-                              return;
-                            }
+                            await updateTaskStatus(taskId, "done");
                             window.setTimeout(() => {
                               router.refresh();
                             }, DONE_FEEDBACK_MS);
@@ -366,8 +284,7 @@ export function NeedsAttentionPanel({
                           isDone
                             ? () => {
                                 const taskId = item.entityId!;
-                                inflightDoneIds.current.delete(taskId);
-                                setOptimisticDoneIds((prev) => {
+                                setJustDoneIds((prev) => {
                                   const next = new Set(prev);
                                   next.delete(taskId);
                                   return next;
@@ -387,9 +304,8 @@ export function NeedsAttentionPanel({
             </ul>
           ) : (
             <p className="text-muted-foreground text-sm leading-relaxed">
-              {hideDone && doneCount > 0
-                ? `All caught up on open work — ${doneCount} done ${doneCount === 1 ? "task is" : "tasks are"} hidden.`
-                : "Quiet day for shared calendars and Hub tasks. When something is due or on the family calendar, it shows up here."}
+              Quiet day for shared calendars and Hub tasks. When something is due or on the family
+              calendar, it shows up here.
             </p>
           )}
         </section>
