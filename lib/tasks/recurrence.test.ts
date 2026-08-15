@@ -138,37 +138,44 @@ function boardTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
 }
 
 describe("selectBoardTasks", () => {
-  it("shows one open card per recurring template and hides done series history", () => {
-    const tasks = selectBoardTasks([
-      boardTask({
-        id: "done-old",
-        title: "Brush teeth",
-        status: "done",
-        recurringTemplateId: "tmpl-teeth",
-        dueAt: "2026-08-13T14:00:00.000Z",
-      }),
-      boardTask({
-        id: "open-1",
-        title: "Brush teeth",
-        status: "todo",
-        recurringTemplateId: "tmpl-teeth",
-        dueAt: "2026-08-13T14:00:00.000Z",
-        createdAt: "2026-08-13T08:00:00.000Z",
-      }),
-      boardTask({
-        id: "open-2",
-        title: "Brush teeth",
-        status: "todo",
-        recurringTemplateId: "tmpl-teeth",
-        dueAt: "2026-08-14T14:00:00.000Z",
-        createdAt: "2026-08-14T08:00:00.000Z",
-      }),
-      boardTask({
-        id: "one-off",
-        title: "Call dentist",
-        status: "todo",
-      }),
-    ]);
+  const rangeStart = "2026-08-14T05:00:00.000Z";
+  const rangeEnd = "2026-08-15T05:00:00.000Z";
+
+  it("shows one open card per recurring template and hides older done history", () => {
+    const tasks = selectBoardTasks(
+      [
+        boardTask({
+          id: "done-old",
+          title: "Brush teeth",
+          status: "done",
+          recurringTemplateId: "tmpl-teeth",
+          dueAt: "2026-08-13T14:00:00.000Z",
+          updatedAt: "2026-08-13T15:00:00.000Z",
+        }),
+        boardTask({
+          id: "open-1",
+          title: "Brush teeth",
+          status: "todo",
+          recurringTemplateId: "tmpl-teeth",
+          dueAt: "2026-08-13T14:00:00.000Z",
+          createdAt: "2026-08-13T08:00:00.000Z",
+        }),
+        boardTask({
+          id: "open-2",
+          title: "Brush teeth",
+          status: "todo",
+          recurringTemplateId: "tmpl-teeth",
+          dueAt: "2026-08-14T14:00:00.000Z",
+          createdAt: "2026-08-14T08:00:00.000Z",
+        }),
+        boardTask({
+          id: "one-off",
+          title: "Call dentist",
+          status: "todo",
+        }),
+      ],
+      { rangeStart, rangeEnd },
+    );
 
     assert.equal(tasks.length, 2);
     assert.ok(tasks.some((t) => t.id === "one-off"));
@@ -176,5 +183,36 @@ describe("selectBoardTasks", () => {
     assert.ok(tasks.some((t) => t.id === "open-1"));
     assert.ok(!tasks.some((t) => t.id === "done-old"));
     assert.ok(!tasks.some((t) => t.id === "open-2"));
+  });
+
+  it("keeps done-today at the bottom and attaches cadence chips", () => {
+    const tasks = selectBoardTasks(
+      [
+        boardTask({
+          id: "done-today",
+          title: "Brush teeth",
+          status: "done",
+          recurringTemplateId: "tmpl-teeth",
+          dueAt: "2026-08-14T14:00:00.000Z",
+          updatedAt: "2026-08-14T16:00:00.000Z",
+        }),
+        boardTask({
+          id: "open",
+          title: "Pickup Rx",
+          status: "todo",
+          dueAt: "2026-08-14T18:00:00.000Z",
+        }),
+      ],
+      {
+        rangeStart,
+        rangeEnd,
+        cadenceByTemplateId: { "tmpl-teeth": "daily" },
+      },
+    );
+
+    assert.equal(tasks.length, 2);
+    assert.equal(tasks[0]?.id, "open");
+    assert.equal(tasks[1]?.id, "done-today");
+    assert.equal(tasks[1]?.recurrenceCadence, "daily");
   });
 });

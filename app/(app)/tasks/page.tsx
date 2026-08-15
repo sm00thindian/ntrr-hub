@@ -5,12 +5,14 @@ import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings
 import { requireHouseholdContext } from "@/lib/households/context";
 import { getHouseholdMembers } from "@/lib/households/queries";
 import {
+  getZonedDayBounds,
   householdTimeZoneLabel,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
 import { isMyDayPersona } from "@/lib/dashboard/my-day";
 import { canCompleteOwnOrEditTasks, canEditTasks } from "@/lib/permissions/roles";
 import { getHouseholdTasks, getRecurringTemplates, selectBoardTasks } from "@/lib/tasks/queries";
+import type { RecurrenceCadence } from "@/lib/tasks/types";
 
 export default async function TasksPage() {
   const ctx = await requireHouseholdContext();
@@ -25,14 +27,25 @@ export default async function TasksPage() {
     getHouseholdMembers(ctx.householdId),
     getHouseholdCalendarSettings(ctx.householdId),
   ]);
-  // One open card per recurring series; hide stacked done history on the board
-  const tasks = selectBoardTasks(rawTasks);
+
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  const dayBounds = getZonedDayBounds(timeZone);
+  const cadenceByTemplateId: Record<string, RecurrenceCadence> = {};
+  for (const template of templates) {
+    cadenceByTemplateId[template.id] = template.cadence;
+  }
+
+  // Open work + done today only; done older than today hidden; cadence for chips
+  const tasks = selectBoardTasks(rawTasks, {
+    rangeStart: dayBounds.start,
+    rangeEnd: dayBounds.end,
+    cadenceByTemplateId,
+  });
 
   if (!members.length) {
     redirect("/dashboard");
   }
 
-  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
   const timeZoneLabel = householdTimeZoneLabel(timeZone);
 
   return (

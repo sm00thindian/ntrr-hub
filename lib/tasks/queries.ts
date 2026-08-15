@@ -6,7 +6,12 @@ import {
   displayProvenanceSource,
   type Provenance,
 } from "@/lib/provenance/types";
-import type { RecurringTaskTemplate, RecurrenceCadence, Task, TaskStatus } from "@/lib/tasks/types";
+import type {
+  RecurringTaskTemplate,
+  RecurrenceCadence,
+  Task,
+  TaskStatus,
+} from "@/lib/tasks/types";
 
 function mapTask(
   row: {
@@ -98,24 +103,87 @@ export function oneOpenPerRecurringTemplate(tasks: Task[]): Task[] {
   return result;
 }
 
+function inRange(isoMs: number, rangeStart: string, rangeEnd: string) {
+  const start = Date.parse(rangeStart);
+  const end = Date.parse(rangeEnd);
+  return Number.isFinite(isoMs) && Number.isFinite(start) && Number.isFinite(end)
+    ? isoMs >= start && isoMs < end
+    : false;
+}
+
+/** Done today by completion time, or due today if completion time missing/odd. */
+export function isTaskDoneToday(
+  task: Task,
+  rangeStart: string,
+  rangeEnd: string,
+): boolean {
+  if (task.status !== "done") {
+    return false;
+  }
+  const updatedMs = Date.parse(task.updatedAt);
+  if (inRange(updatedMs, rangeStart, rangeEnd)) {
+    return true;
+  }
+  if (task.dueAt) {
+    return inRange(Date.parse(task.dueAt), rangeStart, rangeEnd);
+  }
+  return false;
+}
+
 /**
- * Board rule for recurring series:
- * - one open card (todo / in_progress)
- * - hide done history so the board is not a stack of past meds / brush-teeth
+ * Tasks board list:
+ * - one open card per recurring series
+ * - done only if completed today (hide older done history)
+ * - open work first, done today at the bottom
+ * - optional cadence from templates for Daily/Weekly/Monthly chips
  */
-export function selectBoardTasks(tasks: Task[]): Task[] {
+export function selectBoardTasks(
+  tasks: Task[],
+  options?: {
+    rangeStart?: string;
+    rangeEnd?: string;
+    cadenceByTemplateId?: Record<string, RecurrenceCadence>;
+  },
+): Task[] {
+  const rangeStart = options?.rangeStart;
+  const rangeEnd = options?.rangeEnd;
+  const cadenceMap = options?.cadenceByTemplateId ?? {};
+
   const deduped = oneOpenPerRecurringTemplate(tasks).filter((task) => {
-    if (!task.recurringTemplateId) {
-      return true;
+    if (task.status === "cancelled") {
+      return false;
     }
-    // Recurring series: only surface the open card on the board
-    return task.status !== "done" && task.status !== "cancelled";
+    if (task.status === "done") {
+      if (!rangeStart || !rangeEnd) {
+        return false;
+      }
+      return isTaskDoneToday(task, rangeStart, rangeEnd);
+    }
+    return true;
   });
 
-  return deduped.sort((a, b) => {
+  const withCadence = deduped.map((task) => ({
+    ...task,
+    recurrenceCadence: task.recurringTemplateId
+      ? (cadenceMap[task.recurringTemplateId] ?? task.recurrenceCadence ?? null)
+      : null,
+  }));
+
+  return withCadence.sort((a, b) => {
+    const aDone = a.status === "done" ? 1 : 0;
+    const bDone = b.status === "done" ? 1 : 0;
+    if (aDone !== bDone) {
+      return aDone - bDone;
+    }
+    if (aDone) {
+      // Most recently completed first within the done block
+      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+    }
     const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
     const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
-    if (aDue !== bDue) return aDue - bDue;
+    if (aDue !== bDue) {
+      return aDue - bDue;
+    }
     return Date.parse(b.createdAt) - Date.parse(a.createdAt);
   });
 }

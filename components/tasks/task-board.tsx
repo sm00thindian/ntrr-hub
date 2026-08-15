@@ -126,13 +126,33 @@ export function TaskBoard({
 
   const refresh = () => startRefresh(() => router.refresh());
 
+  /** Open work first; done today at the bottom (matches selectBoardTasks). */
+  function sortOpenThenDone(list: Task[]) {
+    return [...list].sort((a, b) => {
+      const aDone = a.status === "done" ? 1 : 0;
+      const bDone = b.status === "done" ? 1 : 0;
+      if (aDone !== bDone) {
+        return aDone - bDone;
+      }
+      if (aDone) {
+        return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+      }
+      const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
+      const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
+      if (aDue !== bDue) {
+        return aDue - bDue;
+      }
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
+  }
+
   const filteredTasks = useMemo(() => {
     const byStatus = filterTasks(tasks, filter, currentUserId, Date.now());
     // Mine / Unassigned already define assignee scope
     if (filter === "mine" || filter === "unassigned") {
-      return byStatus;
+      return sortOpenThenDone(byStatus);
     }
-    return filterByAssignee(byStatus, assigneeFilter);
+    return sortOpenThenDone(filterByAssignee(byStatus, assigneeFilter));
   }, [tasks, filter, currentUserId, assigneeFilter]);
 
   const filterCounts = useMemo(() => {
@@ -168,12 +188,14 @@ export function TaskBoard({
     }
     if (filter === "overdue") {
       const nowMs = Date.now();
-      return scopedTasks.filter(
-        (t) => t.status !== "done" && t.dueAt && Date.parse(t.dueAt) < nowMs,
+      return sortOpenThenDone(
+        scopedTasks.filter(
+          (t) => t.status !== "done" && t.dueAt && Date.parse(t.dueAt) < nowMs,
+        ),
       );
     }
     // mine (default) — already scoped
-    return scopedTasks;
+    return sortOpenThenDone(scopedTasks);
   }, [myDayMode, filter, filteredTasks, scopedTasks]);
 
   return (

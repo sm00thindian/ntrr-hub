@@ -19,7 +19,7 @@ import {
   updateTaskStatus,
 } from "@/lib/tasks/actions";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
-import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
+import { RECURRENCE_CADENCE_LABELS, TASK_STATUS_LABELS } from "@/lib/tasks/types";
 import { cn } from "@/lib/utils";
 
 type TaskCardProps = {
@@ -64,6 +64,11 @@ export function TaskCard({
   const assigneeEmail = task.assigneeEmail ?? assigneeFromMembers.email;
   const allowComplete = canComplete ?? canEdit;
   const isRecurring = Boolean(task.recurringTemplateId);
+  const cadenceLabel = task.recurrenceCadence
+    ? RECURRENCE_CADENCE_LABELS[task.recurrenceCadence]
+    : isRecurring
+      ? "Recurring"
+      : null;
 
   function runAction(action: () => Promise<{ error?: string; success?: boolean } | void>) {
     startTransition(async () => {
@@ -129,7 +134,14 @@ export function TaskCard({
               {dueLabel}
             </span>
           ) : null}
-          {isRecurring ? <span>Recurring</span> : null}
+          {cadenceLabel ? (
+            <span
+              className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+              title="Recurring task"
+            >
+              {cadenceLabel}
+            </span>
+          ) : null}
         </div>
 
         {allowComplete || canEdit ? (

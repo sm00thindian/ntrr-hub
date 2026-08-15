@@ -22,6 +22,8 @@ export type Task = {
   reliantConfirmRequested: boolean;
   provenance: Provenance;
   recurringTemplateId: string | null;
+  /** From linked template when known — for Daily / Weekly / Monthly chip */
+  recurrenceCadence?: RecurrenceCadence | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +53,12 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   in_progress: "In progress",
   done: "Done",
   cancelled: "Cancelled",
+};
+
+export const RECURRENCE_CADENCE_LABELS: Record<RecurrenceCadence, string> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
 };
 
 export const KANBAN_STATUSES: TaskStatus[] = ["todo", "in_progress", "done"];
