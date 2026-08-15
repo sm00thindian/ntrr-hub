@@ -186,6 +186,48 @@ describe("buildCaregiverFocusToday", () => {
     assert.equal(items.length, 1);
     assert.equal(items[0]?.reason, "calendar");
   });
+
+  it("shows open recurring due tomorrow so daily care does not vanish from Focus", () => {
+    const items = buildCaregiverFocusToday({
+      tasks: [
+        task({
+          id: "next",
+          title: "Morning meds",
+          status: "todo",
+          dueAt: "2026-08-11T14:00:00.000Z",
+          recurringTemplateId: "tmpl-meds",
+        }),
+      ],
+      events: [],
+      conflictCount: 0,
+      nowMs,
+      rangeStart,
+      rangeEnd,
+    });
+    assert.equal(items.length, 1);
+    assert.equal(items[0]?.status, "todo");
+    assert.notEqual(items[0]?.reason, "done");
+  });
+
+  it("does not list completed tasks on Focus", () => {
+    const items = buildCaregiverFocusToday({
+      tasks: [
+        task({
+          id: "finished",
+          title: "Finished meds",
+          status: "done",
+          dueAt: "2026-08-10T14:00:00.000Z",
+          updatedAt: "2026-08-10T15:30:00.000Z",
+        }),
+      ],
+      events: [],
+      conflictCount: 0,
+      nowMs,
+      rangeStart,
+      rangeEnd,
+    });
+    assert.equal(items.length, 0);
+  });
 });
 
 describe("rankTomorrowPreview", () => {

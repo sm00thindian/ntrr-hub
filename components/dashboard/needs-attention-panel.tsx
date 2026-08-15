@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, Check, ListTodo, MapPin } from "lucide-react";
@@ -84,26 +84,8 @@ export function NeedsAttentionPanel({
   const zone = resolveHouseholdTimeZone(timeZone);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
   const nowMs = Date.now();
-
-  useEffect(() => {
-    const liveIds = new Set(
-      items.map((i) => i.entityId).filter((id): id is string => Boolean(id)),
-    );
-    setJustDoneIds((prev) => {
-      let changed = false;
-      const next = new Set<string>();
-      for (const id of prev) {
-        if (liveIds.has(id)) {
-          next.add(id);
-        } else {
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [items]);
 
   return (
     <Card className="border-brand/20">
@@ -132,14 +114,17 @@ export function NeedsAttentionPanel({
                 const isConflict = item.reason === "conflict";
                 const isEvent = item.kind === "event" && item.reason === "calendar";
                 const isTask = item.kind === "task" && !isConflict;
-                const isJustDone = Boolean(item.entityId && justDoneIds.has(item.entityId));
-                const isDone = item.status === "done" || isJustDone;
+                // Server status only — no optimistic green (avoids Tasks vs Focus mismatch)
+                const isDone = item.status === "done";
                 const isException =
                   !isDone && (item.reason === "overdue" || item.reason === "conflict");
                 const isPastEvent =
                   isEvent &&
                   !item.allDay &&
                   agendaSortTimeMs(item.endsAt ?? item.sortAt) < nowMs;
+                const rowPending = Boolean(
+                  item.entityId && pending && pendingIds.has(item.entityId),
+                );
 
                 return (
                   <li
@@ -268,13 +253,18 @@ export function NeedsAttentionPanel({
                       <TaskDoneControl
                         title={item.title}
                         done={isDone}
-                        pending={pending && !isDone}
+                        pending={rowPending}
                         className="mt-0.5"
                         onMarkDone={() => {
                           const taskId = item.entityId!;
-                          setJustDoneIds((prev) => new Set(prev).add(taskId));
+                          setPendingIds((prev) => new Set(prev).add(taskId));
                           startTransition(async () => {
                             await updateTaskStatus(taskId, "done");
+                            setPendingIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(taskId);
+                              return next;
+                            });
                             window.setTimeout(() => {
                               router.refresh();
                             }, DONE_FEEDBACK_MS);
@@ -284,13 +274,14 @@ export function NeedsAttentionPanel({
                           isDone
                             ? () => {
                                 const taskId = item.entityId!;
-                                setJustDoneIds((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(taskId);
-                                  return next;
-                                });
+                                setPendingIds((prev) => new Set(prev).add(taskId));
                                 startTransition(async () => {
                                   await updateTaskStatus(taskId, "todo");
+                                  setPendingIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(taskId);
+                                    return next;
+                                  });
                                   router.refresh();
                                 });
                               }

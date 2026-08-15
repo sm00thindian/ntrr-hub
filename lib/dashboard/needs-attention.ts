@@ -107,7 +107,12 @@ function taskReason(task: Task, nowMs: number, rangeStart: string): AttentionRea
   return "today";
 }
 
-/** Open Hub task belongs on caregiver Focus Today. */
+/**
+ * Open Hub task on caregiver Focus Today.
+ * Done tasks are not listed (marking Done + refresh removes them).
+ * Recurring open instances often have due = tomorrow after the prior complete —
+ * still show those so daily care does not vanish from Focus.
+ */
 export function isTaskOnFocusToday(
   task: Task,
   rangeStart: string,
@@ -117,14 +122,27 @@ export function isTaskOnFocusToday(
     return false;
   }
 
+  if (task.status !== "todo" && task.status !== "in_progress") {
+    return false;
+  }
+
   if (!task.dueAt) {
-    return task.status === "todo" || task.status === "in_progress";
+    return true;
   }
 
   const dueMs = agendaSortTimeMs(task.dueAt);
   const endMs = agendaSortTimeMs(rangeEnd);
-  // Overdue + due today (exclude tomorrow and later)
-  return dueMs < endMs;
+  // Overdue + due today
+  if (dueMs < endMs) {
+    return true;
+  }
+
+  // Next open recurring instance (typically tomorrow after last Done)
+  if (task.recurringTemplateId && dueMs < endMs + 24 * 60 * 60 * 1000) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
