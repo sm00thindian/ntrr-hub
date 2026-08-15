@@ -1,6 +1,8 @@
 # NTRR brand assets
 
-Platform mark for **Not The Run Around** (NTRR). Intended for Hub, Reliant, ntrr.com, Google OAuth consent, and email.
+Platform mark for **Not The Runaround** (NTRR). Intended for Hub, Reliant, ntrr.com, Google OAuth consent, and email.
+
+**Naming:** brand `Not The Runaround` · short `NTRR` · product UI `Hub`. Never `Not The Run Around` (spaced).
 
 | File | Use |
 |------|-----|

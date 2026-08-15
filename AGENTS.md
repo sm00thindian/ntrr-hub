@@ -1,12 +1,14 @@
 # NTRR — agent instructions
 
-**NTRR** (Not The Run Around / Nexus Task & Resource Relay) is the **platform brand** for practical reliability tools. The **Family Care Orchestrator** product in this repo is **Hub** — a secure, AI-powered dashboard for sandwich-generation families, guardians of adult disabled children, and multi-generational households.
+**Not The Runaround** (**NTRR**) is the **platform brand**. The **Family Care Orchestrator** product in this repo is **Hub**.
 
-| Layer | Host |
-|-------|------|
-| Platform / brand | [ntrr.com](https://ntrr.com) |
-| **Hub** (this app) | [hub.ntrr.com](https://hub.ntrr.com) |
-| Reliant (sibling product) | [reliant.ntrr.com](https://reliant.ntrr.com) |
+| Layer | Exact form | Host |
+|-------|------------|------|
+| Platform / brand | Not The Runaround | [ntrr.com](https://ntrr.com) |
+| **Hub** (this app) | Hub | [hub.ntrr.com](https://hub.ntrr.com) |
+| Sibling | Reliant | [reliant.ntrr.com](https://reliant.ntrr.com) |
+
+**Naming rule:** brand = `Not The Runaround` (headers, footers, ©, legal, “a Not The Runaround service”); product UI = `Hub`. Never `Not The Run Around` (spaced).
 
 **Production hosting + domain migration:** [docs/PLATFORM-MIGRATION.md](docs/PLATFORM-MIGRATION.md) is the source of truth.
 
@@ -14,19 +16,25 @@
 
 ## Mission
 
-Build a reliable **single source of truth** that works *with* users' existing tools rather than replacing them. Reduce cognitive load and burnout by abstracting ecosystem fragmentation (Google, Apple, Microsoft) while delivering proactive orchestration, reliable data synthesis, and meaningful insights.
+Build a reliable **coordination layer** that works *with* users' existing tools rather than replacing them. Reduce cognitive load by abstracting ecosystem fragmentation (Google, Apple, Microsoft) while delivering proactive orchestration, reliable data synthesis, and meaningful insights.
 
-Focus on practical Gen X caregivers who want no-BS efficiency, family alignment, and peace of mind.
+**Hub's promise:** *You shouldn't have to think about this to have it work.* Copy mode: **subtraction** — one less call, one less thing to remember.
+
+**Platform stance (NTRR):** two kinds of runaround — *managing it* (Hub) and *hoping it gets done* (Reliant). Do not imply either product is unnecessary. Full framing: [ntrr-com `docs/positioning.md`](https://github.com/sm00thindian/ntrr-com/blob/main/docs/positioning.md).
+
+Focus on practical Gen X caregivers who want no-BS efficiency, family alignment, and calm competence.
 
 ---
 
 ## Key differentiation
 
+- **Subtraction language** — ease is the product; no hype, no crisis framing
 - **Cross-ecosystem sync** — Google / Apple / Microsoft calendars and tasks
 - **Unified dashboard** — Role-based views; linked tasks, docs, and expenses
 - **Proactive AI agents** — Synthesis, conflict detection, reminders, insights
 - **Provenance & audit** — Strong provenance, audit trails, lightweight reporting (guardianship / SSA friendly)
 - **Privacy-first** — User-controlled data; lighter regulatory path (avoid clinical data initially)
+- **Sibling to Reliant** — follow-through confirmations are Reliant's half of the story
 
 ---
 
@@ -34,7 +42,7 @@ Focus on practical Gen X caregivers who want no-BS efficiency, family alignment,
 
 **Users:** Gen X sandwich caregivers, guardians, multi-generational families — practical, time-strapped, value reliability.
 
-**Tone:** Professional, calm, trustworthy, empowering. No hype, no fluff.
+**Tone:** Professional, calm, trustworthy, empowering. No hype, no fluff, no clinical/crisis drama.
 
 **UX:** Quick scans, low friction, Gen X-friendly. Prioritize clarity over cleverness.
 

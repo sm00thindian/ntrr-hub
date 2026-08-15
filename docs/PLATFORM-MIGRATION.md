@@ -22,7 +22,7 @@ When env URLs, OAuth redirects, Supabase Site URL, or “where does the app live
 ## Target topology
 
 ```text
-Not The Run Around (brand / company)
+Not The Runaround (brand / company)
 │
 ├── ntrr.com                 Platform home — repo ntrr-com (Vercel)
 │
@@ -43,11 +43,13 @@ Not The Run Around (brand / company)
 
 | Layer | Name | Host | Repo |
 |-------|------|------|------|
-| Company / platform | **Not The Run Around** / **NTRR** | `ntrr.com` | [`ntrr-com`](https://github.com/sm00thindian/ntrr-com) |
-| Family coordination product | **Hub** (UI: “NTRR Hub” / “Family Hub” OK) | `hub.ntrr.com` | [`ntrr-hub`](https://github.com/sm00thindian/ntrr-hub) (this repo) |
+| Company / platform (brand) | **Not The Runaround** / **NTRR** | `ntrr.com` | [`ntrr-com`](https://github.com/sm00thindian/ntrr-com) |
+| Family coordination product | **Hub** (product UI: **Hub** only) | `hub.ntrr.com` | [`ntrr-hub`](https://github.com/sm00thindian/ntrr-hub) (this repo) |
 | Phone reliability product | **Reliant** | `reliant.ntrr.com` | `reliant` |
 
-**Rule:** “NTRR” is the parent brand. Product UIs and legal footers say *a Not The Run Around service* (same pattern as Reliant today). Do not treat the Hub app as the entire company forever.
+**Naming:** brand `Not The Runaround` · short `NTRR` · products `Hub` / `Reliant`. Never `Not The Run Around` (spaced). Do not use “Family Hub” / “NTRR Hub” as primary product names.
+
+**Rule:** “NTRR” is the parent brand. Product UIs and legal footers say *a Not The Runaround service* (same pattern as Reliant today). Do not treat the Hub app as the entire company forever.
 
 ---
 
@@ -154,7 +156,7 @@ Two Google uses stay distinct — **do not mix OAuth clients**:
 
 Use the client registered in Supabase Auth (not the Calendar/Tasks integration client unless intentionally shared).
 
-- [ ] OAuth consent screen **App name:** `Hub` or `NTRR Hub`
+- [ ] OAuth consent screen **App name:** `Hub`
 - [ ] **Application home page:** `https://hub.ntrr.com`
 - [ ] **Authorized domains:** `ntrr.com` (add `hub.ntrr.com` if the console requires it)
 - [ ] Optional: app logo (Hub / NTRR icon)
@@ -221,7 +223,7 @@ Google displays the **redirect URI hostname**. Site URL alone does not change th
 
 ### Phase 2 — Platform apex (`ntrr.com`)
 
-**Goal:** Apex represents Not The Run Around, not only Hub.
+**Goal:** Apex represents Not The Runaround, not only Hub.
 
 Repo: [`sm00thindian/ntrr-com`](https://github.com/sm00thindian/ntrr-com) (stubbed 2026-08-07).
 
@@ -241,8 +243,8 @@ Repo: [`sm00thindian/ntrr-com`](https://github.com/sm00thindian/ntrr-com) (stubb
 
 **Goal:** UI and docs call this product **Hub** under the NTRR brand.
 
-- [x] Login / landing: product name “Hub”; parent “Not The Run Around” (aligned with Reliant / ntrr-com zinc + green theme)
-- [x] Footer pattern aligned with Reliant (“a Not The Run Around service”)
+- [x] Login / landing: product name “Hub”; parent “Not The Runaround” (aligned with Reliant / ntrr-com zinc + green theme)
+- [x] Footer pattern aligned with Reliant (“a Not The Runaround service”)
 - [x] PWA `name` / `short_name`: “Hub — Family Care Orchestrator” / `Hub`
 - [x] Magic-link email body: Hub (`supabase/templates/magic_link.html`)
 - [x] Production login copy: no Mailpit references (dev-only helper remains)

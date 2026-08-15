@@ -41,7 +41,7 @@ export function AppShell({
         <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-56 shrink-0 border-r px-4 py-6 lg:flex lg:flex-col">
           <div className="mb-8">
             <Logo href="/dashboard" size="lg" />
-            <p className="mt-1 text-xs text-sidebar-muted">
+            <p className="text-sidebar-muted mt-2 text-xs">
               {myDayMode ? "Your day" : "Family coordination"}
             </p>
           </div>
@@ -65,20 +65,19 @@ export function AppShell({
           <header className="safe-top sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur">
             <div className="flex h-12 items-center justify-between gap-2 px-3 sm:h-14 sm:gap-3 sm:px-4 lg:px-8">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                <div className="lg:hidden">
-                  <Logo href="/dashboard" size="md" />
-                </div>
-                <div className="min-w-0 lg:hidden">
-                  {householdName ? (
-                    <p className="truncate text-xs font-medium leading-tight">{householdName}</p>
-                  ) : null}
-                </div>
-                <div className="hidden min-w-0 lg:block">
-                  <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-                  <p className="truncate text-sm font-medium tracking-tight">
-                    {myDayMode ? "My day" : "Hub"}
-                  </p>
-                </div>
+                <Logo href="/dashboard" size="md" />
+                {householdName || myDayMode ? (
+                  <div className="min-w-0 border-l border-border/80 pl-2.5 sm:pl-3">
+                    <p className="truncate text-xs text-muted-foreground">
+                      {myDayMode ? "Your day" : subtitle}
+                    </p>
+                    {!myDayMode && householdName ? (
+                      <p className="truncate text-sm font-medium tracking-tight lg:hidden">
+                        {householdName}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {!myDayMode && conflictCount > 0 ? (

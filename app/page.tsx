@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { getOptionalUser } from "@/lib/supabase/auth";
 
 const highlights = [
   {
@@ -13,7 +13,7 @@ const highlights = [
   },
   {
     title: "Shared task board",
-    body: "Roles, handoffs, and recurring care work in one place everyone can trust.",
+    body: "Roles, handoffs, and recurring care work in one place — one less “who has this?”",
   },
   {
     title: "Proactive highlights",
@@ -26,10 +26,8 @@ const highlights = [
 ] as const;
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Do not throw when Supabase is down (common in local dev before `npm run db:start`).
+  const user = await getOptionalUser();
 
   if (user) {
     redirect("/dashboard");
@@ -47,17 +45,14 @@ export default async function HomePage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-12 pt-8 sm:px-6 sm:pt-14 sm:pb-16">
-        {/* Hero — keep above the fold on common mobile viewports */}
+        {/* Hero — brand lives in the header logo; lead with the product promise */}
         <div className="space-y-4">
-          <p className="text-sm font-medium tracking-wide text-brand">
-            Family Care Orchestrator
-          </p>
           <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-            One calm place to coordinate family care
+            One less thing to manage
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground text-pretty sm:text-lg">
-            Unify calendars, tasks, and family handoffs across the tools you already use — built
-            for Gen X caregivers who need reliability, not another app to babysit.
+            Shared calendars, tasks, and family handoffs across the tools you already use — so you
+            shouldn&apos;t have to think about coordination for it to work.
           </p>
         </div>
 

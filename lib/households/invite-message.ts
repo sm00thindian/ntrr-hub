@@ -22,6 +22,6 @@ export function buildInviteShareText(input: {
     );
   }
 
-  lines.push("", "— Not The Run Around · hub.ntrr.com · reliant.ntrr.com");
+  lines.push("", "— Not The Runaround · hub.ntrr.com · reliant.ntrr.com");
   return lines.join("\n");
 }

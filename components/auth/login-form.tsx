@@ -40,7 +40,7 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
       <CardHeader className="space-y-2">
         <CardTitle>Sign in</CardTitle>
         <CardDescription>
-          Your family coordination hub. Use an email magic link or Google.
+          One less thing to manage. Sign in with an email magic link or Google.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · Hub",
   },
   description:
-    "One calm dashboard for calendars, tasks, and family handoffs — built for Gen X caregivers who need reliability, not another app to babysit.",
+    "One less call to make, one less thing to remember. Family calendars, tasks, and handoffs — a Not The Runaround service.",
   applicationName: "Hub",
   metadataBase: new URL("https://hub.ntrr.com"),
   manifest: "/manifest.webmanifest",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Hub",
     description:
-      "One calm dashboard for calendars, tasks, and family handoffs — a Not The Run Around service.",
+      "One less call to make, one less thing to remember. Family calendars, tasks, and handoffs — a Not The Runaround service.",
     url: "https://hub.ntrr.com",
     siteName: "Hub",
     type: "website",

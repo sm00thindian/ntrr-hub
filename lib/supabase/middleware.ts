@@ -4,28 +4,44 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
-        },
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    return supabaseResponse;
+  }
+
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options),
+        );
       },
     },
-  );
+  });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Treat unreachable auth (local Supabase stopped, network blip) as signed-out.
+  let user = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (
+      error &&
+      (error.message?.includes("Refresh Token") || error.code === "refresh_token_not_found")
+    ) {
+      await supabase.auth.signOut();
+      user = null;
+    } else {
+      user = data.user;
+    }
+  } catch {
+    user = null;
+  }
 
   const pathname = request.nextUrl.pathname;
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/auth");
@@ -35,20 +51,20 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute = pathname === "/" || isAuthRoute || isCronRoute || isWebhookRoute;
 
   if (!user && !isPublicRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
     if (isInviteRoute) {
-      url.searchParams.set("next", pathname);
+      redirectUrl.searchParams.set("next", pathname);
     }
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (user && pathname === "/login") {
-    const url = request.nextUrl.clone();
+    const redirectUrl = request.nextUrl.clone();
     const next = request.nextUrl.searchParams.get("next");
-    url.pathname = next && next.startsWith("/") ? next : "/dashboard";
-    url.search = "";
-    return NextResponse.redirect(url);
+    redirectUrl.pathname = next && next.startsWith("/") ? next : "/dashboard";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
   }
 
   return supabaseResponse;

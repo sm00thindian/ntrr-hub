@@ -1,27 +1,43 @@
-# NTRR
+# Hub
 
-**Nexus Task & Resource Relay** — a secure, AI-powered Family Care Orchestrator.
+**Not The Runaround.**  
+**Hub** — Family Care Orchestrator, a product of [Not The Runaround](https://ntrr.com).
 
-One intelligent dashboard for sandwich-generation families, guardians of adult disabled children, and multi-generational households. NTRR reduces cognitive load by unifying calendars, tasks, and family coordination across the tools you already use — without asking you to rip and replace Google, Apple, or Microsoft.
+One calm place for sandwich-generation families, guardians of adult disabled children, and multi-generational households. Hub reduces cognitive load by unifying calendars, tasks, and family coordination across the tools you already use — without asking you to rip and replace Google, Apple, or Microsoft.
 
-→ Platform: [ntrr.com](https://ntrr.com) · Hub product: [hub.ntrr.com](https://hub.ntrr.com)  
+**Promise:** *You shouldn't have to think about this to have it work.*
+
+Naming: brand `Not The Runaround` · short `NTRR` · product `Hub`.
+
+→ Platform: [ntrr.com](https://ntrr.com) · Hub: [hub.ntrr.com](https://hub.ntrr.com) · Sibling: [Reliant](https://reliant.ntrr.com)  
+→ Positioning: [ntrr-com `docs/positioning.md`](https://github.com/sm00thindian/ntrr-com/blob/main/docs/positioning.md)  
 → Hosting / domain roadmap: [docs/PLATFORM-MIGRATION.md](docs/PLATFORM-MIGRATION.md)
 
 ---
 
 ## The problem
 
-Caregiving families juggle fragmented ecosystems:
+Caregiving has two failure modes. Hub exists for the first; [Reliant](https://reliant.ntrr.com) exists for the second. Same company, two instincts.
+
+### Coordination overhead (Hub)
+
+Families juggle fragmented ecosystems:
 
 - Calendars and tasks spread across Google, Apple, and Microsoft
 - No shared view of who is doing what, when conflicts arise, or what needs attention today
-- Guardians and caregivers need reliable records — not another app that loses context
+- The mental tax of being the only one who holds the whole picture
 
-The result is constant mental overhead, missed handoffs, and burnout.
+The result is constant overhead, missed handoffs, and burnout — the runaround of *managing it*.
+
+### Follow-through risk (Reliant)
+
+Something was on a calendar, but nobody confirmed it actually happened. The appointment nobody double-checked. The medication schedule that lived in someone's head. The document nobody could find when it actually mattered.
+
+That is not drama — it is ordinary follow-through risk, the runaround of *hoping it gets done*. Hub does not pretend a shared board solves that alone; phone confirmation is Reliant's job.
 
 ## The solution
 
-NTRR is a **coordination hub** — not a replacement for your existing tools.
+**Hub** is a **coordination layer** — not a replacement for your existing tools.
 
 ```
 Google / Apple / Microsoft
@@ -88,13 +104,15 @@ Architecture is modular from day one so each phase plugs in without rewriting th
 
 ---
 
-## What makes NTRR different
+## What makes Hub different
 
+- **Subtraction, not more apps** — one less call to make, one less thing to remember
 - **Cross-ecosystem** — meets families where they already live
 - **Provenance-first** — every synthesized fact traces to a source
 - **Audit-friendly** — lightweight trails suitable for guardianship and SSA contexts
 - **Privacy-first** — user-controlled data; no clinical scope in MVP
-- **Proactive, not noisy** — AI that helps, not chatbots for chatbots' sake
+- **Proactive, not noisy** — surfaces what matters; does not invent drama
+- **Sibling to Reliant** — coordination and confirmation are both NTRR promises
 
 ---
 

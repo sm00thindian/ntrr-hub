@@ -55,7 +55,7 @@ export function AppSiteFooter({
                 className="underline-offset-2 hover:text-foreground hover:underline"
                 rel="noopener noreferrer"
               >
-                Not The Run Around
+                Not The Runaround
               </a>{" "}
               service
             </p>
@@ -76,7 +76,7 @@ export function AppSiteFooter({
               </a>
             </p>
           </div>
-          <p className="sm:text-right">© {new Date().getFullYear()} Not The Run Around</p>
+          <p className="sm:text-right">© {new Date().getFullYear()} Not The Runaround</p>
         </div>
       </div>
     </footer>

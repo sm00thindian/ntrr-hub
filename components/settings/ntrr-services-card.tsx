@@ -13,8 +13,9 @@ export function NtrrServicesCard() {
       <CardHeader>
         <CardTitle>NTRR services</CardTitle>
         <CardDescription>
-          Hub is the family board. Reliant is phone-first accountability. Hub confirms are powered by
-          the <span className="font-medium text-foreground">coordinator&apos;s Reliant account</span>
+          Hub handles the runaround of managing it. Reliant handles the runaround of hoping it gets
+          done. Phone confirms on Hub tasks are powered by the{" "}
+          <span className="font-medium text-foreground">coordinator&apos;s Reliant account</span>
           , even when the call goes to a caregiver or self-advocate.
         </CardDescription>
       </CardHeader>
@@ -23,9 +24,9 @@ export function NtrrServicesCard() {
           <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-sm font-semibold tracking-tight">Reliant (coordinator account)</p>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              The household coordinator should hold Reliant. That account places confirmation calls
-              and holds billing — it can dial a care partner or self-advocate&apos;s number for
-              completion checks.
+              We don&apos;t stop until it&apos;s confirmed. The household coordinator should hold
+              Reliant — that account places confirmation calls and holds billing, and can dial a care
+              partner or self-advocate for completion checks.
             </p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
               Mark tasks with{" "}
@@ -45,8 +46,8 @@ export function NtrrServicesCard() {
           <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-sm font-semibold tracking-tight">Hub + Reliant bundle</p>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              Planned: family coordination plus a shared pool of phone confirm series on the
-              coordinator&apos;s Reliant entitlement — clearer than two unrelated tools.
+              Planned: coordination and confirmation under one company — family board plus a shared
+              pool of phone confirm series on the coordinator&apos;s Reliant entitlement.
             </p>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
               Dogfood is free while we measure volume. Coordinators: set up Reliant. Members: save{" "}
