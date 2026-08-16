@@ -85,6 +85,9 @@ export function NeedsAttentionPanel({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
+  /** Optimistic Done so the row turns green immediately (server keeps done-today after refresh). */
+  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
+  const [actionError, setActionError] = useState<string | null>(null);
   const nowMs = Date.now();
 
   return (
@@ -93,7 +96,8 @@ export function NeedsAttentionPanel({
         <div className="min-w-0 space-y-1">
           <CardTitle>Focus</CardTitle>
           <CardDescription className="line-clamp-3 sm:line-clamp-none">
-            Household day — Hub tasks and shared calendars. Tomorrow: outside the usual only.
+            Household day — Hub tasks and shared calendars. Mark Done and it stays green for the
+            day. Tomorrow: outside the usual only.
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -106,6 +110,11 @@ export function NeedsAttentionPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {actionError ? (
+          <p className="text-destructive text-sm" role="alert">
+            {actionError}
+          </p>
+        ) : null}
         <section aria-labelledby="focus-today-heading" className="space-y-3">
           <SectionLabel id="focus-today-heading">Today</SectionLabel>
           {items.length ? (
@@ -114,8 +123,10 @@ export function NeedsAttentionPanel({
                 const isConflict = item.reason === "conflict";
                 const isEvent = item.kind === "event" && item.reason === "calendar";
                 const isTask = item.kind === "task" && !isConflict;
-                // Server status only — no optimistic green (avoids Tasks vs Focus mismatch)
-                const isDone = item.status === "done";
+                const isDone =
+                  item.status === "done" ||
+                  item.reason === "done" ||
+                  Boolean(item.entityId && justDoneIds.has(item.entityId));
                 const isException =
                   !isDone && (item.reason === "overdue" || item.reason === "conflict");
                 const isPastEvent =
@@ -257,14 +268,25 @@ export function NeedsAttentionPanel({
                         className="mt-0.5"
                         onMarkDone={() => {
                           const taskId = item.entityId!;
+                          setActionError(null);
+                          setJustDoneIds((prev) => new Set(prev).add(taskId));
                           setPendingIds((prev) => new Set(prev).add(taskId));
                           startTransition(async () => {
-                            await updateTaskStatus(taskId, "done");
+                            const result = await updateTaskStatus(taskId, "done");
                             setPendingIds((prev) => {
                               const next = new Set(prev);
                               next.delete(taskId);
                               return next;
                             });
+                            if (result?.error) {
+                              setJustDoneIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(taskId);
+                                return next;
+                              });
+                              setActionError(result.error);
+                              return;
+                            }
                             window.setTimeout(() => {
                               router.refresh();
                             }, DONE_FEEDBACK_MS);
@@ -274,14 +296,24 @@ export function NeedsAttentionPanel({
                           isDone
                             ? () => {
                                 const taskId = item.entityId!;
+                                setActionError(null);
+                                setJustDoneIds((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(taskId);
+                                  return next;
+                                });
                                 setPendingIds((prev) => new Set(prev).add(taskId));
                                 startTransition(async () => {
-                                  await updateTaskStatus(taskId, "todo");
+                                  const result = await updateTaskStatus(taskId, "todo");
                                   setPendingIds((prev) => {
                                     const next = new Set(prev);
                                     next.delete(taskId);
                                     return next;
                                   });
+                                  if (result?.error) {
+                                    setActionError(result.error);
+                                    return;
+                                  }
                                   router.refresh();
                                 });
                               }

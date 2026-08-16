@@ -187,7 +187,8 @@ describe("buildCaregiverFocusToday", () => {
     assert.equal(items[0]?.reason, "calendar");
   });
 
-  it("shows open recurring due tomorrow so daily care does not vanish from Focus", () => {
+  it("does not list next open recurring due tomorrow on Focus Today", () => {
+    // After Done, the series opens tomorrow — that card belongs on Tasks, not Today.
     const items = buildCaregiverFocusToday({
       tasks: [
         task({
@@ -204,12 +205,10 @@ describe("buildCaregiverFocusToday", () => {
       rangeStart,
       rangeEnd,
     });
-    assert.equal(items.length, 1);
-    assert.equal(items[0]?.status, "todo");
-    assert.notEqual(items[0]?.reason, "done");
+    assert.equal(items.length, 0);
   });
 
-  it("does not list completed tasks on Focus", () => {
+  it("lists tasks completed today as Done (green proof of progress)", () => {
     const items = buildCaregiverFocusToday({
       tasks: [
         task({
@@ -218,6 +217,37 @@ describe("buildCaregiverFocusToday", () => {
           status: "done",
           dueAt: "2026-08-10T14:00:00.000Z",
           updatedAt: "2026-08-10T15:30:00.000Z",
+        }),
+        task({
+          id: "still-open",
+          title: "Evening meds",
+          status: "todo",
+          dueAt: "2026-08-10T20:00:00.000Z",
+        }),
+      ],
+      events: [],
+      conflictCount: 0,
+      nowMs,
+      rangeStart,
+      rangeEnd,
+    });
+    assert.equal(items.length, 2);
+    assert.equal(items[0]?.title, "Evening meds");
+    assert.equal(items[0]?.status, "todo");
+    assert.equal(items[1]?.title, "Finished meds");
+    assert.equal(items[1]?.reason, "done");
+    assert.equal(items[1]?.status, "done");
+  });
+
+  it("does not list tasks completed on a prior day", () => {
+    const items = buildCaregiverFocusToday({
+      tasks: [
+        task({
+          id: "old-finished",
+          title: "Yesterday meds",
+          status: "done",
+          dueAt: "2026-08-09T14:00:00.000Z",
+          updatedAt: "2026-08-09T15:30:00.000Z",
         }),
       ],
       events: [],

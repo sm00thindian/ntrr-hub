@@ -10,7 +10,8 @@ export type AttentionReason =
   | "reliant"
   | "in_progress"
   | "today"
-  | "calendar";
+  | "calendar"
+  | "done";
 
 export type NeedsAttentionItem = AgendaItem & {
   reason: AttentionReason;
@@ -50,7 +51,33 @@ const REASON_RANK: Record<AttentionReason, number> = {
   in_progress: 5,
   today: 6,
   calendar: 7,
+  done: 8,
 };
+
+function inZonedDay(isoMs: number, rangeStart: string, rangeEnd: string) {
+  const start = agendaSortTimeMs(rangeStart);
+  const end = agendaSortTimeMs(rangeEnd);
+  return Number.isFinite(isoMs) && isoMs >= start && isoMs < end;
+}
+
+/** Completed during the household day (or due today if completion timestamp is odd). */
+export function isFocusDoneToday(
+  task: Task,
+  rangeStart: string,
+  rangeEnd: string,
+): boolean {
+  if (task.status !== "done") {
+    return false;
+  }
+  const updatedMs = Date.parse(task.updatedAt);
+  if (Number.isFinite(updatedMs) && inZonedDay(updatedMs, rangeStart, rangeEnd)) {
+    return true;
+  }
+  if (task.dueAt) {
+    return inZonedDay(agendaSortTimeMs(task.dueAt), rangeStart, rangeEnd);
+  }
+  return false;
+}
 
 const DUE_SOON_MS = 4 * 60 * 60 * 1000; // 4 hours
 
@@ -71,6 +98,9 @@ function taskToAgenda(task: Task, fallbackSortAt: string): AgendaItem {
 }
 
 function taskReason(task: Task, nowMs: number, rangeStart: string): AttentionReason | null {
+  if (task.status === "done") {
+    return "done";
+  }
   if (task.status !== "todo" && task.status !== "in_progress") {
     return null;
   }
@@ -108,18 +138,25 @@ function taskReason(task: Task, nowMs: number, rangeStart: string): AttentionRea
 }
 
 /**
- * Open Hub task on caregiver Focus Today.
- * Done tasks are not listed (marking Done + refresh removes them).
- * Recurring open instances often have due = tomorrow after the prior complete —
- * still show those so daily care does not vanish from Focus.
+ * Hub task on caregiver Focus Today:
+ * - open due today / overdue / undated
+ * - completed today (green Done proof — does not vanish after mark Done)
+ *
+ * Does not include the next open recurring slot when it is already tomorrow —
+ * that lives on Tasks / Upcoming so completing today's card is not replaced
+ * by a look-alike open row.
  */
 export function isTaskOnFocusToday(
   task: Task,
   rangeStart: string,
   rangeEnd: string,
 ): boolean {
-  if (task.status === "done" || task.status === "cancelled") {
+  if (task.status === "cancelled") {
     return false;
+  }
+
+  if (task.status === "done") {
+    return isFocusDoneToday(task, rangeStart, rangeEnd);
   }
 
   if (task.status !== "todo" && task.status !== "in_progress") {
@@ -132,17 +169,8 @@ export function isTaskOnFocusToday(
 
   const dueMs = agendaSortTimeMs(task.dueAt);
   const endMs = agendaSortTimeMs(rangeEnd);
-  // Overdue + due today
-  if (dueMs < endMs) {
-    return true;
-  }
-
-  // Next open recurring instance (typically tomorrow after last Done)
-  if (task.recurringTemplateId && dueMs < endMs + 24 * 60 * 60 * 1000) {
-    return true;
-  }
-
-  return false;
+  // Overdue + due today only (not tomorrow's next occurrence)
+  return dueMs < endMs;
 }
 
 /**
@@ -207,6 +235,13 @@ export function buildCaregiverFocusToday(params: {
     // Conflicts always first
     if (a.reason === "conflict" && b.reason !== "conflict") return -1;
     if (b.reason === "conflict" && a.reason !== "conflict") return 1;
+
+    // Completed today sinks to the bottom (progress proof, not triage)
+    const aDone = a.reason === "done" || a.status === "done" ? 1 : 0;
+    const bDone = b.reason === "done" || b.status === "done" ? 1 : 0;
+    if (aDone !== bDone) {
+      return aDone - bDone;
+    }
 
     // Then all overdue tasks before the rest of the day
     const aOverdue = a.reason === "overdue" ? 0 : 1;
@@ -346,6 +381,8 @@ export function attentionReasonLabel(reason: AttentionReason): string {
       return "Due today";
     case "calendar":
       return "Calendar";
+    case "done":
+      return "Done";
     default:
       return "Focus";
   }
