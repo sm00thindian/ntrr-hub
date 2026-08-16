@@ -7,7 +7,7 @@ import {
   type FocusBoard,
 } from "@/lib/dashboard/needs-attention";
 import { getZonedDayBounds, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
-import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
+import { getCalendarVisibilityContext } from "@/lib/households/calendar-settings";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 import { getHouseholdTasks, oneOpenPerRecurringTemplate } from "@/lib/tasks/queries";
 
@@ -26,15 +26,19 @@ export async function getNeedsAttention(
   const todayBounds = getZonedDayBounds(zone);
   const tomorrowBounds = getZonedDayBounds(zone, new Date(todayBounds.end));
 
-  const [tasks, todayEvents, conflictCount, calendarSettings] = await Promise.all([
+  const [tasks, todayEvents, conflictCount, visibility] = await Promise.all([
     getHouseholdTasks(householdId),
     getCalendarEventsForRange(householdId, todayBounds.start, todayBounds.end),
     getPendingConflictCount(householdId),
-    getHouseholdCalendarSettings(householdId),
+    getCalendarVisibilityContext(householdId),
   ]);
 
   // Family board: shared calendars only — not personal, even for the owner
-  const householdEvents = filterHouseholdCalendarEvents(todayEvents, calendarSettings);
+  const householdEvents = filterHouseholdCalendarEvents(
+    todayEvents,
+    visibility.settings,
+    visibility.options,
+  );
 
   const eventItems: AgendaItem[] = householdEvents.map((event) => ({
     id: `event-${event.id}`,

@@ -6,8 +6,13 @@ import {
   defaultMemberColors,
 } from "@/lib/calendar/colors";
 import {
+  type CalendarVisibilityOptions,
+  normalizeGoogleCalendarAssignments,
+} from "@/lib/calendar/visibility";
+import {
   getGoogleCalendarSettings,
   getSelectedGoogleCalendarIds,
+  resolveGooglePrimaryCalendarId,
 } from "@/lib/integrations/google/calendars";
 import {
   getAllConnectedGoogleIntegrationsAdmin,
@@ -23,22 +28,78 @@ function memberLabel(email: string, displayName: string | null) {
   return memberDisplayLabel(email, displayName);
 }
 
+export type CalendarVisibilityContext = {
+  settings: HouseholdCalendarSettings;
+  options: CalendarVisibilityOptions;
+};
+
+/**
+ * Household calendar_settings with Google primary aliases collapsed onto real
+ * calendar ids so personal visibility matches synced event provenance.
+ */
 export async function getHouseholdCalendarSettings(
   householdId: string,
 ): Promise<HouseholdCalendarSettings> {
+  const ctx = await getCalendarVisibilityContext(householdId);
+  return ctx.settings;
+}
+
+/**
+ * Settings + Google primary ids for event visibility filters (ADR 0002).
+ * Prefer this when filtering calendar_events for a viewer.
+ */
+export async function getCalendarVisibilityContext(
+  householdId: string,
+): Promise<CalendarVisibilityContext> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("households")
-    .select("calendar_settings")
-    .eq("id", householdId)
-    .maybeSingle();
+  const [{ data, error }, googleAccounts] = await Promise.all([
+    supabase.from("households").select("calendar_settings").eq("id", householdId).maybeSingle(),
+    getAllConnectedGoogleIntegrationsAdmin(householdId).catch(() => []),
+  ]);
 
-  if (error || !data) {
-    return {};
+  const raw = (
+    error || !data ? {} : ((data.calendar_settings ?? {}) as HouseholdCalendarSettings)
+  ) as HouseholdCalendarSettings;
+
+  const googlePrimaryIds = [
+    ...new Set(
+      googleAccounts
+        .map((account) => resolveGooglePrimaryCalendarId(account))
+        .filter((id): id is string => Boolean(id) && id !== "primary"),
+    ),
+  ];
+
+  const googleCalendars = normalizeGoogleCalendarAssignments(
+    raw.googleCalendars,
+    googlePrimaryIds,
+  );
+
+  // Ensure every selected calendar has an explicit assignment (connector owns it).
+  // Does not invent personal — defaults household — but prevents "missing key" drift
+  // when keys only existed under the primary alias.
+  for (const account of googleAccounts) {
+    const primaryId = resolveGooglePrimaryCalendarId(account);
+    for (const calendarId of getSelectedGoogleCalendarIds(account)) {
+      const id = calendarId === "primary" ? primaryId : calendarId;
+      if (!id || id === "primary") continue;
+      if (!googleCalendars[id]) {
+        googleCalendars[id] = {
+          memberUserId: account.createdBy,
+          color: "#69F0AE",
+          visibility: "household",
+        };
+      }
+    }
   }
 
-  return (data.calendar_settings ?? {}) as HouseholdCalendarSettings;
+  return {
+    settings: {
+      ...raw,
+      googleCalendars,
+    },
+    options: { googlePrimaryIds },
+  };
 }
 
 export async function saveHouseholdCalendarSettings(
@@ -47,10 +108,25 @@ export async function saveHouseholdCalendarSettings(
 ) {
   const admin = createAdminClient();
 
+  // Persist normalized Google keys (no bare "primary") when we can resolve them
+  let googleCalendars = settings.googleCalendars;
+  try {
+    const googleAccounts = await getAllConnectedGoogleIntegrationsAdmin(householdId);
+    const primaryIds = googleAccounts
+      .map((account) => resolveGooglePrimaryCalendarId(account))
+      .filter((id) => id && id !== "primary");
+    googleCalendars = normalizeGoogleCalendarAssignments(settings.googleCalendars, primaryIds);
+  } catch {
+    // Keep caller payload if admin lookup fails
+  }
+
   const { error } = await admin
     .from("households")
     .update({
-      calendar_settings: settings,
+      calendar_settings: {
+        ...settings,
+        googleCalendars,
+      },
       updated_at: new Date().toISOString(),
     })
     .eq("id", householdId);

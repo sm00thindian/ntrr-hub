@@ -6,7 +6,7 @@ import {
   getZonedDayBounds,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
-import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
+import { getCalendarVisibilityContext } from "@/lib/households/calendar-settings";
 import { getHouseholdTasks, oneOpenPerRecurringTemplate } from "@/lib/tasks/queries";
 
 function isTaskActiveToday(
@@ -58,14 +58,14 @@ export async function getTodayAgenda(
   const zone = resolveHouseholdTimeZone(timeZone);
   const { start: rangeStart, end: rangeEnd } = getZonedDayBounds(zone);
 
-  const [tasks, events, calendarSettings] = await Promise.all([
+  const [tasks, events, visibility] = await Promise.all([
     getHouseholdTasks(householdId),
     getCalendarEventsForRange(householdId, rangeStart, rangeEnd),
-    getHouseholdCalendarSettings(householdId),
+    getCalendarVisibilityContext(householdId),
   ]);
 
   const visibleEvents = viewerUserId
-    ? filterEventsForViewer(events, viewerUserId, calendarSettings)
+    ? filterEventsForViewer(events, viewerUserId, visibility.settings, visibility.options)
     : events;
 
   const uniqueTasks = oneOpenPerRecurringTemplate(tasks);

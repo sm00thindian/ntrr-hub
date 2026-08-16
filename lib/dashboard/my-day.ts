@@ -12,7 +12,7 @@ import {
 } from "@/lib/datetime/timezone";
 import { getCalendarEventsForRange } from "@/lib/calendar/queries";
 import { filterEventsForViewer } from "@/lib/calendar/visibility";
-import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
+import { getCalendarVisibilityContext } from "@/lib/households/calendar-settings";
 import { getHouseholdTasks, oneOpenPerRecurringTemplate } from "@/lib/tasks/queries";
 import type { Task } from "@/lib/tasks/types";
 import { prefersMyDayView, type HouseholdPersona } from "@/lib/permissions/roles";
@@ -142,15 +142,20 @@ export async function getMyDayAgenda(
   const tomorrowBounds = getZonedDayBounds(zone, new Date(todayBounds.end));
   const nowMs = Date.now();
 
-  const [tasks, events, settings] = await Promise.all([
+  const [tasks, events, visibility] = await Promise.all([
     getHouseholdTasks(householdId),
     getCalendarEventsForRange(householdId, rangeStart, rangeEnd),
-    getHouseholdCalendarSettings(householdId),
+    getCalendarVisibilityContext(householdId),
   ]);
 
   const mine = filterTasksForMember(oneOpenPerRecurringTemplate(tasks), memberUserId);
   // Shared household calendars + this member's personal calendars (ADR 0002)
-  const myEvents = filterEventsForViewer(events, memberUserId, settings);
+  const myEvents = filterEventsForViewer(
+    events,
+    memberUserId,
+    visibility.settings,
+    visibility.options,
+  );
 
   const taskItems: AgendaItem[] = mine
     .filter((task) => isActiveMyDayTask(task, rangeStart, rangeEnd, nowMs))

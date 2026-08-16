@@ -1,7 +1,8 @@
 import { dismissInsightByDedupe, upsertInsight } from "@/lib/ai/insights";
 import type { GoogleCalendarAssignment } from "@/lib/calendar/colors";
+import { eventIsHouseholdShared } from "@/lib/calendar/visibility";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
-import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
+import { getCalendarVisibilityContext } from "@/lib/households/calendar-settings";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { Provenance } from "@/lib/provenance/types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -89,7 +90,8 @@ function pointInRange(ms: number, startIso: string, endIso: string, allDay: bool
  */
 export async function runScheduleOverlapAgent(householdId: string) {
   const admin = createAdminClient();
-  const settings = await getHouseholdCalendarSettings(householdId);
+  const visibility = await getCalendarVisibilityContext(householdId);
+  const settings = visibility.settings;
   const timeZone = resolveHouseholdTimeZone(settings.timezone);
   const googleCalendars = settings.googleCalendars;
 
@@ -106,6 +108,7 @@ export async function runScheduleOverlapAgent(householdId: string) {
     .gt("ends_at", rangeStart.toISOString())
     .order("starts_at", { ascending: true });
 
+  // Household-shared only — personal calendars must not appear in family Insights
   const rows: CalendarRow[] = ((events ?? []) as Array<{
     id: string;
     title: string;
@@ -113,10 +116,22 @@ export async function runScheduleOverlapAgent(householdId: string) {
     ends_at: string;
     all_day: boolean;
     provenance: Provenance | null;
-  }>).map((row) => ({
-    ...row,
-    memberUserId: resolveMemberForEvent(row.provenance, googleCalendars),
-  }));
+  }>)
+    .filter((row) => {
+      if (!row.provenance) {
+        // No provenance → treat as shared legacy (same as missing assignment)
+        return true;
+      }
+      return eventIsHouseholdShared(
+        { provenance: row.provenance },
+        settings,
+        visibility.options,
+      );
+    })
+    .map((row) => ({
+      ...row,
+      memberUserId: resolveMemberForEvent(row.provenance, googleCalendars),
+    }));
 
   const candidates: OverlapCandidate[] = [];
   const seen = new Set<string>();

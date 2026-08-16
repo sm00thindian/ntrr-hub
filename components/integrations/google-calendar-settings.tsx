@@ -94,9 +94,11 @@ export function GoogleCalendarSettings({
     patch: Partial<GoogleCalendarAssignment>,
   ) {
     setAssignments((current) => {
+      // Default owner is the person connecting (not members[0], often the household owner)
       const existing = current[calendarId] ?? {
-        memberUserId: members[0]?.userId ?? "",
+        memberUserId: currentUserId || members[0]?.userId || "",
         color: CALENDAR_COLOR_PALETTE[0]!,
+        visibility: "household" as CalendarVisibility,
       };
 
       return {
@@ -121,8 +123,12 @@ export function GoogleCalendarSettings({
           visibility: "household" as CalendarVisibility,
         };
 
+        // Personal without an explicit member still belongs to the connector
+        const memberUserId =
+          assignment.memberUserId || currentUserId || members[0]?.userId || "";
+
         payloadAssignments[calendarId] = {
-          memberUserId: assignment.memberUserId,
+          memberUserId,
           color: normalizeColor(assignment.color, CALENDAR_COLOR_PALETTE[0]!),
           visibility: assignment.visibility === "personal" ? "personal" : "household",
         };

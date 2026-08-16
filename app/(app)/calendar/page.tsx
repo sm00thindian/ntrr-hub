@@ -20,7 +20,7 @@ import { filterCalendarTasksForMember, isMyDayPersona } from "@/lib/dashboard/my
 import { filterEventsForViewer } from "@/lib/calendar/visibility";
 import {
   buildCalendarColorContext,
-  getHouseholdCalendarSettings,
+  getCalendarVisibilityContext,
 } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
 import {
@@ -48,18 +48,25 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const myDayMode = isMyDayPersona(ctx.persona);
 
-  const [rawEvents, rawTasks, googleAccounts, appleAccounts, colorContext, calendarSettings] =
+  const [rawEvents, rawTasks, googleAccounts, appleAccounts, colorContext, visibility] =
     await Promise.all([
       getCalendarEventsForRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getAllConnectedGoogleIntegrationsAdmin(ctx.householdId),
       getAllConnectedAppleIntegrationsAdmin(ctx.householdId),
       buildCalendarColorContext(ctx.householdId),
-      getHouseholdCalendarSettings(ctx.householdId),
+      getCalendarVisibilityContext(ctx.householdId),
     ]);
 
+  const calendarSettings = visibility.settings;
+
   // Household shared + this member's personal calendars only (ADR 0002)
-  const events = filterEventsForViewer(rawEvents, ctx.userId, calendarSettings);
+  const events = filterEventsForViewer(
+    rawEvents,
+    ctx.userId,
+    calendarSettings,
+    visibility.options,
+  );
   const tasks = myDayMode
     ? filterCalendarTasksForMember(rawTasks, ctx.userId)
     : rawTasks;

@@ -15,6 +15,7 @@ import {
   getGoogleCalendarsAlreadyInHousehold,
   getSelectedGoogleCalendarIds,
   removeSyncedEventsForCalendars,
+  resolveGooglePrimaryCalendarId,
 } from "@/lib/integrations/google/calendars";
 import {
   getConnectedGoogleIntegrationAdminForUser,
@@ -135,13 +136,18 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
     ...(existingSettings.googleCalendars ?? {}),
   };
 
+  const primaryId = resolveGooglePrimaryCalendarId(account);
+
   validIds.forEach((calendarId, index) => {
-    const assignment = input.calendarAssignments[calendarId];
+    // Never persist the ambiguous "primary" alias — use the real list id
+    const resolvedId = calendarId === "primary" ? primaryId : calendarId;
+    const assignment =
+      input.calendarAssignments[calendarId] ?? input.calendarAssignments[resolvedId];
     const fallbackMemberId =
       colorMembers.find((member) => member.userId === assignment?.memberUserId)?.userId ??
       ctx.userId;
 
-    calendarAssignments[calendarId] = {
+    calendarAssignments[resolvedId] = {
       memberUserId: fallbackMemberId,
       color: normalizeColor(
         assignment?.color ?? CALENDAR_COLOR_PALETTE[index % CALENDAR_COLOR_PALETTE.length]!,
@@ -151,11 +157,25 @@ export async function saveGoogleCalendarSettings(input: SaveGoogleCalendarSettin
     };
   });
 
+  // Drop ambiguous alias if we resolved a real primary id
+  if (primaryId !== "primary") {
+    delete calendarAssignments.primary;
+  }
+
   // Drop assignments for calendars this user unselected (only their previous selection)
   const previous = getSelectedGoogleCalendarIds(account);
-  const removed = previous.filter((id) => !validIds.includes(id));
+  const removed = previous.filter((id) => {
+    const resolved = id === "primary" ? primaryId : id;
+    return !validIds.includes(id) && !validIds.includes(resolved);
+  });
   for (const calendarId of removed) {
     delete calendarAssignments[calendarId];
+    if (calendarId === "primary" && primaryId !== "primary") {
+      // Keep real-id row if still selected under resolved id
+      if (!validIds.includes(primaryId) && !validIds.includes("primary")) {
+        delete calendarAssignments[primaryId];
+      }
+    }
   }
 
   const googleState = account.metadata.google ?? {};
@@ -213,7 +233,8 @@ export async function saveAppleCalendarVisibility(formData: FormData) {
   const visibility = normalizeCalendarVisibility(
     String(formData.get("visibility") ?? "household"),
   ) as CalendarVisibility;
-  const memberUserId = String(formData.get("memberUserId") ?? ctx.userId).trim() || ctx.userId;
+  // Apple card is "only me" — always the connector, not a form-picked member
+  const memberUserId = ctx.userId;
 
   const { getMemberIntegration } = await import("@/lib/integrations/queries");
   const apple = await getMemberIntegration(ctx.householdId, "apple_caldav", ctx.userId);
