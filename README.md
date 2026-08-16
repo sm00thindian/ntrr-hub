@@ -76,10 +76,10 @@ The first release focuses on reliable coordination. Document vault, finance, and
 
 | Feature | Description |
 |---------|-------------|
-| **Cross-ecosystem sync** | Calendars and tasks from Google, Apple, Microsoft |
-| **Family task board** | Shared tasks with roles, permissions, recurring templates |
-| **Unified dashboard** | Today's priorities, family status, AI highlights |
-| **AI agents** | Reminders, schedule conflicts, actionable suggestions |
+| **Cross-ecosystem sync** | Google Calendar (primary); Apple CalDAV / Zapier bridges; Microsoft planned for 1.1 |
+| **Family task board** | Shared tasks, roles, recurring series (one open card; miss-day archive) |
+| **Focus / My day** | Caregiver household day board + self-advocate day board; done-today stays green |
+| **AI agents** | Reminders, schedule conflicts, pattern highlights |
 | **Family invites** | Simple onboarding for household members |
 | **PWA** | Mobile-responsive progressive web app |
 
@@ -118,26 +118,32 @@ Architecture is modular from day one so each phase plugs in without rewriting th
 
 ## Tech stack
 
-| Layer | Planned |
-|-------|---------|
-| Backend / auth / sync | Supabase, Postgres |
-| Frontend | Next.js (or similar) |
-| AI orchestration | Claude / Grok APIs (local option later) |
-| Early integrations | Zapier / Make |
+| Layer | Choice |
+|-------|--------|
+| Backend / auth / sync | Supabase, Postgres, RLS |
+| Frontend | Next.js (App Router), TypeScript |
+| AI orchestration | Claude / Grok APIs (digest agents) |
+| Integrations | Google Calendar (primary); Apple CalDAV / Zapier bridges |
 
-TypeScript throughout. Accessible UI (WCAG-minded).
+Accessible UI (WCAG-minded). Mobile-responsive PWA shell.
 
 ---
 
 ## Project status
 
-**Early bootstrap.** Vision, agent guidelines, and the [1.0 release plan](docs/RELEASE-1.0.md) are defined; application code is not yet scaffolded.
+**v0.2.0** — coordination hub in active use for family care boards. Core flows work: Focus + My day, recurring daily care with one open card, Tasks sections, Google calendar sync, AI highlights.
+
+| Release | Notes |
+|---------|--------|
+| **[0.2.0](CHANGELOG.md#0200--2026-08-15)** | Care board reliability: Focus Done, recurring start/complete, miss-day archive, Tasks sections |
+| **0.1.0** | M0–M5 baseline: auth, family, tasks, Google/Apple sync, dashboard, AI agents |
+| **1.0** (target) | Acceptance criteria in [docs/RELEASE-1.0.md](docs/RELEASE-1.0.md); Microsoft sync in **1.1** |
+
+Full history: **[CHANGELOG.md](CHANGELOG.md)**. Resume notes: [docs/CHECKPOINT.md](docs/CHECKPOINT.md).
 
 This is a solo passion project — built incrementally, validated with real caregivers, with an emphasis on reliability over speed.
 
-**1.0 scope:** Google bidirectional sync + Apple CalDAV/Zapier bridge, family task board, unified dashboard, basic AI agents, responsive PWA. Microsoft sync ships in **1.1**.
-
-### Local development (M0+)
+### Local development
 
 ```bash
 cp .env.example .env.local

@@ -1,7 +1,9 @@
 # NTRR — Resume checkpoint
 
-**Saved:** July 9, 2026  
-**Status:** M4 + M5 complete — calendar polish done — ready for M6 (launch prep)
+**Saved:** August 15, 2026  
+**Status:** **v0.2.0** shipped — care board reliability (Focus Done, recurring one-open / miss archive, Tasks sections). M6 launch prep continues toward 1.0.
+
+See [CHANGELOG.md](../CHANGELOG.md) for release notes.
 
 ---
 
