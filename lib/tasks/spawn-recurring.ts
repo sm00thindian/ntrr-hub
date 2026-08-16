@@ -1,5 +1,8 @@
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
-import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
+import {
+  calendarDateKeyInZone,
+  resolveHouseholdTimeZone,
+} from "@/lib/datetime/timezone";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueGoogleTaskSync } from "@/lib/sync/enqueue";
 import { nextRecurringDueAt } from "@/lib/tasks/recurrence";
@@ -12,6 +15,15 @@ function systemProvenance() {
     syncedAt: new Date().toISOString(),
     confidence: "high" as const,
     lastModifiedBy: "system" as const,
+  };
+}
+
+/** Provenance for occurrences archived because the household day moved on. */
+function missedOccurrenceProvenance() {
+  return {
+    ...systemProvenance(),
+    // Distinguish from user pause so ensure can recover if spawn failed mid-roll.
+    archiveReason: "missed_occurrence" as const,
   };
 }
 
@@ -31,6 +43,44 @@ export function afterInstantForNextSpawn(
     }
   }
   return completedAt;
+}
+
+/**
+ * True when an open instance's due wall day is before the household's current day.
+ * Undated instances are never "missed" by calendar day (still the only open card).
+ */
+export function isRecurringDueMissed(
+  dueAt: string | null | undefined,
+  timeZone: string,
+  now: Date = new Date(),
+): boolean {
+  if (!dueAt) {
+    return false;
+  }
+  const dueMs = Date.parse(dueAt);
+  if (!Number.isFinite(dueMs)) {
+    return false;
+  }
+  const zone = resolveHouseholdTimeZone(timeZone);
+  const todayKey = calendarDateKeyInZone(now.toISOString(), zone);
+  return isRecurringDueBeforeWallDay(dueAt, zone, todayKey);
+}
+
+/** Compare a due ISO to a known household wall day key (YYYY-MM-DD). */
+export function isRecurringDueBeforeWallDay(
+  dueAt: string | null | undefined,
+  timeZone: string,
+  todayKey: string,
+): boolean {
+  if (!dueAt) {
+    return false;
+  }
+  const dueMs = Date.parse(dueAt);
+  if (!Number.isFinite(dueMs)) {
+    return false;
+  }
+  const zone = resolveHouseholdTimeZone(timeZone);
+  return calendarDateKeyInZone(dueAt, zone) < todayKey;
 }
 
 type TemplateRow = {
@@ -55,14 +105,35 @@ type OpenRecurringRow = {
   status: string;
 };
 
+export type PickOpenRecurringKeeperOptions = {
+  /** Household wall "today" (YYYY-MM-DD). When set, current-day opens beat missed ones. */
+  todayKey?: string;
+  timeZone?: string;
+};
+
 /**
- * Prefer the earliest due among open dups (today/overdue before tomorrow).
- * Keeping "latest due" cancelled today's care instances when a future open existed.
+ * Prefer the single open card that should stay actionable.
+ * With household day context: non-missed (today/future/undated) over prior days,
+ * then earliest among those, then in_progress.
+ * Without context: earliest due (legacy).
  */
-export function pickOpenRecurringKeeper<T extends { due_at: string | null; created_at: string; status: string }>(
-  opens: T[],
-): T {
+export function pickOpenRecurringKeeper<
+  T extends { id: string; due_at: string | null; created_at: string; status: string },
+>(opens: T[], options?: PickOpenRecurringKeeperOptions): T {
+  const zone = options?.timeZone
+    ? resolveHouseholdTimeZone(options.timeZone)
+    : null;
+  const todayKey = options?.todayKey;
+
   return [...opens].sort((a, b) => {
+    if (todayKey && zone) {
+      const aMissed = isRecurringDueBeforeWallDay(a.due_at, zone, todayKey);
+      const bMissed = isRecurringDueBeforeWallDay(b.due_at, zone, todayKey);
+      if (aMissed !== bMissed) {
+        // Keep non-missed (current day / upcoming)
+        return aMissed ? 1 : -1;
+      }
+    }
     // in_progress before todo
     if (a.status !== b.status) {
       if (a.status === "in_progress") return -1;
@@ -70,7 +141,7 @@ export function pickOpenRecurringKeeper<T extends { due_at: string | null; creat
     }
     const aDue = a.due_at ? Date.parse(a.due_at) : Number.POSITIVE_INFINITY;
     const bDue = b.due_at ? Date.parse(b.due_at) : Number.POSITIVE_INFINITY;
-    // Earliest due first — do not drop "today" for a tomorrow spawn
+    // Earliest due first among same missed/current class
     if (aDue !== bDue) {
       return aDue - bDue;
     }
@@ -152,9 +223,12 @@ async function insertSpawnedTask(params: {
 
 /**
  * Cancel extra open instances so each template has at most one.
- * Keeps the most current open card (latest due / in progress).
+ * Prefers the current-day (or non-missed) card when household day is known.
  */
-export async function collapseDuplicateOpenRecurring(householdId: string): Promise<number> {
+export async function collapseDuplicateOpenRecurring(
+  householdId: string,
+  options?: { timeZone?: string; now?: Date },
+): Promise<number> {
   let admin;
   try {
     admin = createAdminClient();
@@ -173,6 +247,14 @@ export async function collapseDuplicateOpenRecurring(householdId: string): Promi
     return 0;
   }
 
+  const zone = options?.timeZone
+    ? resolveHouseholdTimeZone(options.timeZone)
+    : null;
+  const now = options?.now ?? new Date();
+  const todayKey = zone
+    ? calendarDateKeyInZone(now.toISOString(), zone)
+    : undefined;
+
   const byTemplate = new Map<string, OpenRecurringRow[]>();
   for (const raw of openRows) {
     const row = raw as OpenRecurringRow;
@@ -185,14 +267,21 @@ export async function collapseDuplicateOpenRecurring(householdId: string): Promi
   let cancelled = 0;
   for (const [, opens] of byTemplate) {
     if (opens.length <= 1) continue;
-    const keeper = pickOpenRecurringKeeper(opens);
+    const keeper = pickOpenRecurringKeeper(opens, {
+      todayKey,
+      timeZone: zone ?? undefined,
+    });
     const extras = opens.filter((o) => o.id !== keeper.id);
     for (const extra of extras) {
+      const missed =
+        zone && todayKey
+          ? isRecurringDueBeforeWallDay(extra.due_at, zone, todayKey)
+          : false;
       const { error } = await admin
         .from("tasks")
         .update({
           status: "cancelled",
-          provenance: systemProvenance(),
+          provenance: missed ? missedOccurrenceProvenance() : systemProvenance(),
         })
         .eq("id", extra.id)
         .eq("household_id", householdId)
@@ -204,6 +293,116 @@ export async function collapseDuplicateOpenRecurring(householdId: string): Promi
   }
 
   return cancelled;
+}
+
+/**
+ * Archive open recurring instances whose due day is before today, then open the
+ * current occurrence. One actionable card per series — missed days stay in the
+ * DB as cancelled (hidden from the board) for audit.
+ */
+export async function rollForwardMissedRecurringInstances(params: {
+  householdId: string;
+  createdBy: string;
+  timeZone: string;
+  now?: Date;
+}): Promise<{ archived: number; spawned: number }> {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { archived: 0, spawned: 0 };
+  }
+
+  const zone = resolveHouseholdTimeZone(params.timeZone);
+  const now = params.now ?? new Date();
+  const todayKey = calendarDateKeyInZone(now.toISOString(), zone);
+
+  const { data: openRows } = await admin
+    .from("tasks")
+    .select("id, recurring_template_id, due_at, created_at, status")
+    .eq("household_id", params.householdId)
+    .in("status", ["todo", "in_progress"])
+    .not("recurring_template_id", "is", null);
+
+  if (!openRows?.length) {
+    return { archived: 0, spawned: 0 };
+  }
+
+  const templatesNeedingSpawn = new Set<string>();
+  let archived = 0;
+
+  for (const raw of openRows) {
+    const row = raw as OpenRecurringRow;
+    if (!row.recurring_template_id) continue;
+    if (!isRecurringDueBeforeWallDay(row.due_at, zone, todayKey)) {
+      continue;
+    }
+
+    const { error } = await admin
+      .from("tasks")
+      .update({
+        status: "cancelled",
+        provenance: missedOccurrenceProvenance(),
+      })
+      .eq("id", row.id)
+      .eq("household_id", params.householdId)
+      .in("status", ["todo", "in_progress"]);
+
+    if (!error) {
+      archived += 1;
+      templatesNeedingSpawn.add(row.recurring_template_id);
+    }
+  }
+
+  if (!templatesNeedingSpawn.size) {
+    return { archived, spawned: 0 };
+  }
+
+  const { data: templates } = await admin
+    .from("recurring_task_templates")
+    .select(
+      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, is_active",
+    )
+    .eq("household_id", params.householdId)
+    .eq("is_active", true)
+    .in("id", [...templatesNeedingSpawn]);
+
+  let spawned = 0;
+  for (const raw of templates ?? []) {
+    const template = raw as TemplateRow;
+    if (!template.is_active) continue;
+    if ((await countOpenForTemplate(admin, params.householdId, template.id)) > 0) {
+      continue;
+    }
+
+    // Current slot for this series (today when cadence matches, even if clock time passed).
+    const dueAt = nextRecurringDueAt({
+      cadence: template.cadence,
+      dayOfWeek: template.day_of_week,
+      dayOfMonth: template.day_of_month,
+      dueTime: template.due_time,
+      timeZone: zone,
+      now,
+      includePastOnStartDay: true,
+    });
+
+    const spawnDueAt = template.due_time ? dueAt : null;
+    if (template.due_time && !spawnDueAt) {
+      continue;
+    }
+
+    const inserted = await insertSpawnedTask({
+      householdId: params.householdId,
+      template,
+      dueAt: spawnDueAt,
+      createdBy: params.createdBy,
+    });
+    if (inserted) {
+      spawned += 1;
+    }
+  }
+
+  return { archived, spawned };
 }
 
 /**
@@ -305,8 +504,20 @@ async function runEnsureHouseholdRecurringInstances(
     return 0;
   }
 
+  const calendarSettings = await getHouseholdCalendarSettings(householdId);
+  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  const now = new Date();
+
   // First: clean race duplicates so we never stack multiple brush-teeth cards.
-  await collapseDuplicateOpenRecurring(householdId);
+  await collapseDuplicateOpenRecurring(householdId, { timeZone, now });
+
+  // Missed prior-day opens → archive (cancelled), open only the current day slot.
+  const rolled = await rollForwardMissedRecurringInstances({
+    householdId,
+    createdBy,
+    timeZone,
+    now,
+  });
 
   const { data: templates } = await admin
     .from("recurring_task_templates")
@@ -317,7 +528,7 @@ async function runEnsureHouseholdRecurringInstances(
     .eq("is_active", true);
 
   if (!templates?.length) {
-    return 0;
+    return rolled.spawned;
   }
 
   const { data: openTasks } = await admin
@@ -333,10 +544,7 @@ async function runEnsureHouseholdRecurringInstances(
       .filter((id): id is string => Boolean(id)),
   );
 
-  const calendarSettings = await getHouseholdCalendarSettings(householdId);
-  const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
-
-  let spawnedCount = 0;
+  let spawnedCount = rolled.spawned;
 
   for (const raw of templates) {
     const template = raw as TemplateRow;
@@ -347,7 +555,7 @@ async function runEnsureHouseholdRecurringInstances(
     // Latest instance for this series (any status).
     const { data: latestAny } = await admin
       .from("tasks")
-      .select("status, due_at, updated_at")
+      .select("status, due_at, updated_at, provenance")
       .eq("household_id", householdId)
       .eq("recurring_template_id", template.id)
       .order("updated_at", { ascending: false })
@@ -358,12 +566,46 @@ async function runEnsureHouseholdRecurringInstances(
       status: string;
       due_at: string | null;
       updated_at: string;
+      provenance?: { archiveReason?: string } | null;
     } | null;
 
-    // User deleted the open card (cancelled) → leave the series paused.
-    // Only recover when the latest instance is *done* (spawn-on-complete missed)
-    // or there is no history yet (template created but first task failed).
+    // User deleted the current open card (cancelled) → leave the series paused.
+    // System-archived missed days (or cancelled with a prior-day due) still need today's slot.
     if (latest?.status === "cancelled") {
+      const missedArchive =
+        latest.provenance?.archiveReason === "missed_occurrence" ||
+        isRecurringDueMissed(latest.due_at, timeZone, now);
+      if (!missedArchive) {
+        continue;
+      }
+      // Recover current day after a failed mid-roll or missed archive without spawn.
+      const dueAt = nextRecurringDueAt({
+        cadence: template.cadence,
+        dayOfWeek: template.day_of_week,
+        dayOfMonth: template.day_of_month,
+        dueTime: template.due_time,
+        timeZone,
+        now,
+        includePastOnStartDay: true,
+      });
+      const spawnDueAt = template.due_time ? dueAt : null;
+      if (template.due_time && !spawnDueAt) {
+        continue;
+      }
+      if ((await countOpenForTemplate(admin, householdId, template.id)) > 0) {
+        openTemplateIds.add(template.id);
+        continue;
+      }
+      const recovered = await insertSpawnedTask({
+        householdId,
+        template,
+        dueAt: spawnDueAt,
+        createdBy,
+      });
+      if (recovered) {
+        spawnedCount += 1;
+        openTemplateIds.add(template.id);
+      }
       continue;
     }
     if (latest && latest.status !== "done") {
@@ -373,9 +615,16 @@ async function runEnsureHouseholdRecurringInstances(
 
     // Cold start (no history): same as create — include today even if due time passed.
     // After a done instance: strictly after that due so we never re-open the same slot.
+    // If that next slot is still a prior day (multi-day gap), roll-forward on next load
+    // will archive and open today — but prefer jumping to current day when the
+    // completed due is already before today.
+    const completedWasMissed =
+      latest?.due_at != null && isRecurringDueMissed(latest.due_at, timeZone, now);
     const after = latest
-      ? afterInstantForNextSpawn(latest.due_at, new Date(latest.updated_at))
-      : new Date();
+      ? completedWasMissed
+        ? now
+        : afterInstantForNextSpawn(latest.due_at, new Date(latest.updated_at))
+      : now;
 
     const dueAt = nextRecurringDueAt({
       cadence: template.cadence,
@@ -384,7 +633,7 @@ async function runEnsureHouseholdRecurringInstances(
       dueTime: template.due_time,
       timeZone,
       now: after,
-      includePastOnStartDay: !latest,
+      includePastOnStartDay: !latest || completedWasMissed,
     });
 
     const spawnDueAt = template.due_time ? dueAt : null;

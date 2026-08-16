@@ -6,6 +6,7 @@ import {
   displayProvenanceSource,
   type Provenance,
 } from "@/lib/provenance/types";
+import { pickOpenRecurringKeeper } from "@/lib/tasks/spawn-recurring";
 import type {
   RecurringTaskTemplate,
   RecurrenceCadence,
@@ -66,8 +67,14 @@ function mapTask(
   };
 }
 
-/** Keep a single open instance per recurring template (latest due / in progress). */
-export function oneOpenPerRecurringTemplate(tasks: Task[]): Task[] {
+/**
+ * Keep a single open instance per recurring template for display.
+ * Prefer current-day / non-missed when household day is known; else earliest due.
+ */
+export function oneOpenPerRecurringTemplate(
+  tasks: Task[],
+  options?: { todayKey?: string; timeZone?: string },
+): Task[] {
   const openByTemplate = new Map<string, Task[]>();
   const result: Task[] = [];
 
@@ -86,18 +93,18 @@ export function oneOpenPerRecurringTemplate(tasks: Task[]): Task[] {
       result.push(opens[0]!);
       continue;
     }
-    // Earliest due first (today before tomorrow) — matches pickOpenRecurringKeeper
-    const sorted = [...opens].sort((a, b) => {
-      if (a.status !== b.status) {
-        if (a.status === "in_progress") return -1;
-        if (b.status === "in_progress") return 1;
-      }
-      const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
-      const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
-      if (aDue !== bDue) return aDue - bDue;
-      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
-    });
-    result.push(sorted[0]!);
+    // Align with pickOpenRecurringKeeper (missed vs current, then earliest due)
+    const keeperMeta = pickOpenRecurringKeeper(
+      opens.map((t) => ({
+        id: t.id,
+        due_at: t.dueAt,
+        created_at: t.createdAt,
+        status: t.status,
+      })),
+      options,
+    );
+    const keeper = opens.find((t) => t.id === keeperMeta.id) ?? opens[0]!;
+    result.push(keeper);
   }
 
   return result;
@@ -181,6 +188,9 @@ export function buildTaskBoardSections(
     rangeEnd: string;
     nowMs?: number;
     cadenceByTemplateId?: Record<string, RecurrenceCadence>;
+    /** Household wall day (YYYY-MM-DD); when set, missed prior-day opens lose to today. */
+    todayKey?: string;
+    timeZone?: string;
   },
 ): TaskBoardSections {
   const nowMs = options.nowMs ?? Date.now();
@@ -192,7 +202,10 @@ export function buildTaskBoardSections(
     (t) => t.status === "todo" || t.status === "in_progress",
   );
   // oneOpenPerRecurringTemplate keeps non-recurring opens + one open per series
-  const open = oneOpenPerRecurringTemplate(openOnly);
+  const open = oneOpenPerRecurringTemplate(openOnly, {
+    todayKey: options.todayKey,
+    timeZone: options.timeZone,
+  });
 
   const overdue: Task[] = [];
   const today: Task[] = [];

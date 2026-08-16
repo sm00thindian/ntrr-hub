@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { nextRecurringDueAt, parseDueTime } from "./recurrence";
-import { afterInstantForNextSpawn, pickOpenRecurringKeeper } from "./spawn-recurring";
+import {
+  afterInstantForNextSpawn,
+  isRecurringDueBeforeWallDay,
+  isRecurringDueMissed,
+  pickOpenRecurringKeeper,
+} from "./spawn-recurring";
 import {
   buildTaskBoardSections,
   selectBoardTasks,
@@ -127,14 +132,71 @@ describe("afterInstantForNextSpawn", () => {
   });
 });
 
+describe("isRecurringDueMissed", () => {
+  it("treats prior wall days as missed, not same-day overdue", () => {
+    const now = new Date("2026-08-15T20:00:00.000Z"); // 3pm CDT Aug 15
+    // Yesterday 9am CDT
+    assert.equal(
+      isRecurringDueMissed("2026-08-14T14:00:00.000Z", "America/Chicago", now),
+      true,
+    );
+    // Today 9am CDT (already past clock time — still today's card)
+    assert.equal(
+      isRecurringDueMissed("2026-08-15T14:00:00.000Z", "America/Chicago", now),
+      false,
+    );
+    assert.equal(isRecurringDueMissed(null, "America/Chicago", now), false);
+  });
+
+  it("compares against an explicit wall day key", () => {
+    assert.equal(
+      isRecurringDueBeforeWallDay(
+        "2026-08-14T14:00:00.000Z",
+        "America/Chicago",
+        "2026-08-15",
+      ),
+      true,
+    );
+    assert.equal(
+      isRecurringDueBeforeWallDay(
+        "2026-08-15T14:00:00.000Z",
+        "America/Chicago",
+        "2026-08-15",
+      ),
+      false,
+    );
+  });
+});
+
 describe("pickOpenRecurringKeeper", () => {
-  it("keeps the earliest due among open dups (today before tomorrow)", () => {
+  it("keeps the earliest due among open dups when no day context", () => {
     const keeper = pickOpenRecurringKeeper([
       { id: "a", due_at: "2026-08-12T14:00:00.000Z", created_at: "2026-08-12T10:00:00.000Z", status: "todo" },
       { id: "b", due_at: "2026-08-14T14:00:00.000Z", created_at: "2026-08-13T10:00:00.000Z", status: "todo" },
       { id: "c", due_at: "2026-08-13T14:00:00.000Z", created_at: "2026-08-13T11:00:00.000Z", status: "todo" },
     ]);
     assert.equal(keeper.id, "a");
+  });
+
+  it("prefers current-day open over a missed prior-day open", () => {
+    const keeper = pickOpenRecurringKeeper(
+      [
+        {
+          id: "missed",
+          due_at: "2026-08-14T14:00:00.000Z",
+          created_at: "2026-08-14T10:00:00.000Z",
+          status: "todo",
+        },
+        {
+          id: "today",
+          due_at: "2026-08-15T14:00:00.000Z",
+          created_at: "2026-08-15T10:00:00.000Z",
+          status: "todo",
+        },
+      ],
+      { todayKey: "2026-08-15", timeZone: "America/Chicago" },
+    );
+    assert.equal(keeper.id, "today");
   });
 });
 

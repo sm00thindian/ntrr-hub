@@ -47,6 +47,8 @@ export default async function TasksPage() {
     rangeStart: dayBounds.start,
     rangeEnd: dayBounds.end,
     cadenceByTemplateId,
+    todayKey: dayBounds.dayKey,
+    timeZone,
   });
 
   const timeZoneLabel = householdTimeZoneLabel(timeZone);
