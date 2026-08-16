@@ -124,6 +124,7 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 - Microsoft sync (1.1 preview)
 - Apple CalDAV calendar→member color mapping (same pattern as Google)
 - **Google Tasks sync off** (2026-08): Hub is source of truth for tasks; only Google Calendar syncs. Flag: `GOOGLE_TASKS_SYNC_ENABLED` in `lib/sync/google/tasks-config.ts`
+- **Google Calendar OAuth read-only** (2026-08): scopes are `calendar.calendarlist.readonly` + `calendar.events.readonly` (list + multi-select calendars, pull events). No Hub → Google event write. Dogfood: Reconnect in Settings if still on full `calendar` scope.
 - **Calendar visibility** ([ADR 0002](./adr/0002-calendar-visibility-member-integrations.md)): household vs personal; members + self-advocates connect own Google/Apple — apply migration `20250817000000_member_integrations_calendar_visibility.sql`
 
 ### Later — Reliant voice / live confirms (not Hub MVP)

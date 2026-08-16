@@ -25,7 +25,7 @@ import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 function feedbackFromSearchParams(params: { [key: string]: string | string[] | undefined }) {
   if (params.connected === "google") {
-    return "Google connected. Initial sync started.";
+    return "Google connected (read-only calendars). Initial sync started — choose which calendars to sync below.";
   }
 
   const error = typeof params.error === "string" ? params.error : null;

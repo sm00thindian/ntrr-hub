@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresIn: tokens.expires_in,
+      scope: tokens.scope,
     });
 
     await runHouseholdSync(context.householdId);

@@ -3,6 +3,7 @@ import {
   fetchGoogleUserEmail,
   refreshGoogleAccessToken,
 } from "@/lib/integrations/google/oauth";
+import { GOOGLE_INTEGRATION_SCOPES } from "@/lib/integrations/google/scopes";
 import type { GoogleTokenBundle, IntegrationAccount } from "@/lib/integrations/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -89,6 +90,8 @@ export async function connectGoogleAccount(params: {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  /** Space-separated scope string from Google token response, when present. */
+  scope?: string;
 }) {
   const connectedEmail = await fetchGoogleUserEmail(params.accessToken);
   const tokens: GoogleTokenBundle = {
@@ -98,6 +101,13 @@ export async function connectGoogleAccount(params: {
     connectedEmail,
   };
 
+  const scopesFromToken = params.scope
+    ?.split(/\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const scopes =
+    scopesFromToken?.length ? scopesFromToken : [...GOOGLE_INTEGRATION_SCOPES];
+
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("integration_accounts")
@@ -106,7 +116,7 @@ export async function connectGoogleAccount(params: {
         household_id: params.householdId,
         provider: "google",
         status: "connected",
-        scopes: ["https://www.googleapis.com/auth/calendar"],
+        scopes,
         metadata: {
           tokens: encryptJson(tokens),
           google: {},

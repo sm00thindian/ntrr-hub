@@ -205,6 +205,8 @@ export function GoogleCalendarSettings({
           Calendars to sync
         </p>
         <p className="text-muted-foreground text-xs">
+          Select any calendars you want Hub to <span className="font-medium text-foreground">read</span>{" "}
+          (multiple allowed).{" "}
           <span className="font-medium text-foreground">Shared with household</span> is visible to
           everyone. <span className="font-medium text-foreground">Personal</span> is only visible to
           the selected family member (including you). Calendars already synced by another household

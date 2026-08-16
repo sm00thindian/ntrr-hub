@@ -9,6 +9,7 @@ import { GoogleCalendarSettings } from "@/components/integrations/google-calenda
 import { disconnectGoogle, syncGoogleNow } from "@/lib/integrations/actions";
 import type { CalendarColorMember, GoogleCalendarAssignment } from "@/lib/calendar/colors";
 import type { HouseholdCalendarInUse } from "@/lib/integrations/google/calendars";
+import { googleConnectionNeedsScopeReconnect } from "@/lib/integrations/google/scopes";
 import type { GoogleCalendarInfo, IntegrationAccount } from "@/lib/integrations/types";
 
 type GoogleConnectCardProps = {
@@ -61,15 +62,20 @@ export function GoogleConnectCard({
   const connected = integration?.status === "connected";
   const email = integration?.metadata.tokens?.connectedEmail;
   const alreadyCount = Object.keys(alreadyInHousehold).length;
+  const needsScopeReconnect =
+    connected && googleConnectionNeedsScopeReconnect(integration?.scopes ?? null);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Google</CardTitle>
         <CardDescription>
-          Connect <span className="font-medium text-foreground">your</span> Google calendars. Mark
-          each one shared with the household or personal. Shared calendars already connected by
-          someone else are listed as already in the household — no need to add them again.
+          Connect <span className="font-medium text-foreground">your</span> Google calendars for{" "}
+          <span className="font-medium text-foreground">read-only</span> schedule context. Choose
+          which calendars to sync, then mark each shared with the household or personal. Hub does not
+          create or edit events in Google — your calendar app stays the system of record. Shared
+          calendars already connected by someone else are listed as already in the household — no
+          need to add them again.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -79,6 +85,13 @@ export function GoogleConnectCard({
           {!configured ? (
             <p className="text-muted-foreground">
               Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable connection.
+            </p>
+          ) : null}
+          {needsScopeReconnect ? (
+            <p className="text-amber-800 dark:text-amber-200 text-sm" role="status">
+              Permissions need an update (read-only calendars). Tap{" "}
+              <span className="font-medium">Reconnect</span> once — then re-check which calendars to
+              sync.
             </p>
           ) : null}
           {connected && alreadyCount > 0 ? (
@@ -139,8 +152,10 @@ export function GoogleConnectCard({
             ) : null}
 
             {configured && connected ? (
-              <Button asChild variant="ghost">
-                <Link href="/api/integrations/google/connect">Reconnect</Link>
+              <Button asChild variant={needsScopeReconnect ? "default" : "ghost"}>
+                <Link href="/api/integrations/google/connect">
+                  {needsScopeReconnect ? "Reconnect for read-only access" : "Reconnect"}
+                </Link>
               </Button>
             ) : null}
           </div>

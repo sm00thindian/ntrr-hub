@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/) for product milest
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Google Calendar OAuth is read-only**: Hub requests list + events read scopes only (multi-calendar select still works). Does not create or edit Google events. Existing dogfood connections should **Reconnect** in Settings once.
+
+---
+
 ## [0.2.0] — 2026-08-15
 
 Care board reliability release: Focus, recurring daily care, and the Tasks board behave like a single source of truth caregivers can trust.

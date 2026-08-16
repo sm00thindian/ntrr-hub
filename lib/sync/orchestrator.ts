@@ -3,7 +3,7 @@ import {
   getAllConnectedGoogleIntegrationsAdmin,
 } from "@/lib/integrations/queries";
 import { pullAppleCalDavCalendar } from "@/lib/sync/apple/caldav";
-import { pullGoogleCalendar, pushGoogleCalendarEvent } from "@/lib/sync/google/calendar";
+import { pullGoogleCalendar } from "@/lib/sync/google/calendar";
 import { pullGoogleTasks, pushGoogleTask } from "@/lib/sync/google/tasks";
 import { GOOGLE_TASKS_SYNC_ENABLED } from "@/lib/sync/google/tasks-config";
 import {
@@ -49,7 +49,7 @@ export async function runGoogleSync(
       }
     }
 
-    // Calendar event outbound still uses the first healthy account when present
+    // Outbound Google pushes (tasks only when enabled). Calendar is pull-only.
     const pushAccount = accounts[0]!;
     const outbox = await fetchPendingOutbox(householdId, "google");
 
@@ -68,11 +68,9 @@ export async function runGoogleSync(
             payload: (entry.payload ?? {}) as Record<string, unknown>,
           });
         } else if (entry.entity_type === "calendar_event") {
-          await pushGoogleCalendarEvent(pushAccount, {
-            entityId: entry.entity_id,
-            operation: entry.operation,
-            payload: (entry.payload ?? {}) as Record<string, unknown>,
-          });
+          // Read-only OAuth: never create/edit/delete Google events. Drain legacy rows.
+          await markOutboxDone(entry.id);
+          continue;
         }
 
         await markOutboxDone(entry.id);
