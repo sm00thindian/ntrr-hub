@@ -16,6 +16,12 @@ type AppShellProps = {
   canSync?: boolean;
 };
 
+/**
+ * App chrome rules (NTRR):
+ * - Product mark once per viewport (sidebar desktop / header mobile).
+ * - Account email once on desktop (sidebar only) — not also top-right.
+ * - Header = place (household); mode lives in nav + page H1.
+ */
 export function AppShell({
   children,
   userEmail,
@@ -27,9 +33,10 @@ export function AppShell({
   canSync = false,
 }: AppShellProps) {
   const myDayMode = householdPersona ? prefersMyDayView(householdPersona) : false;
-  const subtitle = householdName
-    ? `${householdName}${householdRole ? ` · ${householdRole}` : ""}`
-    : "Family Care Orchestrator";
+  // Sidebar/header place context — household name, not another "My day" synonym.
+  const placeLabel = householdName?.trim() || null;
+  const caregiverHeaderDetail =
+    placeLabel && householdRole ? `${placeLabel} · ${householdRole}` : placeLabel;
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
@@ -37,9 +44,13 @@ export function AppShell({
         <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-56 shrink-0 border-r px-4 py-6 lg:flex lg:flex-col">
           <div className="mb-8">
             <Logo href="/dashboard" size="lg" />
-            <p className="text-sidebar-muted mt-2 text-xs">
-              {myDayMode ? "Your day" : "Family coordination"}
-            </p>
+            {placeLabel ? (
+              <p className="text-sidebar-muted mt-2 truncate text-xs" title={placeLabel}>
+                {placeLabel}
+              </p>
+            ) : !myDayMode ? (
+              <p className="text-sidebar-muted mt-2 text-xs">Family coordination</p>
+            ) : null}
           </div>
           <AppNav
             variant="sidebar"
@@ -64,19 +75,14 @@ export function AppShell({
                 {/*
                   NTRR chrome: one product mark at a time.
                   Mobile: logo in top bar (sidebar hidden).
-                  Desktop (lg+): logo lives in the sidebar only — header is place + account.
+                  Desktop (lg+): logo lives in the sidebar only — header is place only.
                 */}
                 <Logo href="/dashboard" size="md" className="lg:hidden" />
-                {householdName || myDayMode ? (
+                {placeLabel || (!myDayMode && caregiverHeaderDetail) ? (
                   <div className="min-w-0 border-l border-border/80 pl-2.5 sm:pl-3 lg:border-l-0 lg:pl-0">
                     <p className="truncate text-xs text-muted-foreground">
-                      {myDayMode ? "Your day" : subtitle}
+                      {myDayMode ? placeLabel : caregiverHeaderDetail}
                     </p>
-                    {!myDayMode && householdName ? (
-                      <p className="truncate text-sm font-medium tracking-tight lg:hidden">
-                        {householdName}
-                      </p>
-                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -92,14 +98,7 @@ export function AppShell({
                     </span>
                   </a>
                 ) : null}
-                {userEmail ? (
-                  <span
-                    className="hidden max-w-[12rem] truncate text-xs text-muted-foreground md:inline"
-                    title={userEmail}
-                  >
-                    {userEmail}
-                  </span>
-                ) : null}
+                {/* Account: sidebar on desktop; Sign out only on mobile (no duplicate email). */}
                 <div className="lg:hidden">
                   <SignOutButton variant="ghost" />
                 </div>

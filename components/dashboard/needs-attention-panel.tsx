@@ -116,10 +116,7 @@ export function NeedsAttentionPanel({
       <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <CardTitle>Focus</CardTitle>
-          <CardDescription className="line-clamp-3 sm:line-clamp-none">
-            Household day — Hub tasks and shared calendars. Mark Done and it stays green for the
-            day. Tomorrow: outside the usual only.
-          </CardDescription>
+          <CardDescription>Tap Done when finished — stays green for the day.</CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" className="min-h-10 flex-1 sm:flex-none">

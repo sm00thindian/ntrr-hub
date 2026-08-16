@@ -9,7 +9,7 @@ import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
 import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TomorrowFocusItem } from "@/lib/dashboard/needs-attention";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import {
@@ -92,31 +92,33 @@ export function MyDayPanel({
     (i) => i.kind === "task" && isTaskDone(i.entityId, i.status),
   ).length;
 
+  const progressParts: string[] = [];
+  if (doneCount > 0) {
+    progressParts.push(`${doneCount} done`);
+  }
+  if (openCount > 0) {
+    progressParts.push(`${openCount} left`);
+  }
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">My day</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
-          {householdName} · your tasks and appointments
-          {doneCount > 0 ? (
-            <span className="text-brand">
-              {" "}
-              · {doneCount} done
-              {openCount > 0 ? ` · ${openCount} left` : ""}
-            </span>
-          ) : null}
+          {progressParts.length > 0 ? (
+            <>
+              {householdName}
+              <span className="text-brand"> · {progressParts.join(" · ")}</span>
+            </>
+          ) : (
+            householdName
+          )}
         </p>
       </div>
 
       <Card className="border-brand/20">
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle>Today</CardTitle>
-          <CardDescription>
-            What you need to do. Tap <span className="text-foreground font-medium">Done</span> when
-            finished — it turns green so you can see your progress. Items marked{" "}
-            <span className="text-foreground font-medium">Reliant</span> may get a phone
-            confirmation call. Tomorrow shows what&apos;s outside the usual.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           {displayItems.length ? (
@@ -207,8 +209,8 @@ export function MyDayPanel({
             </ul>
           ) : (
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Nothing on your day yet. When someone assigns you a task or links your calendar,
-              it will show up here.
+              Nothing on your day yet. When someone assigns you a task or links your calendar, it
+              will show up here. Tap Done when a task is finished.
             </p>
           )}
           {actionError ? (

@@ -113,9 +113,7 @@ export default async function DashboardPage() {
       />
       <div className="min-w-0">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Dashboard</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          {membership.householdName} · today&apos;s board
-        </p>
+        <p className="text-muted-foreground mt-0.5 text-sm">{membership.householdName}</p>
       </div>
 
       <SetupChecklist status={setupStatus} />
