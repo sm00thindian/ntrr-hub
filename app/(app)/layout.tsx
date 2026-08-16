@@ -3,10 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { getUserMembership } from "@/lib/households/queries";
 import { getHouseholdSyncStatus } from "@/lib/integrations/status";
-import {
-  canManageIntegrations,
-  prefersMyDayView,
-} from "@/lib/permissions/roles";
+import { canConnectCalendars } from "@/lib/permissions/roles";
 import { getPendingConflictCount } from "@/lib/sync/conflict";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,20 +25,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let canSync = false;
 
   if (membership) {
-    const myDay = prefersMyDayView(membership.persona);
     try {
       conflictCount = await getPendingConflictCount(membership.householdId);
     } catch {
       conflictCount = 0;
     }
-    // Coordinators / care partners: footer sync card (hidden on /calendar client-side)
-    if (!myDay) {
-      canSync = canManageIntegrations(membership.role);
-      try {
-        syncStatus = await getHouseholdSyncStatus(membership.householdId);
-      } catch {
-        syncStatus = null;
-      }
+    // Footer sync for coordinators and self-advocates (calendar context on every app page)
+    canSync = canConnectCalendars(membership.role, membership.persona);
+    try {
+      syncStatus = await getHouseholdSyncStatus(membership.householdId);
+    } catch {
+      syncStatus = null;
     }
   }
 

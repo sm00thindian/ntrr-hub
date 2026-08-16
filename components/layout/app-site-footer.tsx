@@ -13,22 +13,19 @@ type AppSiteFooterProps = {
   householdId?: string | null;
   syncStatus?: FooterSyncStatus | null;
   canSync?: boolean;
-  /** Self-advocate My day: no household sync chrome */
-  myDayMode?: boolean;
 };
 
 /**
- * App chrome footer: quiet brand line + compact sync card on all app routes
- * (including calendar). Hidden for self-advocate My day persona.
+ * App chrome footer: quiet brand line + compact calendar sync card on all app routes
+ * (coordinators and self-advocates who have a household).
  */
 export function AppSiteFooter({
   className,
   householdId,
   syncStatus,
   canSync = false,
-  myDayMode = false,
 }: AppSiteFooterProps) {
-  const showSync = !myDayMode && Boolean(householdId) && Boolean(syncStatus);
+  const showSync = Boolean(householdId) && Boolean(syncStatus);
 
   return (
     <footer

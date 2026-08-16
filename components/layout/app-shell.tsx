@@ -14,7 +14,7 @@ type AppShellProps = {
   householdPersona?: HouseholdPersona | null;
   householdId?: string | null;
   conflictCount?: number;
-  /** Compact footer sync (hidden on /calendar and My day) */
+  /** Compact footer calendar sync (all app personas with a household) */
   syncStatus?: FooterSyncStatus | null;
   canSync?: boolean;
 };
@@ -116,7 +116,6 @@ export function AppShell({
               householdId={householdId}
               syncStatus={syncStatus}
               canSync={canSync}
-              myDayMode={myDayMode}
             />
           </div>
         </div>
