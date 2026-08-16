@@ -51,7 +51,8 @@ export function RecurringTemplateForm({
       <CardHeader>
         <CardTitle>Recurring template</CardTitle>
         <CardDescription>
-          Creates a template and adds the first task instance now. Times use {timeZoneLabel}.
+          Creates a template and the first open task for today (or the next matching day). Times
+          use {timeZoneLabel}.
         </CardDescription>
       </CardHeader>
       <CardContent>

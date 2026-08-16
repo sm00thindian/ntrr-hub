@@ -491,12 +491,15 @@ export async function createRecurringTemplate(formData: FormData) {
 
   const calendarSettings = await getHouseholdCalendarSettings(ctx.householdId);
   const timeZone = resolveHouseholdTimeZone(calendarSettings.timezone);
+  // First open instance starts on the matching day from today (even if the clock
+  // time already passed). Completing that card then correctly advances one cadence step.
   const dueAt = nextRecurringDueAt({
     cadence,
     dayOfWeek,
     dayOfMonth,
     dueTime: row.due_time ?? dueTime,
     timeZone,
+    includePastOnStartDay: true,
   });
 
   const { data: spawnedTask, error: taskError } = await supabase

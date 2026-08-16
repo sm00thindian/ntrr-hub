@@ -43,6 +43,11 @@ function wallDateDayOfWeek(date: string): number {
 /**
  * Next due instant for a recurring template, as UTC ISO.
  * Uses household wall clock. If `dueTime` is null, returns null (no due time).
+ *
+ * By default only future instants count. Pass `includePastOnStartDay: true` for the
+ * first open instance (create / cold start) so a daily series "starts today" even
+ * when the usual due clock time has already passed — otherwise completing that
+ * tomorrow-dated first card jumps next to day-after-tomorrow.
  */
 export function nextRecurringDueAt(params: {
   cadence: RecurrenceCadence;
@@ -51,6 +56,8 @@ export function nextRecurringDueAt(params: {
   dueTime: string | null;
   timeZone: string;
   now?: Date;
+  /** Allow today's occurrence even if its clock time already passed. */
+  includePastOnStartDay?: boolean;
 }): string | null {
   const dueTime = parseDueTime(params.dueTime);
   if (!dueTime) {
@@ -61,6 +68,7 @@ export function nextRecurringDueAt(params: {
   const now = params.now ?? new Date();
   const live = getZonedPartsSafe(now, zone);
   let date = formatWallDate(live.year, live.month, live.day);
+  const startDay = date;
 
   const maxScan = 370; // enough for monthly edge cases
 
@@ -68,7 +76,17 @@ export function nextRecurringDueAt(params: {
     if (occurrenceMatchesDay(params.cadence, params.dayOfWeek, params.dayOfMonth, date)) {
       const wall = combineWallDateTime(date, dueTime);
       const iso = zonedWallTimeToUtcIso(wall, zone);
-      if (iso && Date.parse(iso) > now.getTime()) {
+      if (!iso) {
+        date = addDaysToWallDate(date, 1);
+        continue;
+      }
+      const ms = Date.parse(iso);
+      if (ms > now.getTime()) {
+        return iso;
+      }
+      // First card for a series: keep "today" even if the usual time already passed
+      // (care check-offs still need today's slot before advancing to tomorrow).
+      if (params.includePastOnStartDay && date === startDay) {
         return iso;
       }
     }

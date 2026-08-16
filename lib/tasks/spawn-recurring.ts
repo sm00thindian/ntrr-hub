@@ -371,9 +371,11 @@ async function runEnsureHouseholdRecurringInstances(
       continue;
     }
 
+    // Cold start (no history): same as create — include today even if due time passed.
+    // After a done instance: strictly after that due so we never re-open the same slot.
     const after = latest
       ? afterInstantForNextSpawn(latest.due_at, new Date(latest.updated_at))
-      : new Date(Date.now() - 1);
+      : new Date();
 
     const dueAt = nextRecurringDueAt({
       cadence: template.cadence,
@@ -382,6 +384,7 @@ async function runEnsureHouseholdRecurringInstances(
       dueTime: template.due_time,
       timeZone,
       now: after,
+      includePastOnStartDay: !latest,
     });
 
     const spawnDueAt = template.due_time ? dueAt : null;

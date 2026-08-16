@@ -47,6 +47,33 @@ describe("nextRecurringDueAt", () => {
     assert.equal(iso, "2026-08-11T14:00:00.000Z");
   });
 
+  it("first instance can start today even when due clock time already passed", () => {
+    // Afternoon Central (20:00 UTC = 3pm CDT on Aug 10)
+    const now = new Date("2026-08-10T20:00:00.000Z");
+    const first = nextRecurringDueAt({
+      cadence: "daily",
+      dayOfWeek: null,
+      dayOfMonth: null,
+      dueTime: "09:00",
+      timeZone: "America/Chicago",
+      now,
+      includePastOnStartDay: true,
+    });
+    assert.equal(first, "2026-08-10T14:00:00.000Z");
+
+    const after = afterInstantForNextSpawn(first!);
+    const next = nextRecurringDueAt({
+      cadence: "daily",
+      dayOfWeek: null,
+      dayOfMonth: null,
+      dueTime: "09:00",
+      timeZone: "America/Chicago",
+      now: after,
+    });
+    // Completing "today" must open tomorrow — not day-after-tomorrow
+    assert.equal(next, "2026-08-11T14:00:00.000Z");
+  });
+
   it("returns null without a time", () => {
     assert.equal(
       nextRecurringDueAt({
