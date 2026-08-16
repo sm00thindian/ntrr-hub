@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   FooterSyncCard,
   type FooterSyncStatus,
 } from "@/components/layout/footer-sync-card";
+import { fetchFooterSyncStatus } from "@/lib/integrations/status-actions";
 import { cn } from "@/lib/utils";
 
 const SUPPORT_EMAIL = "support@ntrr.com";
@@ -11,21 +14,39 @@ const SUPPORT_EMAIL = "support@ntrr.com";
 type AppSiteFooterProps = {
   className?: string;
   householdId?: string | null;
-  syncStatus?: FooterSyncStatus | null;
   canSync?: boolean;
 };
 
 /**
- * App chrome footer: quiet brand line + compact calendar sync card on all app routes
- * (coordinators and self-advocates who have a household).
+ * App chrome footer: quiet brand line + compact calendar sync card.
+ * Sync status loads after paint so shared layout navigation stays snappy.
  */
 export function AppSiteFooter({
   className,
   householdId,
-  syncStatus,
   canSync = false,
 }: AppSiteFooterProps) {
-  const showSync = Boolean(householdId) && Boolean(syncStatus);
+  const [syncStatus, setSyncStatus] = useState<FooterSyncStatus | null>(null);
+
+  useEffect(() => {
+    if (!householdId) {
+      setSyncStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchFooterSyncStatus().then((status) => {
+      if (!cancelled) {
+        setSyncStatus(status);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [householdId]);
+
+  const showSync = Boolean(householdId);
 
   return (
     <footer
@@ -35,12 +56,23 @@ export function AppSiteFooter({
       )}
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-3 py-2.5 sm:px-4 lg:px-8">
-        {showSync && householdId && syncStatus ? (
-          <FooterSyncCard
-            householdId={householdId}
-            status={syncStatus}
-            canSync={canSync}
-          />
+        {showSync && householdId ? (
+          syncStatus ? (
+            <FooterSyncCard
+              householdId={householdId}
+              status={syncStatus}
+              canSync={canSync}
+              onStatusChange={setSyncStatus}
+            />
+          ) : (
+            <div
+              className="rounded-lg border bg-card/80 px-2.5 py-2 shadow-sm"
+              data-testid="footer-sync"
+              aria-label="Calendar sync status"
+            >
+              <p className="text-muted-foreground text-[11px] leading-tight">Sync · …</p>
+            </div>
+          )
         ) : null}
 
         <div className="flex flex-col gap-1 text-[10px] leading-snug text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:text-xs">

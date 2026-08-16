@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Calendar, Home, ListTodo, Settings, Users } from "lucide-react";
 
+import { fetchPendingConflictCount } from "@/lib/integrations/status-actions";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -47,9 +48,16 @@ function ConflictBadge({ count }: { count: number }) {
   );
 }
 
+function pathMatches(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 /**
  * Main nav. Conflict badge sits on Dashboard (one-tap path to review via dashboard card
  * and /conflicts). Near real-time count via Supabase realtime when householdId is set.
+ *
+ * Active highlight updates on click (pending path) so navigation feels instant even while
+ * the destination RSC stream is still loading.
  */
 export function AppNav({
   variant,
@@ -58,27 +66,33 @@ export function AppNav({
   myDayMode = false,
 }: AppNavProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [count, setCount] = useState(conflictCount);
-  const [, startTransition] = useTransition();
+  /** Optimistic active target until the URL catches up. */
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navItems = myDayMode ? myDayNav : coordinatorNav;
 
   useEffect(() => {
     setCount(conflictCount);
   }, [conflictCount]);
 
+  // Clear optimistic active when the real route catches up (or user navigates elsewhere).
   useEffect(() => {
-    if (!householdId || myDayMode) {
+    setPendingHref(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    // One realtime subscriber only — both sidebar + bottom mount in the DOM.
+    // Sidebar stays mounted on mobile (hidden); use it as the sole listener.
+    if (!householdId || myDayMode || variant !== "sidebar") {
       return;
     }
 
-    // Only one realtime subscriber per tree (sidebar is lg-only, bottom is mobile-only,
-    // but both mount in the DOM). Use a distinct topic suffix per variant to avoid clashes.
     let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
     try {
       const supabase = createClient();
       channel = supabase
-        .channel(`nav-conflicts:${variant}:${householdId}`)
+        .channel(`nav-conflicts:${householdId}`)
         .on(
           "postgres_changes",
           {
@@ -88,7 +102,13 @@ export function AppNav({
             filter: `household_id=eq.${householdId}`,
           },
           () => {
-            startTransition(() => router.refresh());
+            // Debounce bursts; update badge only — avoid full router.refresh on every change.
+            if (refreshTimer.current) {
+              clearTimeout(refreshTimer.current);
+            }
+            refreshTimer.current = setTimeout(() => {
+              void fetchPendingConflictCount().then(setCount);
+            }, 400);
           },
         )
         .subscribe();
@@ -97,6 +117,9 @@ export function AppNav({
     }
 
     return () => {
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+      }
       if (!channel) {
         return;
       }
@@ -107,7 +130,14 @@ export function AppNav({
         // ignore
       }
     };
-  }, [householdId, router, variant, myDayMode]);
+  }, [householdId, variant, myDayMode]);
+
+  function isActive(href: string) {
+    if (pendingHref) {
+      return pathMatches(pendingHref, href);
+    }
+    return pathMatches(pathname, href);
+  }
 
   if (variant === "bottom") {
     return (
@@ -117,12 +147,18 @@ export function AppNav({
       >
         <ul className="grid grid-cols-5">
           {navItems.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+            const active = isActive(href);
             const showConflict = !myDayMode && href === "/dashboard" && count > 0;
             return (
               <li key={href}>
                 <Link
                   href={href}
+                  prefetch
+                  onClick={() => {
+                    if (!pathMatches(pathname, href)) {
+                      setPendingHref(href);
+                    }
+                  }}
                   className={cn(
                     "relative flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] font-medium transition-colors sm:min-h-16 sm:gap-1 sm:px-2 sm:text-xs",
                     active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
@@ -158,12 +194,18 @@ export function AppNav({
     <nav aria-label="Main navigation" className="hidden lg:block">
       <ul className="space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const active = isActive(href);
           const showConflict = !myDayMode && href === "/dashboard" && count > 0;
           return (
             <li key={href}>
               <Link
                 href={href}
+                prefetch
+                onClick={() => {
+                  if (!pathMatches(pathname, href)) {
+                    setPendingHref(href);
+                  }
+                }}
                 className={cn(
                   "relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
@@ -202,6 +244,8 @@ export function AppNav({
           <li className="pt-1">
             <Link
               href="/conflicts"
+              prefetch
+              onClick={() => setPendingHref("/conflicts")}
               className="text-brand flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-sidebar-accent"
             >
               Resolve {count} conflict{count === 1 ? "" : "s"} →

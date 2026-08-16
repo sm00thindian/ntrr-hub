@@ -7,6 +7,7 @@ import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { syncGoogleNow } from "@/lib/integrations/actions";
+import { fetchFooterSyncStatus } from "@/lib/integrations/status-actions";
 import { cn } from "@/lib/utils";
 
 /** Serializable — same shape as dashboard sync panel / status lib. */
@@ -30,6 +31,7 @@ type FooterSyncCardProps = {
   householdId: string;
   status: FooterSyncStatus;
   canSync: boolean;
+  onStatusChange?: (status: FooterSyncStatus | null) => void;
 };
 
 function formatRelative(iso: string | null) {
@@ -57,7 +59,12 @@ function formatRelative(iso: string | null) {
  * Compact footer card: calendar sync health + optional Sync now.
  * Intentionally quiet — not a dashboard panel.
  */
-export function FooterSyncCard({ householdId, status, canSync }: FooterSyncCardProps) {
+export function FooterSyncCard({
+  householdId,
+  status,
+  canSync,
+  onStatusChange,
+}: FooterSyncCardProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
@@ -147,6 +154,11 @@ export function FooterSyncCard({ householdId, status, canSync }: FooterSyncCardP
             onClick={() =>
               startTransition(async () => {
                 await syncGoogleNow();
+                const next = await fetchFooterSyncStatus();
+                if (next) {
+                  onStatusChange?.(next);
+                }
+                // Soft refresh destination pages without blocking the footer control.
                 router.refresh();
               })
             }

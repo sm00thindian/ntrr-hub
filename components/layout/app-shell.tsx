@@ -1,7 +1,6 @@
 import { Logo } from "@/components/brand/logo";
 import { AppNav } from "@/components/layout/app-nav";
 import { AppSiteFooter } from "@/components/layout/app-site-footer";
-import type { FooterSyncStatus } from "@/components/layout/footer-sync-card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import type { HouseholdPersona, HouseholdRole } from "@/lib/permissions/roles";
 import { prefersMyDayView } from "@/lib/permissions/roles";
@@ -14,8 +13,6 @@ type AppShellProps = {
   householdPersona?: HouseholdPersona | null;
   householdId?: string | null;
   conflictCount?: number;
-  /** Compact footer calendar sync (all app personas with a household) */
-  syncStatus?: FooterSyncStatus | null;
   canSync?: boolean;
 };
 
@@ -27,7 +24,6 @@ export function AppShell({
   householdPersona,
   householdId,
   conflictCount = 0,
-  syncStatus = null,
   canSync = false,
 }: AppShellProps) {
   const myDayMode = householdPersona ? prefersMyDayView(householdPersona) : false;
@@ -117,11 +113,7 @@ export function AppShell({
           </main>
 
           <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-            <AppSiteFooter
-              householdId={householdId}
-              syncStatus={syncStatus}
-              canSync={canSync}
-            />
+            <AppSiteFooter householdId={householdId} canSync={canSync} />
           </div>
         </div>
       </div>
