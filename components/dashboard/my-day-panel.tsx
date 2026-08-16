@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Check, Circle } from "lucide-react";
 
+import { useOptimisticTaskDone } from "@/components/dashboard/use-optimistic-task-done";
 import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
 import { ReliantConfirmChip } from "@/components/family/role-badge";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
@@ -17,7 +17,6 @@ import {
   formatTimeInZone,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
-import { updateTaskStatus } from "@/lib/tasks/actions";
 import { cn } from "@/lib/utils";
 
 type MyDayPanelProps = {
@@ -29,7 +28,7 @@ type MyDayPanelProps = {
   householdName: string;
 };
 
-function timeLabel(item: AgendaItem, zone: string, nowMs: number) {
+function timeLabel(item: AgendaItem, zone: string, nowMs: number, isDone: boolean) {
   if (item.kind === "event") {
     if (item.allDay) {
       return "All day";
@@ -37,7 +36,7 @@ function timeLabel(item: AgendaItem, zone: string, nowMs: number) {
     return formatTimeInZone(item.sortAt, zone);
   }
 
-  if (item.status === "done") {
+  if (isDone) {
     return "Completed";
   }
 
@@ -56,6 +55,7 @@ function timeLabel(item: AgendaItem, zone: string, nowMs: number) {
 /**
  * Self-advocate home: only their day — tasks assigned to them and calendars labeled as theirs.
  * Completed tasks stay visible for the day with a clear green Done state.
+ * Mark Done is optimistic: green + sink to bottom immediately.
  */
 export function MyDayPanel({
   items,
@@ -66,24 +66,31 @@ export function MyDayPanel({
   householdName,
 }: MyDayPanelProps) {
   const zone = resolveHouseholdTimeZone(timeZone);
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
+  const { isTaskDone, isPending, markDone, reopen, actionError } = useOptimisticTaskDone(items);
   const nowMs = Date.now();
 
-  const openCount = items.filter(
-    (i) => i.kind === "task" && i.status !== "done" && !(i.entityId && justDoneIds.has(i.entityId)),
+  const displayItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const aDone = a.kind === "task" && isTaskDone(a.entityId, a.status) ? 1 : 0;
+      const bDone = b.kind === "task" && isTaskDone(b.entityId, b.status) ? 1 : 0;
+      if (aDone !== bDone) return aDone - bDone;
+
+      const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
+      const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
+      if (aAllDay !== bAllDay) return aAllDay - bAllDay;
+
+      const startDiff = agendaSortTimeMs(a.sortAt) - agendaSortTimeMs(b.sortAt);
+      if (startDiff !== 0) return startDiff;
+      return a.title.localeCompare(b.title);
+    });
+  }, [items, isTaskDone]);
+
+  const openCount = displayItems.filter(
+    (i) => i.kind === "task" && !isTaskDone(i.entityId, i.status),
   ).length;
-  const doneCount =
-    items.filter((i) => i.kind === "task" && i.status === "done").length +
-    items.filter(
-      (i) =>
-        i.kind === "task" &&
-        i.status !== "done" &&
-        i.entityId &&
-        justDoneIds.has(i.entityId),
-    ).length;
+  const doneCount = displayItems.filter(
+    (i) => i.kind === "task" && isTaskDone(i.entityId, i.status),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -112,14 +119,11 @@ export function MyDayPanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          {items.length ? (
+          {displayItems.length ? (
             <ul className="space-y-1">
-              {items.map((item) => {
+              {displayItems.map((item) => {
                 const isTask = item.kind === "task";
-                const isDone =
-                  isTask &&
-                  (item.status === "done" ||
-                    Boolean(item.entityId && justDoneIds.has(item.entityId)));
+                const isDone = isTask && isTaskDone(item.entityId, item.status);
                 const overdue =
                   isTask &&
                   !isDone &&
@@ -130,7 +134,7 @@ export function MyDayPanel({
                   <li
                     key={item.id}
                     className={cn(
-                      "flex items-start gap-3 rounded-xl border px-2 py-3 transition-colors",
+                      "flex items-start gap-3 rounded-xl border px-2 py-3 transition-[background-color,border-color] duration-150",
                       isDone
                         ? "border-brand/25 bg-brand/5"
                         : "border-transparent hover:border-border hover:bg-muted/30",
@@ -138,7 +142,7 @@ export function MyDayPanel({
                   >
                     <div
                       className={cn(
-                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150",
                         isDone
                           ? "bg-brand text-brand-foreground"
                           : isTask
@@ -183,7 +187,7 @@ export function MyDayPanel({
                               : "text-muted-foreground mt-0.5 text-sm"
                         }
                       >
-                        {isTask ? "Task" : "Calendar"} · {timeLabel(item, zone, nowMs)}
+                        {isTask ? "Task" : "Calendar"} · {timeLabel(item, zone, nowMs, isDone)}
                         {item.location ? ` · ${item.location}` : ""}
                       </p>
                     </div>
@@ -191,43 +195,10 @@ export function MyDayPanel({
                       <TaskDoneControl
                         title={item.title}
                         done={isDone}
-                        pending={pending}
+                        pending={isPending(item.entityId)}
                         className="mt-0.5"
-                        onMarkDone={() => {
-                          const taskId = item.entityId!;
-                          setActionError(null);
-                          setJustDoneIds((prev) => new Set(prev).add(taskId));
-                          startTransition(async () => {
-                            const result = await updateTaskStatus(taskId, "done");
-                            if (result?.error) {
-                              setJustDoneIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(taskId);
-                                return next;
-                              });
-                              setActionError(result.error);
-                              return;
-                            }
-                            router.refresh();
-                          });
-                        }}
-                        onReopen={() => {
-                          const taskId = item.entityId!;
-                          setActionError(null);
-                          setJustDoneIds((prev) => {
-                            const next = new Set(prev);
-                            next.delete(taskId);
-                            return next;
-                          });
-                          startTransition(async () => {
-                            const result = await updateTaskStatus(taskId, "todo");
-                            if (result?.error) {
-                              setActionError(result.error);
-                              return;
-                            }
-                            router.refresh();
-                          });
-                        }}
+                        onMarkDone={() => markDone(item.entityId!)}
+                        onReopen={() => reopen(item.entityId!)}
                       />
                     ) : null}
                   </li>

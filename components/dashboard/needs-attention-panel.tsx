@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Calendar, Check, ListTodo, MapPin } from "lucide-react";
 
+import { useOptimisticTaskDone } from "@/components/dashboard/use-optimistic-task-done";
 import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
@@ -21,7 +21,6 @@ import {
   formatTimeInZone,
   resolveHouseholdTimeZone,
 } from "@/lib/datetime/timezone";
-import { updateTaskStatus } from "@/lib/tasks/actions";
 import { cn } from "@/lib/utils";
 
 type NeedsAttentionPanelProps = {
@@ -32,8 +31,6 @@ type NeedsAttentionPanelProps = {
   canCompleteTasks?: boolean;
 };
 
-const DONE_FEEDBACK_MS = 900;
-
 function SectionLabel({ id, children }: { id?: string; children: ReactNode }) {
   return (
     <h3 id={id} className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
@@ -42,11 +39,11 @@ function SectionLabel({ id, children }: { id?: string; children: ReactNode }) {
   );
 }
 
-function taskTimeLabel(item: NeedsAttentionItem, zone: string, nowMs: number) {
+function taskTimeLabel(item: NeedsAttentionItem, zone: string, nowMs: number, isDone: boolean) {
   if (item.reason === "conflict") {
     return "Review";
   }
-  if (item.status === "done") {
+  if (isDone) {
     return "Completed";
   }
   if (!item.sortAt || agendaSortTimeMs(item.sortAt) === Number.POSITIVE_INFINITY) {
@@ -73,6 +70,7 @@ function eventTimeLabel(item: NeedsAttentionItem, zone: string) {
 /**
  * Caregiver Focus: single household day board.
  * Today = Hub tasks + shared calendars; Tomorrow = one-off changes only.
+ * Mark Done paints green and sinks the row immediately (server confirms in background).
  */
 export function NeedsAttentionPanel({
   items,
@@ -82,13 +80,36 @@ export function NeedsAttentionPanel({
   canCompleteTasks = true,
 }: NeedsAttentionPanelProps) {
   const zone = resolveHouseholdTimeZone(timeZone);
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set());
-  /** Optimistic Done so the row turns green immediately (server keeps done-today after refresh). */
-  const [justDoneIds, setJustDoneIds] = useState<Set<string>>(() => new Set());
-  const [actionError, setActionError] = useState<string | null>(null);
+  const { isTaskDone, isPending, markDone, reopen, actionError } = useOptimisticTaskDone(items);
   const nowMs = Date.now();
+
+  // Client sort mirrors server: done rows sink so progress is visible without waiting on refresh.
+  const displayItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      if (a.reason === "conflict" && b.reason !== "conflict") return -1;
+      if (b.reason === "conflict" && a.reason !== "conflict") return 1;
+
+      const aDone =
+        a.reason === "done" || isTaskDone(a.entityId, a.status) ? 1 : 0;
+      const bDone =
+        b.reason === "done" || isTaskDone(b.entityId, b.status) ? 1 : 0;
+      if (aDone !== bDone) return aDone - bDone;
+
+      const aOverdue = !aDone && a.reason === "overdue" ? 0 : 1;
+      const bOverdue = !bDone && b.reason === "overdue" ? 0 : 1;
+      if (aOverdue !== bOverdue) return aOverdue - bOverdue;
+
+      if (!aDone && !bDone && a.reason !== "overdue" && b.reason !== "overdue") {
+        const aAllDay = a.kind === "event" && a.allDay ? 0 : 1;
+        const bAllDay = b.kind === "event" && b.allDay ? 0 : 1;
+        if (aAllDay !== bAllDay) return aAllDay - bAllDay;
+      }
+
+      const startDiff = agendaSortTimeMs(a.sortAt) - agendaSortTimeMs(b.sortAt);
+      if (startDiff !== 0) return startDiff;
+      return a.title.localeCompare(b.title);
+    });
+  }, [items, isTaskDone]);
 
   return (
     <Card className="border-brand/20">
@@ -117,31 +138,27 @@ export function NeedsAttentionPanel({
         ) : null}
         <section aria-labelledby="focus-today-heading" className="space-y-3">
           <SectionLabel id="focus-today-heading">Today</SectionLabel>
-          {items.length ? (
+          {displayItems.length ? (
             <ul className="space-y-1.5">
-              {items.map((item) => {
+              {displayItems.map((item) => {
                 const isConflict = item.reason === "conflict";
                 const isEvent = item.kind === "event" && item.reason === "calendar";
                 const isTask = item.kind === "task" && !isConflict;
                 const isDone =
-                  item.status === "done" ||
-                  item.reason === "done" ||
-                  Boolean(item.entityId && justDoneIds.has(item.entityId));
+                  item.reason === "done" || isTaskDone(item.entityId, item.status);
                 const isException =
                   !isDone && (item.reason === "overdue" || item.reason === "conflict");
                 const isPastEvent =
                   isEvent &&
                   !item.allDay &&
                   agendaSortTimeMs(item.endsAt ?? item.sortAt) < nowMs;
-                const rowPending = Boolean(
-                  item.entityId && pending && pendingIds.has(item.entityId),
-                );
+                const rowPending = isPending(item.entityId);
 
                 return (
                   <li
                     key={item.id}
                     className={cn(
-                      "flex items-start gap-2.5 rounded-xl border px-2.5 py-2.5 transition-colors sm:gap-3",
+                      "flex items-start gap-2.5 rounded-xl border px-2.5 py-2.5 transition-[background-color,border-color,opacity] duration-150 sm:gap-3",
                       isDone && "border-brand/25 bg-brand/5",
                       isException && !isDone && "border-destructive/25 bg-destructive/5",
                       !isDone && !isException && "border-border/60 bg-card",
@@ -150,7 +167,7 @@ export function NeedsAttentionPanel({
                   >
                     <div
                       className={cn(
-                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors duration-150",
                         isDone && "bg-brand text-brand-foreground",
                         isException && !isDone && "bg-destructive/15 text-destructive",
                         isEvent && !isDone && !isException && "bg-brand/10 text-brand",
@@ -235,7 +252,7 @@ export function NeedsAttentionPanel({
                                   {isDone ? "Done" : attentionReasonLabel(item.reason)}
                                 </span>
                                 {" · "}
-                                {taskTimeLabel(item, zone, nowMs)}
+                                {taskTimeLabel(item, zone, nowMs, isDone)}
                               </>
                             )}
                           </p>
@@ -266,59 +283,8 @@ export function NeedsAttentionPanel({
                         done={isDone}
                         pending={rowPending}
                         className="mt-0.5"
-                        onMarkDone={() => {
-                          const taskId = item.entityId!;
-                          setActionError(null);
-                          setJustDoneIds((prev) => new Set(prev).add(taskId));
-                          setPendingIds((prev) => new Set(prev).add(taskId));
-                          startTransition(async () => {
-                            const result = await updateTaskStatus(taskId, "done");
-                            setPendingIds((prev) => {
-                              const next = new Set(prev);
-                              next.delete(taskId);
-                              return next;
-                            });
-                            if (result?.error) {
-                              setJustDoneIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(taskId);
-                                return next;
-                              });
-                              setActionError(result.error);
-                              return;
-                            }
-                            window.setTimeout(() => {
-                              router.refresh();
-                            }, DONE_FEEDBACK_MS);
-                          });
-                        }}
-                        onReopen={
-                          isDone
-                            ? () => {
-                                const taskId = item.entityId!;
-                                setActionError(null);
-                                setJustDoneIds((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(taskId);
-                                  return next;
-                                });
-                                setPendingIds((prev) => new Set(prev).add(taskId));
-                                startTransition(async () => {
-                                  const result = await updateTaskStatus(taskId, "todo");
-                                  setPendingIds((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(taskId);
-                                    return next;
-                                  });
-                                  if (result?.error) {
-                                    setActionError(result.error);
-                                    return;
-                                  }
-                                  router.refresh();
-                                });
-                              }
-                            : undefined
-                        }
+                        onMarkDone={() => markDone(item.entityId!)}
+                        onReopen={isDone ? () => reopen(item.entityId!) : undefined}
                       />
                     ) : null}
                   </li>

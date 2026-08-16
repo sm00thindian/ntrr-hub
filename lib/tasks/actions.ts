@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
@@ -147,40 +148,55 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     };
   }
 
-  // Completing a recurring instance must open the next occurrence (daily meds, etc.).
-  if (
-    status === "done" &&
-    previousStatus !== "done" &&
-    row.recurring_template_id
-  ) {
-    try {
-      const { spawnNextAfterCompletion } = await import("@/lib/tasks/spawn-recurring");
-      await spawnNextAfterCompletion({
-        householdId: ctx.householdId,
-        templateId: row.recurring_template_id,
-        completedDueAt: row.due_at,
-        createdBy: ctx.userId,
-      });
-    } catch (err) {
-      console.error("[updateTaskStatus] spawn next recurring failed", err);
-    }
-  }
-
-  await enqueueGoogleTaskSync({
-    householdId: ctx.householdId,
-    taskId,
-    operation: "update",
-    payload: {
-      title: row.title,
-      description: row.description,
-      status,
-      dueAt: row.due_at,
-    },
-  });
-
+  // Invalidate first so the client's router.refresh() sees the new status quickly.
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
+
+  // Side effects after the response: keep mark-Done snappy for dashboard UX.
+  const householdId = ctx.householdId;
+  const userId = ctx.userId;
+  const shouldSpawnNext =
+    status === "done" && previousStatus !== "done" && Boolean(row.recurring_template_id);
+  const templateId = row.recurring_template_id;
+  const completedDueAt = row.due_at;
+  const syncPayload = {
+    title: row.title,
+    description: row.description,
+    status,
+    dueAt: row.due_at,
+  };
+
+  after(async () => {
+    if (shouldSpawnNext && templateId) {
+      try {
+        const { spawnNextAfterCompletion } = await import("@/lib/tasks/spawn-recurring");
+        await spawnNextAfterCompletion({
+          householdId,
+          templateId,
+          completedDueAt,
+          createdBy: userId,
+        });
+        revalidatePath("/tasks");
+        revalidatePath("/dashboard");
+        revalidatePath("/calendar");
+      } catch (err) {
+        console.error("[updateTaskStatus] spawn next recurring failed", err);
+      }
+    }
+
+    try {
+      await enqueueGoogleTaskSync({
+        householdId,
+        taskId,
+        operation: "update",
+        payload: syncPayload,
+      });
+    } catch (err) {
+      console.error("[updateTaskStatus] enqueue google sync failed", err);
+    }
+  });
+
   return { success: true as const };
 }
 
