@@ -10,6 +10,8 @@
 
 **Naming rule:** brand = `Not The Runaround` (headers, footers, ©, legal, “a Not The Runaround service”); product UI = `Hub`. Never `Not The Run Around` (spaced).
 
+**Chrome / wordmark rule (NTRR family):** show the product mark (icon + product name + platform line) **once per viewport**. With a persistent sidebar, the mark lives in the sidebar and the top bar is place/account only (`lg:hidden` on the header logo). On mobile (no sidebar), the mark stays in the top bar. Single-header products (Reliant, ntrr.com) already use one mark — do not add a second. Do not stack the same lockup in sidebar **and** main header.
+
 **Production hosting + domain migration:** [docs/PLATFORM-MIGRATION.md](docs/PLATFORM-MIGRATION.md) is the source of truth.
 
 ---

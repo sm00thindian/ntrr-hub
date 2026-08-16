@@ -65,9 +65,14 @@ export function AppShell({
           <header className="safe-top sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur">
             <div className="flex h-12 items-center justify-between gap-2 px-3 sm:h-14 sm:gap-3 sm:px-4 lg:px-8">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                <Logo href="/dashboard" size="md" />
+                {/*
+                  NTRR chrome: one product mark at a time.
+                  Mobile: logo in top bar (sidebar hidden).
+                  Desktop (lg+): logo lives in the sidebar only — header is place + account.
+                */}
+                <Logo href="/dashboard" size="md" className="lg:hidden" />
                 {householdName || myDayMode ? (
-                  <div className="min-w-0 border-l border-border/80 pl-2.5 sm:pl-3">
+                  <div className="min-w-0 border-l border-border/80 pl-2.5 sm:pl-3 lg:border-l-0 lg:pl-0">
                     <p className="truncate text-xs text-muted-foreground">
                       {myDayMode ? "Your day" : subtitle}
                     </p>

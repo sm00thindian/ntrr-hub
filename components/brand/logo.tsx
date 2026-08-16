@@ -33,8 +33,13 @@ const taglineText = {
 } as const;
 
 /**
- * Hub header mark: [N monogram] Hub · Not The Runaround
+ * Hub product mark: [N monogram] Hub · Not The Runaround
  * Platform tagline stays sentence case; product name is primary.
+ *
+ * NTRR chrome rule: show the full mark once per viewport.
+ * - Sidebar layout (lg+): mark in sidebar; hide from the top bar.
+ * - Mobile / no sidebar: mark in the top bar only.
+ * - Marketing / single-header products (Reliant, ntrr.com): one header mark is enough.
  */
 export function Logo({
   className,
@@ -44,12 +49,7 @@ export function Logo({
 }: LogoProps) {
   const px = iconSizes[size];
   const content = (
-    <span
-      className={cn(
-        "inline-flex min-w-0 items-center gap-2",
-        className,
-      )}
-    >
+    <span className="inline-flex min-w-0 items-center gap-2">
       <Image
         src="/brand/ntrr-app-icon-125.png"
         alt=""
@@ -84,11 +84,15 @@ export function Logo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex shrink-0" aria-label="Hub home">
+      <Link
+        href={href}
+        className={cn("inline-flex shrink-0", className)}
+        aria-label="Hub home"
+      >
         {content}
       </Link>
     );
   }
 
-  return content;
+  return <span className={cn("inline-flex shrink-0", className)}>{content}</span>;
 }
