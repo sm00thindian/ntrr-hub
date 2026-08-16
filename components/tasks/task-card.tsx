@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Calendar, Pause, Pencil, Trash2, User } from "lucide-react";
+import { Calendar, Pencil, Trash2, User } from "lucide-react";
 
 import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
 import { EditTaskForm } from "@/components/tasks/edit-task-form";
@@ -88,6 +88,7 @@ export function TaskCard({
   const [pending, startTransition] = useTransition();
   const [confirm, setConfirm] = useState<ConfirmMode>(null);
   const [editing, setEditing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const zone = resolveHouseholdTimeZone(timeZone);
   const due = dueMeta(task.dueAt, zone, task.status);
   const assigneeFromMembers = resolveAssigneeDisplay(task.assigneeId, members);
@@ -104,7 +105,13 @@ export function TaskCard({
 
   function runAction(action: () => Promise<{ error?: string; success?: boolean } | void>) {
     startTransition(async () => {
-      await action();
+      setActionError(null);
+      const result = await action();
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        setActionError(result.error);
+        return;
+      }
+      setConfirm(null);
       onUpdated?.();
     });
   }
@@ -223,19 +230,18 @@ export function TaskCard({
             {canEdit && confirm === "pause" ? (
               <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-2 sm:w-auto">
                 <span className="text-xs font-medium">
-                  Pause this occurrence? It leaves the board and won’t auto-return.
+                  {isRecurring
+                    ? "Remove this occurrence from the board? The series stays; use Delete series to stop it permanently."
+                    : "Remove this task from the board?"}
                 </span>
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
                   disabled={pending}
-                  onClick={() => {
-                    setConfirm(null);
-                    runAction(() => pauseTask(task.id));
-                  }}
+                  onClick={() => runAction(() => pauseTask(task.id))}
                 >
-                  Pause
+                  Remove
                 </Button>
                 <Button
                   type="button"
@@ -252,7 +258,8 @@ export function TaskCard({
             {canEdit && confirm === "delete-series" && task.recurringTemplateId ? (
               <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
                 <span className="text-destructive text-xs font-medium">
-                  Delete the whole recurring series? Open cards stop; no future occurrences.
+                  Delete the whole series? Stops future runs and removes every open and done row for
+                  this series.
                 </span>
                 <Button
                   type="button"
@@ -261,7 +268,6 @@ export function TaskCard({
                   disabled={pending}
                   onClick={() => {
                     const templateId = task.recurringTemplateId!;
-                    setConfirm(null);
                     runAction(() => deleteRecurringSeries(templateId));
                   }}
                 >
@@ -281,18 +287,17 @@ export function TaskCard({
 
             {canEdit && confirm === "delete-one" ? (
               <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 py-2 sm:w-auto">
-                <span className="text-destructive text-xs font-medium">Delete this task?</span>
+                <span className="text-destructive text-xs font-medium">
+                  Remove this task from the board?
+                </span>
                 <Button
                   type="button"
                   size="sm"
                   variant="destructive"
                   disabled={pending}
-                  onClick={() => {
-                    setConfirm(null);
-                    runAction(() => pauseTask(task.id));
-                  }}
+                  onClick={() => runAction(() => pauseTask(task.id))}
                 >
-                  Delete
+                  Remove
                 </Button>
                 <Button
                   type="button"
@@ -308,47 +313,40 @@ export function TaskCard({
 
             {canEdit && !confirm ? (
               <>
+                {/* Any status: remove this row (done, open, history) */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setConfirm(isRecurring ? "pause" : "delete-one")}
+                  aria-label={`Remove ${task.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
                 {isRecurring ? (
-                  <>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() => setConfirm("pause")}
-                      aria-label={`Pause ${task.title}`}
-                    >
-                      <Pause className="h-4 w-4" />
-                      Pause
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() => setConfirm("delete-series")}
-                      aria-label={`Delete series ${task.title}`}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete series
-                    </Button>
-                  </>
-                ) : (
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     disabled={pending}
-                    onClick={() => setConfirm("delete-one")}
-                    aria-label={`Delete ${task.title}`}
+                    onClick={() => setConfirm("delete-series")}
+                    aria-label={`Delete series ${task.title}`}
+                    className="text-destructive hover:text-destructive"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    Delete series
                   </Button>
-                )}
+                ) : null}
               </>
             ) : null}
           </div>
+        ) : null}
+
+        {actionError ? (
+          <p className="text-destructive mt-2 text-xs" role="alert">
+            {actionError}
+          </p>
         ) : null}
       </article>
 

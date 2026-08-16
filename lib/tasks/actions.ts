@@ -272,39 +272,69 @@ export async function updateTask(formData: FormData) {
 }
 
 /**
- * Pause this card: cancel the open instance without advancing the series.
- * For recurring tasks, ensure() will not re-spawn while the latest instance is cancelled.
- * Done is what advances the series; deleteRecurringSeries removes the whole series.
+ * Remove a single task row from the board (any status → cancelled).
+ * For recurring series, this does not deactivate the template; use deleteRecurringSeries.
+ * ensure() will not re-spawn while the latest instance is cancelled (pause series).
  */
 export async function pauseTask(taskId: string) {
   const ctx = await requireHouseholdContext();
 
   if (!canEditTasks(ctx.role)) {
-    return { error: "You do not have permission to pause tasks." };
+    return { error: "You do not have permission to remove tasks." };
   }
 
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data: existing } = await supabase
+    .from("tasks")
+    .select("id, status")
+    .eq("id", taskId)
+    .eq("household_id", ctx.householdId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { error: "Task not found." };
+  }
+
+  if (existing.status === "cancelled") {
+    revalidatePath("/tasks");
+    return { success: true as const };
+  }
+
+  const { data: updated, error } = await supabase
     .from("tasks")
     .update({ status: "cancelled", provenance: defaultProvenance() })
     .eq("id", taskId)
-    .eq("household_id", ctx.householdId);
+    .eq("household_id", ctx.householdId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
   }
 
-  await enqueueGoogleTaskSync({
-    householdId: ctx.householdId,
-    taskId,
-    operation: "delete",
-  });
+  // RLS can fail softly (0 rows) without throwing
+  if (!updated) {
+    return {
+      error:
+        "Could not remove this task. You may need editor access (Member or higher), or try Delete series for a recurring template.",
+    };
+  }
+
+  try {
+    await enqueueGoogleTaskSync({
+      householdId: ctx.householdId,
+      taskId,
+      operation: "delete",
+    });
+  } catch {
+    // Local cancel already applied
+  }
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
-  return { success: true };
+  return { success: true as const };
 }
 
 /** @deprecated Prefer pauseTask — kept so older call sites keep working. */
@@ -350,28 +380,37 @@ export async function deleteRecurringSeries(templateId: string) {
     return { error: deactivateError.message };
   }
 
-  const { data: openRows } = await supabase
+  // Cancel every instance (open + done) so rows leave the board/history
+  const { data: seriesRows } = await supabase
     .from("tasks")
-    .select("id")
+    .select("id, status")
     .eq("household_id", ctx.householdId)
     .eq("recurring_template_id", templateId)
-    .in("status", ["todo", "in_progress"]);
+    .neq("status", "cancelled");
 
-  const openIds = (openRows ?? []).map((r) => r.id as string);
+  const seriesIds = (seriesRows ?? []).map((r) => r.id as string);
 
-  if (openIds.length) {
-    const { error: cancelError } = await supabase
+  if (seriesIds.length) {
+    const { data: cancelled, error: cancelError } = await supabase
       .from("tasks")
       .update({ status: "cancelled", provenance: defaultProvenance() })
       .eq("household_id", ctx.householdId)
       .eq("recurring_template_id", templateId)
-      .in("status", ["todo", "in_progress"]);
+      .neq("status", "cancelled")
+      .select("id");
 
     if (cancelError) {
       return { error: cancelError.message };
     }
 
-    for (const taskId of openIds) {
+    if (!cancelled?.length) {
+      return {
+        error:
+          "Series was deactivated, but task rows could not be removed. Check your access role and try again.",
+      };
+    }
+
+    for (const taskId of seriesIds) {
       try {
         await enqueueGoogleTaskSync({
           householdId: ctx.householdId,
@@ -387,7 +426,7 @@ export async function deleteRecurringSeries(templateId: string) {
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
-  return { success: true };
+  return { success: true as const };
 }
 
 export async function createRecurringTemplate(formData: FormData) {
