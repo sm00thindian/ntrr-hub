@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { TaskBoard } from "@/components/tasks/task-board";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
@@ -55,20 +56,16 @@ export default async function TasksPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          {myDayMode ? "My tasks" : "Tasks"}
-        </h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          {ctx.householdName}
-          <span className="hidden sm:inline">
-            {myDayMode
-              ? " · your open work, done today, and history"
-              : " · open work first, then done today and history"}
-          </span>
-          <span className="text-muted-foreground/80"> · {timeZoneLabel}</span>
-        </p>
-      </div>
+      <PageHeader
+        title={myDayMode ? "My tasks" : "Tasks"}
+        description={
+          myDayMode
+            ? "Your open work, done today, and history"
+            : "Open work first, then done today and history"
+        }
+        meta={timeZoneLabel}
+        hideDescriptionOnMobile
+      />
 
       <TaskBoard
         householdId={ctx.householdId}

@@ -90,15 +90,14 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <p className="text-muted-foreground -mt-1 text-sm">
-        {myDayMode
-          ? "Shared family calendars plus your personal calendars and tasks"
-          : "Shared household calendars plus your personal calendars — private calendars of others stay private"}
-      </p>
-
       <CalendarViewNav
         view={view}
         periodLabel={bounds.periodLabel}
+        description={
+          myDayMode
+            ? "Shared family calendars plus your personal calendars and tasks"
+            : "Shared household calendars plus yours — others' private calendars stay private"
+        }
         prevHref={navLinks.prevHref}
         nextHref={navLinks.nextHref}
         todayHref={navLinks.todayHref}

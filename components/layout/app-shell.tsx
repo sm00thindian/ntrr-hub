@@ -21,6 +21,8 @@ type AppShellProps = {
  * - Product mark once per viewport (sidebar desktop / header mobile).
  * - Account email once on desktop (sidebar only) — not also top-right.
  * - Header = place (household); mode lives in nav + page H1.
+ * - Page titles use PageHeader (purpose · status · meta) — do not re-print
+ *   household name in the main pane; place context is chrome-only.
  */
 export function AppShell({
   children,

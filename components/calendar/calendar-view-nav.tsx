@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { rememberCalendarView } from "@/components/calendar/calendar-default-view";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import type { CalendarView } from "@/lib/calendar/views";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,8 @@ import { cn } from "@/lib/utils";
 type CalendarViewNavProps = {
   view: CalendarView;
   periodLabel: string;
+  /** Purpose line — household name stays in chrome only. */
+  description: string;
   prevHref: string;
   nextHref: string;
   todayHref: string;
@@ -27,6 +30,7 @@ const viewOptions: { value: CalendarView; label: string; short: string }[] = [
 export function CalendarViewNav({
   view,
   periodLabel,
+  description,
   prevHref,
   nextHref,
   todayHref,
@@ -51,27 +55,29 @@ export function CalendarViewNav({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Calendar</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm sm:text-base">{periodLabel}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <Button asChild variant="outline" size="icon" className="h-10 w-10" aria-label={prevLabel}>
-            <Link href={prevHref}>
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="h-10 px-3">
-            <Link href={todayHref}>Today</Link>
-          </Button>
-          <Button asChild variant="outline" size="icon" className="h-10 w-10" aria-label={nextLabel}>
-            <Link href={nextHref}>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Calendar"
+        description={description}
+        status={periodLabel}
+        hideDescriptionOnMobile
+        actions={
+          <>
+            <Button asChild variant="outline" size="icon" className="h-10 w-10" aria-label={prevLabel}>
+              <Link href={prevHref}>
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="h-10 px-3">
+              <Link href={todayHref}>Today</Link>
+            </Button>
+            <Button asChild variant="outline" size="icon" className="h-10 w-10" aria-label={nextLabel}>
+              <Link href={nextHref}>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div
         className="bg-muted flex w-full rounded-xl p-1"

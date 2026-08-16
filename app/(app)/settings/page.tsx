@@ -1,5 +1,6 @@
 import { AppleCalDavConnectCard } from "@/components/integrations/apple-caldav-connect-card";
 import { GoogleConnectCard } from "@/components/integrations/google-connect-card";
+import { PageHeader } from "@/components/layout/page-header";
 import { HouseholdTimezoneCard } from "@/components/settings/household-timezone-card";
 import { NtrrServicesCard } from "@/components/settings/ntrr-services-card";
 import { PhoneProfileCard } from "@/components/settings/phone-profile-card";
@@ -109,12 +110,10 @@ export default async function SettingsPage({
   if (myDayMode) {
     return (
       <div className="space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Your phone, profile, and optional calendars (shared with family or personal only)
-          </p>
-        </div>
+        <PageHeader
+          title="Settings"
+          description="Your phone, profile, and optional calendars"
+        />
         <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
           <PhoneProfileCard phoneE164={phoneE164} displayName={displayName} />
           <HouseholdTimezoneCard
@@ -130,13 +129,14 @@ export default async function SettingsPage({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Settings</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          Integrations and preferences
-          {!canConnect ? " · calendar connect unavailable for viewers" : ""}
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description={
+          canConnect
+            ? "Integrations and preferences"
+            : "Integrations and preferences · calendar connect unavailable for viewers"
+        }
+      />
 
       {!canConnect ? (
         <p className="text-sm text-muted-foreground">

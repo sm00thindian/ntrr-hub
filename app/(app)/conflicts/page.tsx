@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/layout/page-header";
 import { ConflictResolver } from "@/components/sync/conflict-resolver";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { getPendingConflicts } from "@/lib/sync/conflict";
@@ -8,12 +9,10 @@ export default async function ConflictsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sync conflicts</h1>
-        <p className="mt-1 text-muted-foreground">
-          {ctx.householdName} · choose which version to keep when Google and NTRR disagree
-        </p>
-      </div>
+      <PageHeader
+        title="Sync conflicts"
+        description="Choose which version to keep when sources disagree"
+      />
 
       <ConflictResolver
         conflicts={conflicts.map((row) => ({

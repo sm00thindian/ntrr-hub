@@ -7,6 +7,7 @@ import { Check, Circle } from "lucide-react";
 import { useOptimisticTaskDone } from "@/components/dashboard/use-optimistic-task-done";
 import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
 import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { PageHeader } from "@/components/layout/page-header";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,6 @@ type MyDayPanelProps = {
   tomorrowOverflow?: number;
   timeZone?: string;
   canCompleteTasks?: boolean;
-  householdName: string;
 };
 
 function timeLabel(item: AgendaItem, zone: string, nowMs: number, isDone: boolean) {
@@ -63,7 +63,6 @@ export function MyDayPanel({
   tomorrowOverflow = 0,
   timeZone,
   canCompleteTasks = true,
-  householdName,
 }: MyDayPanelProps) {
   const zone = resolveHouseholdTimeZone(timeZone);
   const { isTaskDone, isPending, markDone, reopen, actionError } = useOptimisticTaskDone(items);
@@ -102,19 +101,12 @@ export function MyDayPanel({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">My day</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          {progressParts.length > 0 ? (
-            <>
-              {householdName}
-              <span className="text-brand"> · {progressParts.join(" · ")}</span>
-            </>
-          ) : (
-            householdName
-          )}
-        </p>
-      </div>
+      <PageHeader
+        title="My day"
+        description="Only what you're on the hook for today"
+        status={progressParts.length > 0 ? progressParts.join(" · ") : undefined}
+        statusAccent
+      />
 
       <Card className="border-brand/20">
         <CardHeader className="pb-3">

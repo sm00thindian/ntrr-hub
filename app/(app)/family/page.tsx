@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { InviteForm } from "@/components/family/invite-form";
 import { MemberList } from "@/components/family/member-list";
 import { PendingInvites } from "@/components/family/pending-invites";
+import { PageHeader } from "@/components/layout/page-header";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { getHouseholdMembers, getPendingInvites } from "@/lib/households/queries";
 import { canManageMembers } from "@/lib/permissions/roles";
@@ -22,13 +23,7 @@ export default async function FamilyPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Family</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          {ctx.householdName}
-          <span className="hidden sm:inline"> · manage members and invites</span>
-        </p>
-      </div>
+      <PageHeader title="Family" description="Members, roles, and invites" />
 
       <MemberList
         members={members}

@@ -7,6 +7,7 @@ import { NeedsAttentionPanel } from "@/components/dashboard/needs-attention-pane
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { CreateHouseholdForm } from "@/components/household/create-household-form";
 import { MembershipRefresh } from "@/components/household/membership-refresh";
+import { PageHeader } from "@/components/layout/page-header";
 
 import { getNeedsAttention } from "@/lib/dashboard/needs-attention-queries";
 import { getMyDayAgenda, isMyDayPersona } from "@/lib/dashboard/my-day";
@@ -82,7 +83,6 @@ export default async function DashboardPage() {
           tomorrowOverflow={board.tomorrowOverflow}
           timeZone={timeZone}
           canCompleteTasks={canComplete}
-          householdName={membership.householdName}
         />
       </>
     );
@@ -111,10 +111,10 @@ export default async function DashboardPage() {
         householdId={membership.householdId}
         enableCalendarSync={canSync}
       />
-      <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Dashboard</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">{membership.householdName}</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Household board for today — priorities and highlights"
+      />
 
       <SetupChecklist status={setupStatus} />
 
