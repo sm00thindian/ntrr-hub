@@ -83,6 +83,7 @@ export async function getTodayAgenda(
       reliantConfirmRequested: task.reliantConfirmRequested,
       reliantSmsReminderRequested: task.reliantSmsReminderRequested,
       entityId: task.id,
+      assigneeId: task.assigneeId,
       assigneeLabel: task.assigneeLabel,
       assigneePersona: task.assigneePersona,
     }));

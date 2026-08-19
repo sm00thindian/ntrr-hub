@@ -36,6 +36,8 @@ type TaskBoardProps = {
   sections: TaskBoardSections;
   templates: RecurringTaskTemplate[];
   members: HouseholdMember[];
+  /** Household member colors for assignee chip accents */
+  memberColors?: Record<string, string>;
   canEdit: boolean;
   canComplete?: boolean;
   timeZone: string;
@@ -149,6 +151,7 @@ function TaskSection({
   timeZone,
   timeZoneLabel,
   members,
+  memberColors,
   reliantBridge,
   onUpdated,
   emptyHint,
@@ -163,6 +166,7 @@ function TaskSection({
   timeZone: string;
   timeZoneLabel: string;
   members: HouseholdMember[];
+  memberColors?: Record<string, string>;
   reliantBridge: ReliantBridgeState;
   onUpdated: () => void;
   emptyHint?: string;
@@ -191,6 +195,7 @@ function TaskSection({
                 timeZone={timeZone}
                 timeZoneLabel={timeZoneLabel}
                 members={members}
+                memberColors={memberColors}
                 reliantBridge={reliantBridge}
                 onUpdated={onUpdated}
               />
@@ -218,6 +223,7 @@ function CollapsibleTaskSection({
   timeZone,
   timeZoneLabel,
   members,
+  memberColors,
   reliantBridge,
   onUpdated,
 }: {
@@ -232,6 +238,7 @@ function CollapsibleTaskSection({
   timeZone: string;
   timeZoneLabel: string;
   members: HouseholdMember[];
+  memberColors?: Record<string, string>;
   reliantBridge: ReliantBridgeState;
   onUpdated: () => void;
 }) {
@@ -286,6 +293,7 @@ function CollapsibleTaskSection({
                 timeZone={timeZone}
                 timeZoneLabel={timeZoneLabel}
                 members={members}
+                memberColors={memberColors}
                 reliantBridge={reliantBridge}
                 onUpdated={onUpdated}
                 compact
@@ -304,6 +312,7 @@ export function TaskBoard({
   sections,
   templates,
   members,
+  memberColors = {},
   canEdit,
   canComplete,
   timeZone,
@@ -592,6 +601,7 @@ export function TaskBoard({
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
               members={members}
+              memberColors={memberColors}
               reliantBridge={reliantBridge}
               onUpdated={refresh}
             />
@@ -610,6 +620,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            memberColors={memberColors}
             reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
@@ -623,6 +634,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            memberColors={memberColors}
             reliantBridge={reliantBridge}
             onUpdated={refresh}
             emptyHint={
@@ -645,6 +657,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            memberColors={memberColors}
             reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
@@ -672,6 +685,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            memberColors={memberColors}
             reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
@@ -687,6 +701,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            memberColors={memberColors}
             reliantBridge={reliantBridge}
             onUpdated={refresh}
           />

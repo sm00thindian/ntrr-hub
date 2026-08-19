@@ -15,6 +15,7 @@ import { SourceChip } from "@/components/provenance/source-chip";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { resolveMemberChipColor } from "@/lib/calendar/colors";
 import {
   attentionReasonLabel,
   type NeedsAttentionItem,
@@ -33,6 +34,8 @@ type NeedsAttentionPanelProps = {
   tomorrowOverflow?: number;
   timeZone?: string;
   canCompleteTasks?: boolean;
+  /** Household member colors for assignee chip accents */
+  memberColors?: Record<string, string>;
 };
 
 function SectionLabel({ id, children }: { id?: string; children: ReactNode }) {
@@ -82,6 +85,7 @@ export function NeedsAttentionPanel({
   tomorrowOverflow = 0,
   timeZone,
   canCompleteTasks = true,
+  memberColors = {},
 }: NeedsAttentionPanelProps) {
   const zone = resolveHouseholdTimeZone(timeZone);
   const { isTaskDone, isPending, markDone, reopen, actionError } = useOptimisticTaskDone(items);
@@ -193,6 +197,10 @@ export function NeedsAttentionPanel({
                             <AssigneeChip
                               label={item.assigneeLabel}
                               persona={item.assigneePersona}
+                              memberColor={resolveMemberChipColor(
+                                item.assigneeId,
+                                memberColors,
+                              )}
                               unassigned={!item.assigneeLabel}
                               className="max-w-full"
                             />

@@ -11,6 +11,7 @@ import {
 import { EditTaskForm } from "@/components/tasks/edit-task-form";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
+import { resolveMemberChipColor } from "@/lib/calendar/colors";
 import {
   calendarDateKeyInZone,
   formatDateTimeInZone,
@@ -38,6 +39,8 @@ type TaskCardProps = {
   timeZone?: string;
   timeZoneLabel?: string;
   members?: HouseholdMember[];
+  /** Household member colors for assignee chip accents */
+  memberColors?: Record<string, string>;
   reliantBridge: ReliantBridgeState;
   onUpdated?: () => void;
 };
@@ -89,6 +92,7 @@ export function TaskCard({
   timeZone,
   timeZoneLabel = "Household timezone",
   members = [],
+  memberColors = {},
   reliantBridge,
   onUpdated,
 }: TaskCardProps) {
@@ -102,6 +106,7 @@ export function TaskCard({
   const assigneeLabel = task.assigneeLabel ?? assigneeFromMembers.label;
   const assigneePersona = task.assigneePersona ?? assigneeFromMembers.persona;
   const assigneeEmail = task.assigneeEmail ?? assigneeFromMembers.email;
+  const assigneeMemberColor = resolveMemberChipColor(task.assigneeId, memberColors);
   const allowComplete = canComplete ?? canEdit;
   const isRecurring = Boolean(task.recurringTemplateId);
   const cadenceLabel = task.recurrenceCadence
@@ -183,6 +188,7 @@ export function TaskCard({
               label={assigneeLabel}
               persona={assigneePersona}
               email={assigneeEmail}
+              memberColor={assigneeMemberColor}
               unassigned={!task.assigneeId}
             />
           </span>
@@ -382,6 +388,7 @@ export function KanbanColumn({
   timeZone,
   timeZoneLabel,
   members,
+  memberColors,
   reliantBridge,
   onUpdated,
 }: {
@@ -393,6 +400,7 @@ export function KanbanColumn({
   timeZone?: string;
   timeZoneLabel?: string;
   members?: HouseholdMember[];
+  memberColors?: Record<string, string>;
   reliantBridge: ReliantBridgeState;
   onUpdated?: () => void;
 }) {
@@ -414,6 +422,7 @@ export function KanbanColumn({
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
               members={members}
+              memberColors={memberColors}
               reliantBridge={reliantBridge}
               onUpdated={onUpdated}
             />

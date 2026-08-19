@@ -17,6 +17,7 @@ export function ItemMetaTags({
   showSource = true,
   assigneeLabel,
   assigneePersona,
+  memberColor,
   className,
 }: {
   source: ProvenanceSource;
@@ -26,6 +27,8 @@ export function ItemMetaTags({
   showSource?: boolean;
   assigneeLabel?: string | null;
   assigneePersona?: HouseholdPersona | string | null;
+  /** Household member color for assignee chip accent */
+  memberColor?: string | null;
   className?: string;
 }) {
   return (
@@ -41,6 +44,7 @@ export function ItemMetaTags({
           <AssigneeChip
             label={assigneeLabel}
             persona={assigneePersona}
+            memberColor={memberColor}
             unassigned={!assigneeLabel}
             className="max-w-full"
           />

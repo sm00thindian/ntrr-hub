@@ -89,6 +89,25 @@ export function normalizeColor(value: string, fallback: string) {
   return /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
 }
 
+/**
+ * Resolve a household member's chip accent color.
+ * Returns undefined when unassigned / unknown so chips stay neutral.
+ */
+export function resolveMemberChipColor(
+  userId: string | null | undefined,
+  memberColors: Record<string, string> | null | undefined,
+): string | undefined {
+  if (!userId || !memberColors) {
+    return undefined;
+  }
+  const raw = memberColors[userId];
+  if (!raw) {
+    return undefined;
+  }
+  const normalized = normalizeColor(raw, "");
+  return normalized || undefined;
+}
+
 export function defaultMemberColors(
   members: CalendarColorMember[],
   existing?: Record<string, string>,

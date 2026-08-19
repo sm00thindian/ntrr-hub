@@ -86,19 +86,22 @@ export function ReliantSmsReminderChip({ className }: { className?: string }) {
 }
 
 /**
- * Who owns a task — display name only, with persona-tinted colors when known.
- * Email may appear in the hover title; persona label is not shown in the chip.
+ * Who owns a task — display name with optional member-color left border.
+ * Persona stays in the hover title only (not competing chip fills).
  */
 export function AssigneeChip({
   label,
   persona,
   email,
+  memberColor,
   unassigned,
   className,
 }: {
   label?: string | null;
   persona?: HouseholdPersona | string | null;
   email?: string | null;
+  /** Household member color (#RRGGBB) for quick recognition */
+  memberColor?: string | null;
   unassigned?: boolean;
   className?: string;
 }) {
@@ -127,19 +130,18 @@ export function AssigneeChip({
     personaKey ? HOUSEHOLD_PERSONA_LABELS[personaKey] : null,
   ].filter(Boolean);
 
+  const accent =
+    memberColor && /^#[0-9A-Fa-f]{6}$/.test(memberColor) ? memberColor : undefined;
+
   return (
     <span
       title={titleParts.length ? titleParts.join(" · ") : displayLabel}
       className={cn(
         "inline-flex max-w-full items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground",
-        personaKey === "self_advocate" &&
-          "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
-        personaKey === "care_partner" &&
-          "bg-sky-50 text-sky-900 dark:bg-sky-950 dark:text-sky-100",
-        personaKey === "coordinator" &&
-          "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100",
+        accent && "border-l-[3px] pl-[calc(0.5rem-1px)]",
         className,
       )}
+      style={accent ? { borderLeftColor: accent } : undefined}
     >
       <span className="truncate">{displayLabel}</span>
     </span>

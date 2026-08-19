@@ -11,8 +11,10 @@ import { PageHeader } from "@/components/layout/page-header";
 
 import { getNeedsAttention } from "@/lib/dashboard/needs-attention-queries";
 import { getMyDayAgenda, isMyDayPersona } from "@/lib/dashboard/my-day";
+import { defaultMemberColors } from "@/lib/calendar/colors";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
-import { getUserMembership } from "@/lib/households/queries";
+import { memberDisplayLabel } from "@/lib/households/member-label";
+import { getHouseholdMembers, getUserMembership } from "@/lib/households/queries";
 import { getHouseholdSetupStatus } from "@/lib/households/setup";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import {
@@ -91,7 +93,7 @@ export default async function DashboardPage() {
   // —— Coordinator / care partner / other: Focus = household day board ——
   // Shared calendars + Hub tasks in one card; sync lives in the app footer.
   const canSync = canManageIntegrations(membership.role);
-  const [attention, setupStatus] = await Promise.all([
+  const [attention, setupStatus, members] = await Promise.all([
     getNeedsAttention(membership.householdId, timeZone, 6, user.id).catch(() => ({
       today: [],
       tomorrow: [],
@@ -103,7 +105,16 @@ export default async function DashboardPage() {
       completedCount: 0,
       totalCount: 0,
     })),
+    getHouseholdMembers(membership.householdId).catch(() => []),
   ]);
+
+  const memberColors = defaultMemberColors(
+    members.map((member) => ({
+      userId: member.userId,
+      label: memberDisplayLabel(member.email, member.displayName),
+    })),
+    calendarSettings.memberColors,
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -131,6 +142,7 @@ export default async function DashboardPage() {
           tomorrowOverflow={attention.tomorrowOverflow}
           timeZone={timeZone}
           canCompleteTasks={canComplete}
+          memberColors={memberColors}
         />
         <AiHighlightsPanel
           householdId={membership.householdId}

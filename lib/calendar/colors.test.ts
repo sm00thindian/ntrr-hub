@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildLegendEntries, type CalendarColorContext } from "@/lib/calendar/colors";
+import {
+  buildLegendEntries,
+  resolveMemberChipColor,
+  type CalendarColorContext,
+} from "@/lib/calendar/colors";
 
 function context(partial?: Partial<CalendarColorContext>): CalendarColorContext {
   return {
@@ -23,6 +27,26 @@ function context(partial?: Partial<CalendarColorContext>): CalendarColorContext 
     ...partial,
   };
 }
+
+describe("resolveMemberChipColor", () => {
+  it("returns normalized color for a known member", () => {
+    assert.equal(
+      resolveMemberChipColor("noah", { noah: "#1E88E5", coord: "#00C853" }),
+      "#1E88E5",
+    );
+  });
+
+  it("returns undefined for unassigned or unknown members", () => {
+    assert.equal(resolveMemberChipColor(null, { noah: "#1E88E5" }), undefined);
+    assert.equal(resolveMemberChipColor("missing", { noah: "#1E88E5" }), undefined);
+    assert.equal(resolveMemberChipColor("noah", undefined), undefined);
+  });
+
+  it("rejects invalid hex values", () => {
+    assert.equal(resolveMemberChipColor("noah", { noah: "blue" }), undefined);
+    assert.equal(resolveMemberChipColor("noah", { noah: "#fff" }), undefined);
+  });
+});
 
 describe("buildLegendEntries", () => {
   it("includes every household member, even without a calendar or tasks", () => {

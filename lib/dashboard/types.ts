@@ -21,6 +21,8 @@ export type AgendaItem = {
   reliantSmsReminderRequested?: boolean;
   /** Underlying DB id (task uuid or event uuid) for actions */
   entityId?: string;
+  /** Task assignee user id (for member color chips) */
+  assigneeId?: string | null;
   /** Task assignee short label (for multi-person households) */
   assigneeLabel?: string | null;
   /** Task assignee care persona */

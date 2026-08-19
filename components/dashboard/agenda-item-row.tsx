@@ -2,6 +2,7 @@ import { Calendar, ListTodo, MapPin } from "lucide-react";
 
 import { ItemMetaTags } from "@/components/dashboard/item-meta-tags";
 import { ReliantConfirmChip, ReliantSmsReminderChip } from "@/components/family/role-badge";
+import { resolveMemberChipColor } from "@/lib/calendar/colors";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import { formatTimeInZone, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
@@ -26,7 +27,15 @@ function formatRange(start: string, end: string | undefined, timeZone: string, a
   return `${startLabel} – ${endLabel}`;
 }
 
-export function AgendaItemRow({ item, timeZone }: { item: AgendaItem; timeZone?: string }) {
+export function AgendaItemRow({
+  item,
+  timeZone,
+  memberColors = {},
+}: {
+  item: AgendaItem;
+  timeZone?: string;
+  memberColors?: Record<string, string>;
+}) {
   const zone = resolveHouseholdTimeZone(timeZone);
   const Icon = item.kind === "event" ? Calendar : ListTodo;
   const isTask = item.kind === "task";
@@ -74,6 +83,7 @@ export function AgendaItemRow({ item, timeZone }: { item: AgendaItem; timeZone?:
           showAssignee={isTask}
           assigneeLabel={item.assigneeLabel}
           assigneePersona={item.assigneePersona}
+          memberColor={resolveMemberChipColor(item.assigneeId, memberColors)}
           className="self-start sm:pt-0.5"
         />
       </div>

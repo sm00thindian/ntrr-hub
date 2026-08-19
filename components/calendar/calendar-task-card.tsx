@@ -3,6 +3,7 @@ import { ListTodo } from "lucide-react";
 
 import { AssigneeChip } from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
+import { resolveMemberChipColor } from "@/lib/calendar/colors";
 import type { CalendarTask } from "@/lib/calendar/types";
 import {
   formatTimeInZone,
@@ -15,11 +16,13 @@ export function CalendarTaskCard({
   task,
   timeZone,
   showAssignee = true,
+  memberColors = {},
 }: {
   task: CalendarTask;
   timeZone?: string;
   /** Coordinators/care partners: show who the task is for */
   showAssignee?: boolean;
+  memberColors?: Record<string, string>;
 }) {
   const zone = resolveHouseholdTimeZone(timeZone);
   const hasTime = !isMidnightInZone(task.dueAt, zone);
@@ -45,6 +48,7 @@ export function CalendarTaskCard({
               <AssigneeChip
                 label={task.assigneeLabel}
                 persona={task.assigneePersona}
+                memberColor={resolveMemberChipColor(task.assigneeId, memberColors)}
                 unassigned={!task.assigneeId}
               />
             </div>

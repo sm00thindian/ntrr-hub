@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { TaskBoard } from "@/components/tasks/task-board";
+import { defaultMemberColors } from "@/lib/calendar/colors";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
+import { memberDisplayLabel } from "@/lib/households/member-label";
 import { getHouseholdMembers } from "@/lib/households/queries";
 import {
   getZonedDayBounds,
@@ -55,6 +57,13 @@ export default async function TasksPage() {
   });
 
   const timeZoneLabel = householdTimeZoneLabel(timeZone);
+  const memberColors = defaultMemberColors(
+    members.map((member) => ({
+      userId: member.userId,
+      label: memberDisplayLabel(member.email, member.displayName),
+    })),
+    calendarSettings.memberColors,
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -75,6 +84,7 @@ export default async function TasksPage() {
         sections={sections}
         templates={templates}
         members={members}
+        memberColors={memberColors}
         canEdit={canEdit}
         canComplete={canComplete}
         timeZone={timeZone}

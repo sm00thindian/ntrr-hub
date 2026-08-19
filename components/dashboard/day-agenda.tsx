@@ -28,7 +28,15 @@ function sortAgendaItems(items: AgendaItem[]) {
   });
 }
 
-export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?: string }) {
+export function DayAgenda({
+  items,
+  timeZone,
+  memberColors = {},
+}: {
+  items: AgendaItem[];
+  timeZone?: string;
+  memberColors?: Record<string, string>;
+}) {
   const sorted = sortAgendaItems(items);
   const eventCount = sorted.filter((item) => item.kind === "event").length;
   const taskCount = sorted.filter((item) => item.kind === "task").length;
@@ -60,7 +68,12 @@ export function DayAgenda({ items, timeZone }: { items: AgendaItem[]; timeZone?:
         {sorted.length ? (
           <ul className="space-y-2">
             {sorted.map((item) => (
-              <AgendaItemRow key={item.id} item={item} timeZone={timeZone} />
+              <AgendaItemRow
+                key={item.id}
+                item={item}
+                timeZone={timeZone}
+                memberColors={memberColors}
+              />
             ))}
           </ul>
         ) : (
