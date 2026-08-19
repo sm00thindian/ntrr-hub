@@ -1,4 +1,6 @@
 import {
+  CALENDAR_COLOR_PALETTE,
+  type AppleCalendarAssignment,
   type CalendarColorContext,
   type CalendarColorMember,
   type HouseholdCalendarSettings,
@@ -7,6 +9,7 @@ import {
 } from "@/lib/calendar/colors";
 import {
   type CalendarVisibilityOptions,
+  appleCalendarKey,
   normalizeGoogleCalendarAssignments,
 } from "@/lib/calendar/visibility";
 import {
@@ -15,6 +18,7 @@ import {
   resolveGooglePrimaryCalendarId,
 } from "@/lib/integrations/google/calendars";
 import {
+  getAllConnectedAppleIntegrationsAdmin,
   getAllConnectedGoogleIntegrationsAdmin,
   getConnectedGoogleIntegrationAdminForUser,
 } from "@/lib/integrations/queries";
@@ -138,11 +142,13 @@ export async function saveHouseholdCalendarSettings(
 
 export async function buildCalendarColorContext(
   householdId: string,
+  viewerUserId: string,
 ): Promise<CalendarColorContext> {
-  const [members, settings, googleAccounts] = await Promise.all([
+  const [members, settings, googleAccounts, appleAccounts] = await Promise.all([
     getHouseholdMembers(householdId),
     getHouseholdCalendarSettings(householdId),
     getAllConnectedGoogleIntegrationsAdmin(householdId),
+    getAllConnectedAppleIntegrationsAdmin(householdId),
   ]);
 
   const colorMembers: CalendarColorMember[] = members.map((member) => ({
@@ -150,7 +156,7 @@ export async function buildCalendarColorContext(
     label: memberLabel(member.email, member.displayName),
   }));
 
-  const selectedCalendarIds = [
+  const googleSelectedIds = [
     ...new Set(googleAccounts.flatMap((account) => getSelectedGoogleCalendarIds(account))),
   ];
 
@@ -159,25 +165,45 @@ export async function buildCalendarColorContext(
     googleAccounts[0]?.createdBy ?? colorMembers[0]?.userId ?? "";
 
   const googleCalendars = defaultCalendarAssignments(
-    selectedCalendarIds,
+    googleSelectedIds,
     colorMembers,
     defaultMemberUserId,
     settings.googleCalendars,
   );
 
+  const appleCalendars: Record<string, AppleCalendarAssignment> = {
+    ...(settings.appleCalendars ?? {}),
+  };
+  const appleIds: string[] = [];
   const calendarNames: Record<string, string> = {};
+
   for (const googleAccount of googleAccounts) {
     for (const calendar of googleAccount.metadata.google?.calendars ?? []) {
       calendarNames[calendar.id] = calendar.summary;
     }
   }
 
+  appleAccounts.forEach((account, index) => {
+    const key = appleCalendarKey(account.id);
+    appleIds.push(key);
+    const existing = appleCalendars[key];
+    appleCalendars[key] = {
+      memberUserId: existing?.memberUserId ?? account.createdBy,
+      color: existing?.color ?? CALENDAR_COLOR_PALETTE[index % CALENDAR_COLOR_PALETTE.length]!,
+      visibility: existing?.visibility ?? "household",
+    };
+    const appleName = account.metadata.apple?.caldav?.calendarName?.trim();
+    calendarNames[key] = appleName && appleName.length > 0 ? appleName : "Apple Calendar";
+  });
+
   return {
     memberColors,
     googleCalendars,
+    appleCalendars,
     members: colorMembers,
-    selectedCalendarIds,
+    selectedCalendarIds: [...googleSelectedIds, ...appleIds],
     calendarNames,
+    viewerUserId,
   };
 }
 

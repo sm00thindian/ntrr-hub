@@ -56,9 +56,26 @@ export type CalendarColorMember = {
 export type CalendarColorContext = {
   memberColors: Record<string, string>;
   googleCalendars: Record<string, GoogleCalendarAssignment>;
+  appleCalendars: Record<string, AppleCalendarAssignment>;
   members: CalendarColorMember[];
+  /** Active Google calendar ids + `apple:{integrationId}` keys for coloring / legend */
   selectedCalendarIds: string[];
   calendarNames: Record<string, string>;
+  /** Current viewer — personal calendars nest only under this member in the legend */
+  viewerUserId: string;
+};
+
+export type LegendCalendar = {
+  calendarId: string;
+  name: string;
+  color: string;
+  visibility: CalendarVisibility;
+};
+
+export type LegendMemberEntry = {
+  member: CalendarColorMember;
+  color: string;
+  calendars: LegendCalendar[];
 };
 
 export type ResolvedEntryColors = {
@@ -121,34 +138,68 @@ export function defaultCalendarAssignments(
   return assignments;
 }
 
+export function resolveSourceAssignment(
+  calendarId: string,
+  context: Pick<CalendarColorContext, "googleCalendars" | "appleCalendars">,
+): GoogleCalendarAssignment | AppleCalendarAssignment | undefined {
+  if (calendarId.startsWith("apple:")) {
+    return context.appleCalendars[calendarId];
+  }
+  return context.googleCalendars[calendarId];
+}
+
 export function memberCalendarCount(
   memberUserId: string,
   selectedCalendarIds: string[],
-  assignments: Record<string, GoogleCalendarAssignment>,
+  context: Pick<CalendarColorContext, "googleCalendars" | "appleCalendars">,
 ) {
-  return selectedCalendarIds.filter(
-    (calendarId) => assignments[calendarId]?.memberUserId === memberUserId,
-  ).length;
+  return selectedCalendarIds.filter((calendarId) => {
+    const assignment = resolveSourceAssignment(calendarId, context);
+    return assignment?.memberUserId === memberUserId;
+  }).length;
 }
 
-export function buildLegendEntries(context: CalendarColorContext) {
-  return context.members
-    .map((member) => ({
+/**
+ * Legend: every household member with their primary color (tasks + identity),
+ * whether or not they have items this week.
+ *
+ * Nested under each person:
+ * - household-shared calendars assigned to them
+ * - the viewer's own personal calendars (only under the viewer)
+ */
+export function buildLegendEntries(context: CalendarColorContext): LegendMemberEntry[] {
+  return context.members.map((member) => {
+    const calendars: LegendCalendar[] = [];
+
+    for (const calendarId of context.selectedCalendarIds) {
+      const assignment = resolveSourceAssignment(calendarId, context);
+      if (!assignment || assignment.memberUserId !== member.userId) {
+        continue;
+      }
+
+      const visibility =
+        assignment.visibility === "personal" ? ("personal" as const) : ("household" as const);
+
+      // Other people's personal calendars stay off the legend (viewer can't see them)
+      if (visibility === "personal" && member.userId !== context.viewerUserId) {
+        continue;
+      }
+
+      calendars.push({
+        calendarId,
+        name: context.calendarNames[calendarId] ?? "Calendar",
+        color: normalizeColor(assignment.color ?? UNASSIGNED_COLOR, UNASSIGNED_COLOR),
+        visibility,
+      });
+    }
+
+    return {
       member,
       color: normalizeColor(
         context.memberColors[member.userId] ?? UNASSIGNED_COLOR,
         UNASSIGNED_COLOR,
       ),
-      calendars: context.selectedCalendarIds
-        .filter((calendarId) => context.googleCalendars[calendarId]?.memberUserId === member.userId)
-        .map((calendarId) => ({
-          calendarId,
-          name: context.calendarNames[calendarId] ?? "Calendar",
-          color: normalizeColor(
-            context.googleCalendars[calendarId]?.color ?? UNASSIGNED_COLOR,
-            UNASSIGNED_COLOR,
-          ),
-        })),
-    }))
-    .filter((entry) => entry.calendars.length > 0);
+      calendars,
+    };
+  });
 }

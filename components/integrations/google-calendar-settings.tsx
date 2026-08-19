@@ -228,7 +228,10 @@ export function GoogleCalendarSettings({
             const showCalendarColor =
               checked &&
               memberId &&
-              memberCalendarCount(memberId, selectedIds, assignments) > 1;
+              memberCalendarCount(memberId, selectedIds, {
+                googleCalendars: assignments,
+                appleCalendars: {},
+              }) > 1;
 
             return (
               <li

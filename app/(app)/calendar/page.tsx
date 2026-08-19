@@ -54,7 +54,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
       getTasksDueInRange(ctx.householdId, bounds.rangeStart, bounds.rangeEnd),
       getAllConnectedGoogleIntegrationsAdmin(ctx.householdId),
       getAllConnectedAppleIntegrationsAdmin(ctx.householdId),
-      buildCalendarColorContext(ctx.householdId),
+      buildCalendarColorContext(ctx.householdId, ctx.userId),
       getCalendarVisibilityContext(ctx.householdId),
     ]);
 

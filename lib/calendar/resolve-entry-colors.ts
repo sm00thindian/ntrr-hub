@@ -7,6 +7,7 @@ import {
   UNASSIGNED_COLOR,
   memberCalendarCount,
   normalizeColor,
+  resolveSourceAssignment,
 } from "./colors";
 
 export function resolveEventColors(
@@ -14,7 +15,7 @@ export function resolveEventColors(
   context: CalendarColorContext,
 ): ResolvedEntryColors {
   const calendarId = event.provenance.calendarId ?? "primary";
-  const assignment = context.googleCalendars[calendarId];
+  const assignment = resolveSourceAssignment(calendarId, context);
   const memberUserId = assignment?.memberUserId;
   const member = context.members.find((entry) => entry.userId === memberUserId);
   const memberColor = memberUserId
@@ -25,7 +26,7 @@ export function resolveEventColors(
     : UNASSIGNED_COLOR;
 
   const showCalendarAccent = memberUserId
-    ? memberCalendarCount(memberUserId, context.selectedCalendarIds, context.googleCalendars) > 1
+    ? memberCalendarCount(memberUserId, context.selectedCalendarIds, context) > 1
     : false;
 
   return {

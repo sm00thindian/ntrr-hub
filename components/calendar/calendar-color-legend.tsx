@@ -5,6 +5,7 @@ import { buildLegendEntries } from "@/lib/calendar/colors";
 
 export function CalendarColorLegend({ context }: { context: CalendarColorContext }) {
   const entries = buildLegendEntries(context);
+  const hasNestedCalendars = entries.some((entry) => entry.calendars.length > 0);
   const hasMultipleCalendars = entries.some((entry) => entry.calendars.length > 1);
 
   if (!entries.length) {
@@ -37,7 +38,7 @@ export function CalendarColorLegend({ context }: { context: CalendarColorContext
               <span className="font-medium">{entry.member.label}</span>
             </div>
 
-            {entry.calendars.length > 1 ? (
+            {entry.calendars.length > 0 ? (
               <ul className="text-muted-foreground space-y-1 pl-5 text-xs">
                 {entry.calendars.map((calendar) => (
                   <li key={calendar.calendarId} className="flex items-center gap-2">
@@ -51,7 +52,10 @@ export function CalendarColorLegend({ context }: { context: CalendarColorContext
                         style={{ backgroundColor: calendar.color }}
                       />
                     </span>
-                    <span className="truncate">{calendar.name}</span>
+                    <span className="truncate">
+                      {calendar.name}
+                      {calendar.visibility === "personal" ? " (personal)" : ""}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -62,12 +66,19 @@ export function CalendarColorLegend({ context }: { context: CalendarColorContext
 
       {hasMultipleCalendars ? (
         <p className="text-muted-foreground text-[11px] leading-relaxed">
-          Each event shows a member color bar. When someone has multiple calendars, a second accent
-          bar distinguishes which calendar it came from.
+          Each person has a primary color for tasks and events. Shared calendars and your personal
+          calendars nest underneath; a second accent bar distinguishes which calendar an event came
+          from when someone has more than one.
+        </p>
+      ) : hasNestedCalendars ? (
+        <p className="text-muted-foreground text-[11px] leading-relaxed">
+          Each person has a primary color for tasks and events. Shared family calendars and your
+          personal calendars are listed under the person they belong to.
         </p>
       ) : (
         <p className="text-muted-foreground text-[11px] leading-relaxed">
-          Each event is marked with its family member&apos;s color.
+          Each person has a primary color for assigned tasks. Connect calendars in Settings to see
+          shared and personal calendars here too.
         </p>
       )}
     </div>
