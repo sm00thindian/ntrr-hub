@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
-import type { ReliantBridgeState } from "@/lib/reliant/bridge";
+import type { ReliantBridgeState } from "@/lib/reliant/constants";
 import type { TaskBoardSections } from "@/lib/tasks/queries";
 import type { RecurringTaskTemplate, Task } from "@/lib/tasks/types";
 import { KANBAN_STATUSES, TASK_STATUS_LABELS } from "@/lib/tasks/types";

@@ -9,7 +9,7 @@ import {
   connectHouseholdReliant,
   disconnectHouseholdReliant,
 } from "@/lib/reliant/actions";
-import { RELIANT_SMS_URL, RELIANT_URL } from "@/lib/reliant/bridge";
+import { RELIANT_SMS_URL, RELIANT_URL } from "@/lib/reliant/constants";
 
 const APEX_URL = "https://ntrr.com";
 

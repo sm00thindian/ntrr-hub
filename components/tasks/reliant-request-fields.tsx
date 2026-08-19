@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import type { ReliantBridgeState } from "@/lib/reliant/bridge";
-import { RELIANT_SMS_URL, RELIANT_URL } from "@/lib/reliant/bridge";
+import { RELIANT_SMS_URL, RELIANT_URL, type ReliantBridgeState } from "@/lib/reliant/constants";
 
 export type ReliantRequestFieldsProps = {
   bridge: ReliantBridgeState;

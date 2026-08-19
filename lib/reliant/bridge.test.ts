@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { isReliantBridgeEnabled, reliantIntentNotAllowedMessage } from "@/lib/reliant/bridge";
+import { isReliantBridgeEnabled, reliantIntentNotAllowedMessage } from "@/lib/reliant/constants";
 
 describe("isReliantBridgeEnabled", () => {
   it("is false when unset", () => {

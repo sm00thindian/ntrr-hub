@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireHouseholdContext } from "@/lib/households/context";
 import { canManageIntegrations } from "@/lib/permissions/roles";
-import { isReliantBridgeEnabled } from "@/lib/reliant/bridge";
+import { isReliantBridgeEnabled } from "@/lib/reliant/constants";
 import { createClient } from "@/lib/supabase/server";
 
 export async function connectHouseholdReliant() {

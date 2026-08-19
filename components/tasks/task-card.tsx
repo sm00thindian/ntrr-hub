@@ -19,7 +19,7 @@ import {
 } from "@/lib/datetime/timezone";
 import type { HouseholdMember } from "@/lib/households/queries";
 import { resolveAssigneeDisplay } from "@/lib/households/member-label";
-import type { ReliantBridgeState } from "@/lib/reliant/bridge";
+import type { ReliantBridgeState } from "@/lib/reliant/constants";
 import {
   deleteRecurringSeries,
   pauseTask,

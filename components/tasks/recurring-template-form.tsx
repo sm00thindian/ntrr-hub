@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
-import type { ReliantBridgeState } from "@/lib/reliant/bridge";
+import type { ReliantBridgeState } from "@/lib/reliant/constants";
 import { createRecurringTemplate } from "@/lib/tasks/actions";
 import { cn } from "@/lib/utils";
 

@@ -1,21 +1,18 @@
+import "server-only";
+
+import {
+  isReliantBridgeEnabled,
+  type ReliantBridgeState,
+} from "@/lib/reliant/constants";
 import { createClient } from "@/lib/supabase/server";
 
-export const RELIANT_URL = "https://reliant.ntrr.com";
-export const RELIANT_SMS_URL = "https://reliant.ntrr.com/sms";
-
-export type ReliantBridgeState = {
-  /** Master ENV gate — when false, hide all Reliant request UI */
-  enabled: boolean;
-  /** Coordinator self-attest (dogfood) / later active plan */
-  coordinatorConnected: boolean;
-};
-
-/** True when Reliant phone/SMS request options may appear (ENV on). */
-export function isReliantBridgeEnabled(): boolean {
-  const raw =
-    process.env.RELIANT_BRIDGE_ENABLED ?? process.env.NEXT_PUBLIC_RELIANT_BRIDGE_ENABLED ?? "";
-  return raw === "true" || raw === "1";
-}
+export {
+  RELIANT_SMS_URL,
+  RELIANT_URL,
+  isReliantBridgeEnabled,
+  reliantIntentNotAllowedMessage,
+  type ReliantBridgeState,
+} from "@/lib/reliant/constants";
 
 export async function getReliantBridgeState(householdId: string): Promise<ReliantBridgeState> {
   const enabled = isReliantBridgeEnabled();
@@ -49,11 +46,4 @@ export async function getReliantBridgeState(householdId: string): Promise<Relian
 export async function canSetReliantIntent(householdId: string): Promise<boolean> {
   const state = await getReliantBridgeState(householdId);
   return state.enabled && state.coordinatorConnected;
-}
-
-export function reliantIntentNotAllowedMessage(state: ReliantBridgeState): string {
-  if (!state.enabled) {
-    return "Reliant phone and SMS requests are not enabled for this environment.";
-  }
-  return "Connect Reliant for this household in Settings before requesting phone confirms or SMS reminders.";
 }
