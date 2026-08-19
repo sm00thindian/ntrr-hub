@@ -17,6 +17,8 @@ export type AgendaItem = {
   href?: string;
   /** Task/event requests Reliant phone confirmation */
   reliantConfirmRequested?: boolean;
+  /** Task requests Reliant SMS reminder */
+  reliantSmsReminderRequested?: boolean;
   /** Underlying DB id (task uuid or event uuid) for actions */
   entityId?: string;
   /** Task assignee short label (for multi-person households) */

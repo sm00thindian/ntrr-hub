@@ -2,18 +2,21 @@
 
 import { useState, useTransition } from "react";
 
+import { ReliantRequestFields } from "@/components/tasks/reliant-request-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
+import type { ReliantBridgeState } from "@/lib/reliant/bridge";
 import { createRecurringTemplate } from "@/lib/tasks/actions";
 import { cn } from "@/lib/utils";
 
 type RecurringTemplateFormProps = {
   members: HouseholdMember[];
   timeZoneLabel: string;
+  reliantBridge: ReliantBridgeState;
   onCreated?: () => void;
 };
 
@@ -38,6 +41,7 @@ const TIME_PRESETS = [
 export function RecurringTemplateForm({
   members,
   timeZoneLabel,
+  reliantBridge,
   onCreated,
 }: RecurringTemplateFormProps) {
   const [cadence, setCadence] = useState("weekly");
@@ -204,26 +208,8 @@ export function RecurringTemplateForm({
             </p>
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">
-              <input
-                type="checkbox"
-                name="reliantConfirmRequested"
-                value="true"
-                className="mt-0.5 size-4 shrink-0 rounded border-input"
-              />
-              <span>
-                <span className="font-medium text-foreground">
-                  Request Reliant phone confirmation
-                </span>
-                <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
-                  Each instance uses the coordinator&apos;s Reliant account. Reliant calls the
-                  assignee or care focus (self-advocate) mobile until they confirm — call target ≠
-                  account holder.
-                </span>
-              </span>
-            </label>
-          </div>
+          <ReliantRequestFields bridge={reliantBridge} compact />
+
           <div className="sm:col-span-2">
             <Button type="submit" variant="outline" disabled={pending}>
               {pending ? "Creating…" : "Create recurring task"}

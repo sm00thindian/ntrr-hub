@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { ReliantConfirmChip, ReliantSmsReminderChip } from "@/components/family/role-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AgendaItem } from "@/lib/dashboard/types";
@@ -69,6 +69,7 @@ export function PrioritiesPanel({
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate text-sm font-medium">{item.title}</p>
                       {item.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
+                      {item.reliantSmsReminderRequested ? <ReliantSmsReminderChip /> : null}
                     </div>
                     <p className="text-muted-foreground text-xs">
                       {isTask ? "Hub task" : "From calendar"} · {timeLabel}

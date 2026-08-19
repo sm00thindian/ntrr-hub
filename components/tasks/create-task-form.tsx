@@ -3,12 +3,14 @@
 import { useState, useTransition } from "react";
 
 import { DueDateTimeField } from "@/components/tasks/due-datetime-field";
+import { ReliantRequestFields } from "@/components/tasks/reliant-request-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
+import type { ReliantBridgeState } from "@/lib/reliant/bridge";
 import { createTask } from "@/lib/tasks/actions";
 
 type CreateTaskFormProps = {
@@ -17,6 +19,7 @@ type CreateTaskFormProps = {
   timeZoneLabel: string;
   /** Pre-select assignee (e.g. self for My day mode) */
   defaultAssigneeId?: string;
+  reliantBridge: ReliantBridgeState;
   onCreated?: () => void;
 };
 
@@ -25,6 +28,7 @@ export function CreateTaskForm({
   timeZone,
   timeZoneLabel,
   defaultAssigneeId = "",
+  reliantBridge,
   onCreated,
 }: CreateTaskFormProps) {
   const [error, setError] = useState<string | null>(null);
@@ -84,24 +88,8 @@ export function CreateTaskForm({
 
           <DueDateTimeField timeZone={timeZone} timeZoneLabel={timeZoneLabel} />
 
-          <div className="sm:col-span-2">
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 px-3 py-3 text-sm">
-              <input
-                type="checkbox"
-                name="reliantConfirmRequested"
-                value="true"
-                className="mt-0.5 size-4 shrink-0 rounded border-input"
-              />
-              <span>
-                <span className="font-medium text-foreground">Request Reliant phone confirmation</span>
-                <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
-                  Uses the household coordinator&apos;s Reliant account (billing). Reliant calls the
-                  assignee or self-advocate&apos;s mobile until they confirm completion — they do not
-                  need their own Reliant subscription.
-                </span>
-              </span>
-            </label>
-          </div>
+          <ReliantRequestFields bridge={reliantBridge} />
+
           <div className="sm:col-span-2">
             <Button type="submit" disabled={pending}>
               {pending ? "Adding…" : "Add task"}

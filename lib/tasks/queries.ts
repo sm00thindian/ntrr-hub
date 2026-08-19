@@ -24,6 +24,7 @@ function mapTask(
     assignee_id: string | null;
     due_at: string | null;
     reliant_confirm_requested?: boolean | null;
+    reliant_sms_reminder_requested?: boolean | null;
     provenance: Provenance;
     recurring_template_id: string | null;
     created_by: string;
@@ -37,10 +38,12 @@ function mapTask(
   },
 ): Task {
   const reliantConfirmRequested = Boolean(row.reliant_confirm_requested);
+  const reliantSmsReminderRequested = Boolean(row.reliant_sms_reminder_requested);
   const source = displayProvenanceSource(row.provenance, {
     provenance: row.provenance,
     assignee_id: row.assignee_id,
     reliant_confirm_requested: reliantConfirmRequested,
+    reliant_sms_reminder_requested: reliantSmsReminderRequested,
     recurring_template_id: row.recurring_template_id,
   });
 
@@ -56,6 +59,7 @@ function mapTask(
     assigneePersona: assignee.persona,
     dueAt: row.due_at,
     reliantConfirmRequested,
+    reliantSmsReminderRequested,
     provenance: {
       ...row.provenance,
       source,
@@ -356,6 +360,7 @@ export async function getRecurringTemplates(householdId: string): Promise<Recurr
       day_of_month: number | null;
       due_time?: string | null;
       reliant_confirm_requested?: boolean | null;
+      reliant_sms_reminder_requested?: boolean | null;
       is_active: boolean;
       created_at: string;
     };
@@ -370,6 +375,7 @@ export async function getRecurringTemplates(householdId: string): Promise<Recurr
       dayOfMonth: template.day_of_month,
       dueTime: template.due_time ?? null,
       reliantConfirmRequested: Boolean(template.reliant_confirm_requested),
+      reliantSmsReminderRequested: Boolean(template.reliant_sms_reminder_requested),
       isActive: template.is_active,
       createdAt: template.created_at,
     };

@@ -139,7 +139,7 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
       const { data: localTask } = await admin
         .from("tasks")
         .select(
-          "title, status, due_at, updated_at, provenance, assignee_id, reliant_confirm_requested, recurring_template_id",
+          "title, status, due_at, updated_at, provenance, assignee_id, reliant_confirm_requested, reliant_sms_reminder_requested, recurring_template_id",
         )
         .eq("id", mapping.ntrr_id)
         .maybeSingle();
@@ -152,6 +152,7 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
         provenance?: Provenance;
         assignee_id?: string | null;
         reliant_confirm_requested?: boolean | null;
+        reliant_sms_reminder_requested?: boolean | null;
         recurring_template_id?: string | null;
       } | null;
 
@@ -195,6 +196,7 @@ export async function pullGoogleTasks(account: IntegrationAccount) {
         provenance: existing,
         assignee_id: local?.assignee_id,
         reliant_confirm_requested: local?.reliant_confirm_requested,
+        reliant_sms_reminder_requested: local?.reliant_sms_reminder_requested,
         recurring_template_id: local?.recurring_template_id,
       });
 
@@ -351,13 +353,16 @@ export async function pushGoogleTask(
       // Hub edits push outbound — restore origin chip if a past bug rewrote it to Google.
       const { data: localTask } = await admin
         .from("tasks")
-        .select("provenance, assignee_id, reliant_confirm_requested, recurring_template_id")
+        .select(
+          "provenance, assignee_id, reliant_confirm_requested, reliant_sms_reminder_requested, recurring_template_id",
+        )
         .eq("id", entry.entityId)
         .maybeSingle();
       const row = localTask as {
         provenance?: Provenance;
         assignee_id?: string | null;
         reliant_confirm_requested?: boolean | null;
+        reliant_sms_reminder_requested?: boolean | null;
         recurring_template_id?: string | null;
       } | null;
       if (row) {

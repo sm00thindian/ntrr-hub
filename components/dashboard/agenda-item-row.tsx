@@ -1,7 +1,7 @@
 import { Calendar, ListTodo, MapPin } from "lucide-react";
 
 import { ItemMetaTags } from "@/components/dashboard/item-meta-tags";
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { ReliantConfirmChip, ReliantSmsReminderChip } from "@/components/family/role-badge";
 import type { AgendaItem } from "@/lib/dashboard/types";
 import { formatTimeInZone, resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 import { TASK_STATUS_LABELS } from "@/lib/tasks/types";
@@ -47,6 +47,7 @@ export function AgendaItemRow({ item, timeZone }: { item: AgendaItem; timeZone?:
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <p className="truncate text-sm font-medium">{item.title}</p>
             {item.reliantConfirmRequested ? <ReliantConfirmChip /> : null}
+            {item.reliantSmsReminderRequested ? <ReliantSmsReminderChip /> : null}
             {item.status ? (
               <span className="text-muted-foreground text-xs">
                 {TASK_STATUS_LABELS[item.status]}

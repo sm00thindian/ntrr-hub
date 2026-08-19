@@ -141,15 +141,16 @@ Then hard refresh the browser (`Cmd+Shift+R`).
 
 Until then: Hub checkbox = **intent only** (see [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md)).
 
-### Later — Reliant SMS reminders (optional)
+### Reliant SMS reminders (Hub intent shipped; Reliant send later)
 
-Soft text nudges on tasks/templates (e.g. due − 1h), **after** live voice confirm jobs exist.
+Soft text nudges on tasks/templates. **May ship ahead of live voice** (dogfood asked for SMS). Hub stores intent; Reliant sends only to SMS-opted-in numbers under the existing A2P campaign.
 
 | Principle | Detail |
 |-----------|--------|
 | Boundary | Hub = intent only; **Reliant** sends SMS (not Hub → Twilio) |
-| Target | Assignee / focus mobile on Hub (`phone_e164`) |
+| Gate | `RELIANT_BRIDGE_ENABLED` + household `reliant_connected_at` (coordinator Settings self-attest; later active plan) |
+| Target | Assignee / focus mobile on Hub (`phone_e164`) **with Reliant SMS opt-in** |
 | Billing | Coordinator Reliant / bundle entitlement; quiet hours + daily caps |
-| UX | Optional per task or recurring default; opt-in; not a replacement for phone confirm |
+| UX | Independent of phone confirm; checkbox on task + recurring template when bridge connected |
 
-See [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md) Implementation later.
+See [ROLES-AND-RELIANT.md](./ROLES-AND-RELIANT.md).

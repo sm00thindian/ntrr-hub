@@ -27,5 +27,6 @@ export type CalendarTask = {
   dueAt: string;
   status: TaskStatus;
   reliantConfirmRequested?: boolean;
+  reliantSmsReminderRequested?: boolean;
   provenance: Provenance;
 };

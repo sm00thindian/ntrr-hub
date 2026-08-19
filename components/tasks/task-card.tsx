@@ -3,7 +3,11 @@
 import { useState, useTransition } from "react";
 import { Calendar, Pencil, Trash2, User } from "lucide-react";
 
-import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
+import {
+  AssigneeChip,
+  ReliantConfirmChip,
+  ReliantSmsReminderChip,
+} from "@/components/family/role-badge";
 import { EditTaskForm } from "@/components/tasks/edit-task-form";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
@@ -15,6 +19,7 @@ import {
 } from "@/lib/datetime/timezone";
 import type { HouseholdMember } from "@/lib/households/queries";
 import { resolveAssigneeDisplay } from "@/lib/households/member-label";
+import type { ReliantBridgeState } from "@/lib/reliant/bridge";
 import {
   deleteRecurringSeries,
   pauseTask,
@@ -33,6 +38,7 @@ type TaskCardProps = {
   timeZone?: string;
   timeZoneLabel?: string;
   members?: HouseholdMember[];
+  reliantBridge: ReliantBridgeState;
   onUpdated?: () => void;
 };
 
@@ -83,6 +89,7 @@ export function TaskCard({
   timeZone,
   timeZoneLabel = "Household timezone",
   members = [],
+  reliantBridge,
   onUpdated,
 }: TaskCardProps) {
   const [pending, startTransition] = useTransition();
@@ -149,6 +156,7 @@ export function TaskCard({
                 </span>
               ) : null}
               {task.reliantConfirmRequested && !isDone ? <ReliantConfirmChip /> : null}
+              {task.reliantSmsReminderRequested && !isDone ? <ReliantSmsReminderChip /> : null}
             </div>
             {task.description ? (
               <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
@@ -356,6 +364,7 @@ export function TaskCard({
           members={members}
           timeZone={zone}
           timeZoneLabel={timeZoneLabel}
+          reliantBridge={reliantBridge}
           onClose={() => setEditing(false)}
           onSaved={onUpdated}
         />
@@ -373,6 +382,7 @@ export function KanbanColumn({
   timeZone,
   timeZoneLabel,
   members,
+  reliantBridge,
   onUpdated,
 }: {
   title: string;
@@ -383,6 +393,7 @@ export function KanbanColumn({
   timeZone?: string;
   timeZoneLabel?: string;
   members?: HouseholdMember[];
+  reliantBridge: ReliantBridgeState;
   onUpdated?: () => void;
 }) {
   const columnTasks = tasks.filter((t) => t.status === status);
@@ -403,6 +414,7 @@ export function KanbanColumn({
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
               members={members}
+              reliantBridge={reliantBridge}
               onUpdated={onUpdated}
             />
           </li>

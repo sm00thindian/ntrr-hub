@@ -52,6 +52,8 @@ export function taskLooksHubOriginated(task: {
   assignee_id?: string | null;
   reliantConfirmRequested?: boolean | null;
   reliant_confirm_requested?: boolean | null;
+  reliantSmsReminderRequested?: boolean | null;
+  reliant_sms_reminder_requested?: boolean | null;
   recurringTemplateId?: string | null;
   recurring_template_id?: string | null;
 }): boolean {
@@ -62,6 +64,9 @@ export function taskLooksHubOriginated(task: {
     return true;
   }
   if (task.reliantConfirmRequested || task.reliant_confirm_requested) {
+    return true;
+  }
+  if (task.reliantSmsReminderRequested || task.reliant_sms_reminder_requested) {
     return true;
   }
   if (task.recurringTemplateId || task.recurring_template_id) {

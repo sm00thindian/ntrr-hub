@@ -20,6 +20,8 @@ export type Task = {
   dueAt: string | null;
   /** When true, Reliant should request phone confirmation for this task */
   reliantConfirmRequested: boolean;
+  /** When true, Reliant should send a soft SMS reminder for this task */
+  reliantSmsReminderRequested: boolean;
   provenance: Provenance;
   recurringTemplateId: string | null;
   /** From linked template when known — for Daily / Weekly / Monthly chip */
@@ -42,6 +44,8 @@ export type RecurringTaskTemplate = {
   dueTime: string | null;
   /** Default Reliant phone confirmation for each spawned instance */
   reliantConfirmRequested: boolean;
+  /** Default Reliant SMS reminder for each spawned instance */
+  reliantSmsReminderRequested: boolean;
   isActive: boolean;
   createdAt: string;
 };

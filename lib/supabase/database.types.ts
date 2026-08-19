@@ -208,6 +208,8 @@ export type Database = {
           created_by: string
           id: string
           name: string
+          reliant_connected_at: string | null
+          reliant_connected_by: string | null
           updated_at: string
         }
         Insert: {
@@ -216,6 +218,8 @@ export type Database = {
           created_by: string
           id?: string
           name: string
+          reliant_connected_at?: string | null
+          reliant_connected_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -224,6 +228,8 @@ export type Database = {
           created_by?: string
           id?: string
           name?: string
+          reliant_connected_at?: string | null
+          reliant_connected_by?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -357,6 +363,7 @@ export type Database = {
           id: string
           is_active: boolean
           reliant_confirm_requested: boolean
+          reliant_sms_reminder_requested: boolean
           title: string
           updated_at: string
         }
@@ -373,6 +380,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           reliant_confirm_requested?: boolean
+          reliant_sms_reminder_requested?: boolean
           title: string
           updated_at?: string
         }
@@ -389,6 +397,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           reliant_confirm_requested?: boolean
+          reliant_sms_reminder_requested?: boolean
           title?: string
           updated_at?: string
         }
@@ -579,6 +588,7 @@ export type Database = {
           provenance: Json
           recurring_template_id: string | null
           reliant_confirm_requested: boolean
+          reliant_sms_reminder_requested: boolean
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
@@ -594,6 +604,7 @@ export type Database = {
           provenance?: Json
           recurring_template_id?: string | null
           reliant_confirm_requested?: boolean
+          reliant_sms_reminder_requested?: boolean
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
@@ -609,6 +620,7 @@ export type Database = {
           provenance?: Json
           recurring_template_id?: string | null
           reliant_confirm_requested?: boolean
+          reliant_sms_reminder_requested?: boolean
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string

@@ -106,9 +106,10 @@ Design with future **document vault** and **finance** modules in mind. Modular a
 ### NTRR sibling: Reliant
 
 - **Reliant** (`reliant.ntrr.com`) is phone-first reliability; Hub is the family board  
-- Phone confirmation of Hub tasks is an **optional tiered** bridge (or **Hub + Reliant bundle**) — see [docs/ROLES-AND-RELIANT.md](docs/ROLES-AND-RELIANT.md)  
-- **Account vs call target:** coordinator holds the **Reliant account** (billing); Reliant may **dial** a care partner or self-advocate’s Hub mobile for completion — they need a number, not their own Reliant sub  
-- Member mobiles: `profiles.phone_e164` / invite phone = call target; cross-sell in Settings/footer  
+- Phone confirmation / SMS reminders on Hub tasks are an **optional tiered** bridge (or **Hub + Reliant bundle**) — see [docs/ROLES-AND-RELIANT.md](docs/ROLES-AND-RELIANT.md)  
+- **Gate:** `RELIANT_BRIDGE_ENABLED` + household coordinator connect (Settings self-attest; later active plan)  
+- **Account vs call target:** coordinator holds the **Reliant account** (billing); Reliant may **dial/text** a care partner or self-advocate’s Hub mobile — they need a number + free Reliant account/SMS opt-in for texts, not a paid sub  
+- Member mobiles: `profiles.phone_e164` / invite phone = call/SMS target; cross-sell in Settings/footer  
 - Keep products loosely coupled; don’t merge auth stacks without Phase 6 ADR
 
 ---

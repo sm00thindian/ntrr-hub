@@ -12,6 +12,7 @@ import {
 } from "@/lib/datetime/timezone";
 import { isMyDayPersona } from "@/lib/dashboard/my-day";
 import { canCompleteOwnOrEditTasks, canEditTasks } from "@/lib/permissions/roles";
+import { getReliantBridgeState } from "@/lib/reliant/bridge";
 import {
   buildTaskBoardSections,
   getHouseholdTasks,
@@ -26,11 +27,12 @@ export default async function TasksPage() {
   const canComplete = canCompleteOwnOrEditTasks(ctx.role, ctx.persona);
   const myDayMode = isMyDayPersona(ctx.persona);
 
-  const [rawTasks, templates, members, calendarSettings] = await Promise.all([
+  const [rawTasks, templates, members, calendarSettings, reliantBridge] = await Promise.all([
     getHouseholdTasks(ctx.householdId),
     getRecurringTemplates(ctx.householdId),
     getHouseholdMembers(ctx.householdId),
     getHouseholdCalendarSettings(ctx.householdId),
+    getReliantBridgeState(ctx.householdId),
   ]);
 
   if (!members.length) {
@@ -78,6 +80,7 @@ export default async function TasksPage() {
         timeZone={timeZone}
         timeZoneLabel={timeZoneLabel}
         myDayMode={myDayMode}
+        reliantBridge={reliantBridge}
       />
     </div>
   );

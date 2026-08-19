@@ -71,6 +71,20 @@ export function ReliantConfirmChip({ className }: { className?: string }) {
   );
 }
 
+export function ReliantSmsReminderChip({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-900 dark:bg-sky-950 dark:text-sky-200",
+        className,
+      )}
+      title="SMS reminder via Reliant is requested for this item"
+    >
+      SMS
+    </span>
+  );
+}
+
 /**
  * Who owns a task — display name only, with persona-tinted colors when known.
  * Email may appear in the hover title; persona label is not shown in the chip.

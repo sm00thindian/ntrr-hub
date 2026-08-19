@@ -76,15 +76,19 @@ Coordinator’s Reliant account  ──places call──►  Caregiver or self-a
 - The person being called only needs a **reachable mobile** on the household board.  
 - A self-advocate may *also* use Reliant standalone later; that is separate from Hub-originated confirms.
 
-### Flag on items (shipped)
+### Flags on items
 
-| Table | Column |
-|-------|--------|
-| `tasks` | `reliant_confirm_requested` |
-| `calendar_events` | `reliant_confirm_requested` |
-| `recurring_task_templates` | `reliant_confirm_requested` (default for instances) |
+| Table | Column | Notes |
+|-------|--------|--------|
+| `tasks` | `reliant_confirm_requested` | Phone confirm intent |
+| `tasks` | `reliant_sms_reminder_requested` | Soft SMS reminder intent (independent) |
+| `calendar_events` | `reliant_confirm_requested` | Phone confirm (events; no SMS column yet) |
+| `recurring_task_templates` | `reliant_confirm_requested` / `reliant_sms_reminder_requested` | Defaults for instances |
+| `households` | `reliant_connected_at` / `reliant_connected_by` | Coordinator self-attest (dogfood); later active-plan |
 
-UX: checkbox on create task + recurring template; **Reliant** chip on cards.
+**Gate:** `RELIANT_BRIDGE_ENABLED` must be on **and** household Reliant connected — otherwise task forms hide both options (or show Connect CTA when ENV on). Server rejects setting either flag to true when gated off.
+
+UX: independent checkboxes on create/edit task + recurring template when connected; **Reliant** + **SMS** chips on cards. Assignees need a free Reliant account + SMS opt-in for live texts (no subscription).
 
 ### Who gets the call (routing)
 
@@ -123,7 +127,7 @@ Instrument usage during dogfood even while free.
 - Settings: “Reliant confirms used this month” for coordinator  
 - Gate live dials if coordinator has no Reliant entitlement (UI: “Connect Reliant / upgrade”)  
 
-**Optional SMS reminders (after voice path ships):** soft Reliant texts for due-soon tasks (Hub intent flag only). Same dial-target phones and coordinator metering; quiet hours + daily caps. Not Hub-owned SMS — Reliant channel next to voice confirms. Tracked in [CHECKPOINT.md](./CHECKPOINT.md) *Later — Reliant SMS reminders*.
+**SMS reminders:** Hub intent shipped (`reliant_sms_reminder_requested`). Soft Reliant texts for due-soon / still-open tasks — may go live before voice. Same coordinator metering; quiet hours + daily caps; send only if target has Reliant SMS opt-in. Not Hub-owned SMS. Tracked in [CHECKPOINT.md](./CHECKPOINT.md).
 
 Also tracked under **Open / deferred** in [CHECKPOINT.md](./CHECKPOINT.md).
 
@@ -137,7 +141,7 @@ Keep products distinct; surface each other everywhere it helps the job.
 |---------|-----------|----------------|
 | Settings | **NTRR services** + coordinator Reliant account story | Link to Hub for family board (when ready) |
 | Footer | Reliant + ntrr.com | Already “NTRR service” |
-| Tasks | Reliant confirm checkbox (coordinator-powered) | — |
+| Tasks | Reliant phone + SMS checkboxes when bridge connected (coordinator-powered) | — |
 | Apex ntrr.com | Both product cards | — |
 
 **Dogfood copy:** mark intent now; live calls + paid tiers after coordinator Reliant link + member mobiles.

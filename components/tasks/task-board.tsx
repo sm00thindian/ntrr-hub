@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
+import type { ReliantBridgeState } from "@/lib/reliant/bridge";
 import type { TaskBoardSections } from "@/lib/tasks/queries";
 import type { RecurringTaskTemplate, Task } from "@/lib/tasks/types";
 import { KANBAN_STATUSES, TASK_STATUS_LABELS } from "@/lib/tasks/types";
@@ -40,6 +41,7 @@ type TaskBoardProps = {
   timeZone: string;
   timeZoneLabel: string;
   myDayMode?: boolean;
+  reliantBridge: ReliantBridgeState;
 };
 
 function filterByAssignee(tasks: Task[], assigneeFilter: AssigneeFilterId) {
@@ -147,6 +149,7 @@ function TaskSection({
   timeZone,
   timeZoneLabel,
   members,
+  reliantBridge,
   onUpdated,
   emptyHint,
 }: {
@@ -160,6 +163,7 @@ function TaskSection({
   timeZone: string;
   timeZoneLabel: string;
   members: HouseholdMember[];
+  reliantBridge: ReliantBridgeState;
   onUpdated: () => void;
   emptyHint?: string;
 }) {
@@ -187,6 +191,7 @@ function TaskSection({
                 timeZone={timeZone}
                 timeZoneLabel={timeZoneLabel}
                 members={members}
+                reliantBridge={reliantBridge}
                 onUpdated={onUpdated}
               />
             </li>
@@ -213,6 +218,7 @@ function CollapsibleTaskSection({
   timeZone,
   timeZoneLabel,
   members,
+  reliantBridge,
   onUpdated,
 }: {
   id: string;
@@ -226,6 +232,7 @@ function CollapsibleTaskSection({
   timeZone: string;
   timeZoneLabel: string;
   members: HouseholdMember[];
+  reliantBridge: ReliantBridgeState;
   onUpdated: () => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -279,6 +286,7 @@ function CollapsibleTaskSection({
                 timeZone={timeZone}
                 timeZoneLabel={timeZoneLabel}
                 members={members}
+                reliantBridge={reliantBridge}
                 onUpdated={onUpdated}
                 compact
               />
@@ -301,6 +309,7 @@ export function TaskBoard({
   timeZone,
   timeZoneLabel,
   myDayMode = false,
+  reliantBridge,
 }: TaskBoardProps) {
   const allowComplete = canComplete ?? canEdit;
   const router = useRouter();
@@ -549,6 +558,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             defaultAssigneeId={myDayMode ? currentUserId : ""}
+            reliantBridge={reliantBridge}
             onCreated={() => {
               refresh();
               setShowAdd(false);
@@ -558,6 +568,7 @@ export function TaskBoard({
             <RecurringTemplateForm
               members={members}
               timeZoneLabel={timeZoneLabel}
+              reliantBridge={reliantBridge}
               onCreated={refresh}
             />
           ) : null}
@@ -581,6 +592,7 @@ export function TaskBoard({
               timeZone={timeZone}
               timeZoneLabel={timeZoneLabel}
               members={members}
+              reliantBridge={reliantBridge}
               onUpdated={refresh}
             />
           ))}
@@ -598,6 +610,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
           <TaskSection
@@ -610,6 +623,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            reliantBridge={reliantBridge}
             onUpdated={refresh}
             emptyHint={
               !filteredSections.overdue.length &&
@@ -631,6 +645,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
 
@@ -657,6 +672,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
 
@@ -671,6 +687,7 @@ export function TaskBoard({
             timeZone={timeZone}
             timeZoneLabel={timeZoneLabel}
             members={members}
+            reliantBridge={reliantBridge}
             onUpdated={refresh}
           />
         </div>

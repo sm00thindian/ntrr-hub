@@ -18,6 +18,7 @@ import {
   canManageIntegrations,
 } from "@/lib/permissions/roles";
 import { getProfileDisplayName, getProfilePhone } from "@/lib/profiles/actions";
+import { getReliantBridgeState } from "@/lib/reliant/bridge";
 import { resolveHouseholdTimeZone } from "@/lib/datetime/timezone";
 
 // Deferred Settings cards (do not show for dogfood):
@@ -53,13 +54,14 @@ export default async function SettingsPage({
   const params = await searchParams;
   const feedback = feedbackFromSearchParams(params);
 
-  const [googleIntegration, appleIntegration, calendarSettings, phoneE164, displayName] =
+  const [googleIntegration, appleIntegration, calendarSettings, phoneE164, displayName, reliantBridge] =
     await Promise.all([
       canConnect ? getMemberIntegration(ctx.householdId, "google", ctx.userId) : null,
       canConnect ? getMemberIntegration(ctx.householdId, "apple_caldav", ctx.userId) : null,
       getHouseholdCalendarSettings(ctx.householdId),
       getProfilePhone(ctx.userId),
       getProfileDisplayName(ctx.userId),
+      getReliantBridgeState(ctx.householdId),
     ]);
 
   let googleCalendarSettings: Awaited<ReturnType<typeof getGoogleCalendarSettingsForUi>> = null;
@@ -161,7 +163,11 @@ export default async function SettingsPage({
 
         <PhoneProfileCard phoneE164={phoneE164} displayName={displayName} />
 
-        <NtrrServicesCard />
+        <NtrrServicesCard
+          bridgeEnabled={reliantBridge.enabled}
+          coordinatorConnected={reliantBridge.coordinatorConnected}
+          canManage={canManageHousehold}
+        />
 
         {integrationsBlock}
       </div>

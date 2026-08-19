@@ -6,7 +6,11 @@ import { Calendar, Check, ListTodo, MapPin } from "lucide-react";
 
 import { useOptimisticTaskDone } from "@/components/dashboard/use-optimistic-task-done";
 import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
-import { AssigneeChip, ReliantConfirmChip } from "@/components/family/role-badge";
+import {
+  AssigneeChip,
+  ReliantConfirmChip,
+  ReliantSmsReminderChip,
+} from "@/components/family/role-badge";
 import { SourceChip } from "@/components/provenance/source-chip";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
@@ -217,6 +221,9 @@ export function NeedsAttentionPanel({
                             )}
                             {item.reliantConfirmRequested && !isDone ? (
                               <ReliantConfirmChip />
+                            ) : null}
+                            {item.reliantSmsReminderRequested && !isDone ? (
+                              <ReliantSmsReminderChip />
                             ) : null}
                             {isDone ? (
                               <span className="bg-brand/15 text-brand rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">

@@ -112,6 +112,9 @@ export async function getTasksDueInRange(
       reliantConfirmRequested: Boolean(
         (row as { reliant_confirm_requested?: boolean }).reliant_confirm_requested,
       ),
+      reliantSmsReminderRequested: Boolean(
+        (row as { reliant_sms_reminder_requested?: boolean }).reliant_sms_reminder_requested,
+      ),
       provenance: row.provenance as CalendarTask["provenance"],
     };
   });

@@ -94,6 +94,7 @@ type TemplateRow = {
   day_of_month: number | null;
   due_time: string | null;
   reliant_confirm_requested: boolean | null;
+  reliant_sms_reminder_requested: boolean | null;
   is_active: boolean;
 };
 
@@ -187,6 +188,7 @@ async function insertSpawnedTask(params: {
       due_at: params.dueAt,
       recurring_template_id: params.template.id,
       reliant_confirm_requested: Boolean(params.template.reliant_confirm_requested),
+      reliant_sms_reminder_requested: Boolean(params.template.reliant_sms_reminder_requested),
       provenance: systemProvenance(),
       created_by: params.createdBy,
     })
@@ -361,7 +363,7 @@ export async function rollForwardMissedRecurringInstances(params: {
   const { data: templates } = await admin
     .from("recurring_task_templates")
     .select(
-      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, is_active",
+      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, reliant_sms_reminder_requested, is_active",
     )
     .eq("household_id", params.householdId)
     .eq("is_active", true)
@@ -420,7 +422,7 @@ export async function spawnNextAfterCompletion(params: {
   const { data: template, error: templateError } = await admin
     .from("recurring_task_templates")
     .select(
-      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, is_active",
+      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, reliant_sms_reminder_requested, is_active",
     )
     .eq("id", params.templateId)
     .eq("household_id", params.householdId)
@@ -522,7 +524,7 @@ async function runEnsureHouseholdRecurringInstances(
   const { data: templates } = await admin
     .from("recurring_task_templates")
     .select(
-      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, is_active",
+      "id, household_id, title, description, default_assignee_id, cadence, day_of_week, day_of_month, due_time, reliant_confirm_requested, reliant_sms_reminder_requested, is_active",
     )
     .eq("household_id", householdId)
     .eq("is_active", true);

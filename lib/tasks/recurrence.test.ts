@@ -211,6 +211,7 @@ function boardTask(partial: Partial<Task> & Pick<Task, "id" | "title">): Task {
     assigneePersona: "self_advocate",
     dueAt: null,
     reliantConfirmRequested: false,
+    reliantSmsReminderRequested: false,
     provenance: {
       source: "ntrr",
       syncedAt: new Date().toISOString(),

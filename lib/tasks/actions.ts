@@ -6,6 +6,11 @@ import { after } from "next/server";
 import { getHouseholdCalendarSettings } from "@/lib/households/calendar-settings";
 import { requireHouseholdContext } from "@/lib/households/context";
 import { resolveHouseholdTimeZone, zonedWallTimeToUtcIso } from "@/lib/datetime/timezone";
+import {
+  canSetReliantIntent,
+  getReliantBridgeState,
+  reliantIntentNotAllowedMessage,
+} from "@/lib/reliant/bridge";
 import { enqueueGoogleTaskSync } from "@/lib/sync/enqueue";
 import { createClient } from "@/lib/supabase/server";
 import { canEditTasks } from "@/lib/permissions/roles";
@@ -21,6 +26,44 @@ function defaultProvenance() {
   };
 }
 
+function formFlagTrue(formData: FormData, name: string): boolean {
+  return formData.get(name) === "on" || formData.get(name) === "true";
+}
+
+/**
+ * Parse Reliant intent flags.
+ * - Turning either on requires bridge ENV + coordinator connected.
+ * - When gated off on create: force both false.
+ * - When gated off on update (`preserveWhenGated`): leave columns unchanged
+ *   so an edit without checkboxes does not wipe existing intent.
+ */
+async function parseReliantIntentFlags(
+  householdId: string,
+  formData: FormData,
+  options?: { preserveWhenGated?: boolean },
+): Promise<
+  | { ok: true; confirm: boolean; sms: boolean; apply: true }
+  | { ok: true; apply: false }
+  | { ok: false; error: string }
+> {
+  const confirm = formFlagTrue(formData, "reliantConfirmRequested");
+  const sms = formFlagTrue(formData, "reliantSmsReminderRequested");
+  const allowed = await canSetReliantIntent(householdId);
+
+  if (!allowed) {
+    if (confirm || sms) {
+      const state = await getReliantBridgeState(householdId);
+      return { ok: false, error: reliantIntentNotAllowedMessage(state) };
+    }
+    if (options?.preserveWhenGated) {
+      return { ok: true, apply: false };
+    }
+    return { ok: true, confirm: false, sms: false, apply: true };
+  }
+
+  return { ok: true, confirm, sms, apply: true };
+}
+
 export async function createTask(formData: FormData) {
   const ctx = await requireHouseholdContext();
 
@@ -32,9 +75,13 @@ export async function createTask(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim() || null;
   const assigneeId = String(formData.get("assigneeId") ?? "").trim() || null;
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
-  const reliantConfirmRequested =
-    formData.get("reliantConfirmRequested") === "on" ||
-    formData.get("reliantConfirmRequested") === "true";
+  const reliantFlags = await parseReliantIntentFlags(ctx.householdId, formData);
+  if (!reliantFlags.ok) {
+    return { error: reliantFlags.error };
+  }
+  if (!reliantFlags.apply) {
+    return { error: "Could not resolve Reliant options." };
+  }
 
   if (!title) {
     return { error: "Task title is required." };
@@ -61,7 +108,8 @@ export async function createTask(formData: FormData) {
       assignee_id: assigneeId,
       due_at: dueAt,
       status: "todo",
-      reliant_confirm_requested: reliantConfirmRequested,
+      reliant_confirm_requested: reliantFlags.confirm,
+      reliant_sms_reminder_requested: reliantFlags.sms,
       provenance: defaultProvenance(),
       created_by: ctx.userId,
     })
@@ -214,9 +262,12 @@ export async function updateTask(formData: FormData) {
   const assigneeId = String(formData.get("assigneeId") ?? "").trim() || null;
   const dueAtRaw = String(formData.get("dueAt") ?? "").trim();
   const clearDue = formData.get("clearDue") === "true" || formData.get("clearDue") === "on";
-  const reliantConfirmRequested =
-    formData.get("reliantConfirmRequested") === "on" ||
-    formData.get("reliantConfirmRequested") === "true";
+  const reliantFlags = await parseReliantIntentFlags(ctx.householdId, formData, {
+    preserveWhenGated: true,
+  });
+  if (!reliantFlags.ok) {
+    return { error: reliantFlags.error };
+  }
 
   if (!taskId) {
     return { error: "Task is required." };
@@ -250,16 +301,21 @@ export async function updateTask(formData: FormData) {
     }
   }
 
+  const updatePayload: Record<string, unknown> = {
+    title,
+    description,
+    assignee_id: assigneeId,
+    due_at: dueAt,
+    provenance: defaultProvenance(),
+  };
+  if (reliantFlags.apply) {
+    updatePayload.reliant_confirm_requested = reliantFlags.confirm;
+    updatePayload.reliant_sms_reminder_requested = reliantFlags.sms;
+  }
+
   const { data: updated, error } = await supabase
     .from("tasks")
-    .update({
-      title,
-      description,
-      assignee_id: assigneeId,
-      due_at: dueAt,
-      reliant_confirm_requested: reliantConfirmRequested,
-      provenance: defaultProvenance(),
-    })
+    .update(updatePayload)
     .eq("id", taskId)
     .eq("household_id", ctx.householdId)
     .select("id, title, description, status, due_at")
@@ -458,9 +514,13 @@ export async function createRecurringTemplate(formData: FormData) {
   const dayOfWeekRaw = String(formData.get("dayOfWeek") ?? "").trim();
   const dayOfMonthRaw = String(formData.get("dayOfMonth") ?? "").trim();
   const dueTimeRaw = String(formData.get("dueTime") ?? "").trim();
-  const reliantConfirmRequested =
-    formData.get("reliantConfirmRequested") === "on" ||
-    formData.get("reliantConfirmRequested") === "true";
+  const reliantFlags = await parseReliantIntentFlags(ctx.householdId, formData);
+  if (!reliantFlags.ok) {
+    return { error: reliantFlags.error };
+  }
+  if (!reliantFlags.apply) {
+    return { error: "Could not resolve Reliant options." };
+  }
 
   if (!title) {
     return { error: "Template title is required." };
@@ -487,10 +547,13 @@ export async function createRecurringTemplate(formData: FormData) {
       day_of_week: dayOfWeek,
       day_of_month: dayOfMonth,
       due_time: dueTime,
-      reliant_confirm_requested: reliantConfirmRequested,
+      reliant_confirm_requested: reliantFlags.confirm,
+      reliant_sms_reminder_requested: reliantFlags.sms,
       created_by: ctx.userId,
     })
-    .select("id, title, default_assignee_id, due_time, reliant_confirm_requested")
+    .select(
+      "id, title, default_assignee_id, due_time, reliant_confirm_requested, reliant_sms_reminder_requested",
+    )
     .single();
 
   if (templateError || !template) {
@@ -503,6 +566,7 @@ export async function createRecurringTemplate(formData: FormData) {
     default_assignee_id: string | null;
     due_time?: string | null;
     reliant_confirm_requested?: boolean | null;
+    reliant_sms_reminder_requested?: boolean | null;
   };
 
   const calendarSettings = await getHouseholdCalendarSettings(ctx.householdId);
@@ -528,6 +592,7 @@ export async function createRecurringTemplate(formData: FormData) {
       due_at: dueAt,
       recurring_template_id: row.id,
       reliant_confirm_requested: Boolean(row.reliant_confirm_requested),
+      reliant_sms_reminder_requested: Boolean(row.reliant_sms_reminder_requested),
       provenance: defaultProvenance(),
       created_by: ctx.userId,
     })

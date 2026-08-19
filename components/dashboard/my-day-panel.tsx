@@ -6,7 +6,7 @@ import { Check, Circle } from "lucide-react";
 
 import { useOptimisticTaskDone } from "@/components/dashboard/use-optimistic-task-done";
 import { TomorrowPreview } from "@/components/dashboard/tomorrow-preview";
-import { ReliantConfirmChip } from "@/components/family/role-badge";
+import { ReliantConfirmChip, ReliantSmsReminderChip } from "@/components/family/role-badge";
 import { PageHeader } from "@/components/layout/page-header";
 import { TaskDoneControl } from "@/components/tasks/task-done-control";
 import { Button } from "@/components/ui/button";
@@ -165,6 +165,9 @@ export function MyDayPanel({
                         </p>
                         {item.reliantConfirmRequested && !isDone ? (
                           <ReliantConfirmChip />
+                        ) : null}
+                        {item.reliantSmsReminderRequested && !isDone ? (
+                          <ReliantSmsReminderChip />
                         ) : null}
                         {isDone ? (
                           <span className="bg-brand/15 text-brand rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">

@@ -170,6 +170,7 @@ export async function getMyDayAgenda(
         status: task.status,
         href: "/tasks",
         reliantConfirmRequested: task.reliantConfirmRequested,
+        reliantSmsReminderRequested: task.reliantSmsReminderRequested,
         entityId: task.id,
         // Overdue undated-safe sort: overdue first via sortAt already past
         ...(overdue ? {} : {}),

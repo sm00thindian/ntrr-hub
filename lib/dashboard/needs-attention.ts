@@ -91,6 +91,7 @@ function taskToAgenda(task: Task, fallbackSortAt: string): AgendaItem {
     status: task.status,
     href: "/tasks",
     reliantConfirmRequested: task.reliantConfirmRequested,
+    reliantSmsReminderRequested: task.reliantSmsReminderRequested,
     entityId: task.id,
     assigneeLabel: task.assigneeLabel,
     assigneePersona: task.assigneePersona,

@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 
 import { DueDateTimeField } from "@/components/tasks/due-datetime-field";
+import { ReliantRequestFields } from "@/components/tasks/reliant-request-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { memberDisplayLabel } from "@/lib/households/member-label";
 import type { HouseholdMember } from "@/lib/households/queries";
+import type { ReliantBridgeState } from "@/lib/reliant/bridge";
 import { updateTask } from "@/lib/tasks/actions";
 import type { Task } from "@/lib/tasks/types";
 
@@ -17,6 +19,7 @@ type EditTaskFormProps = {
   members: HouseholdMember[];
   timeZone: string;
   timeZoneLabel: string;
+  reliantBridge: ReliantBridgeState;
   onClose: () => void;
   onSaved?: () => void;
 };
@@ -26,6 +29,7 @@ export function EditTaskForm({
   members,
   timeZone,
   timeZoneLabel,
+  reliantBridge,
   onClose,
   onSaved,
 }: EditTaskFormProps) {
@@ -122,21 +126,12 @@ export function EditTaskForm({
             defaultDueAt={task.dueAt}
           />
 
-          <label className="border-border bg-muted/30 flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 text-sm">
-            <input
-              type="checkbox"
-              name="reliantConfirmRequested"
-              value="true"
-              defaultChecked={task.reliantConfirmRequested}
-              className="border-input mt-0.5 size-4 shrink-0 rounded"
-            />
-            <span>
-              <span className="text-foreground font-medium">Request Reliant phone confirmation</span>
-              <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
-                Coordinator&apos;s Reliant account may call the assignee until they confirm.
-              </span>
-            </span>
-          </label>
+          <ReliantRequestFields
+            bridge={reliantBridge}
+            defaultConfirm={task.reliantConfirmRequested}
+            defaultSms={task.reliantSmsReminderRequested}
+            compact
+          />
 
           <div className="flex flex-wrap gap-2 pt-1">
             <Button type="submit" disabled={pending}>
