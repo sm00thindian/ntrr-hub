@@ -12,7 +12,7 @@ export type ReliantRequestFieldsProps = {
 
 /**
  * Gated Reliant phone + SMS request options for task / template forms.
- * ENV off → nothing. Connected → checkboxes. Else → connect CTA.
+ * ENV off → greyed preview. Connected → checkboxes. Else → connect CTA.
  */
 export function ReliantRequestFields({
   bridge,
@@ -21,7 +21,46 @@ export function ReliantRequestFields({
   compact = false,
 }: ReliantRequestFieldsProps) {
   if (!bridge.enabled) {
-    return null;
+    return (
+      <div className="sm:col-span-2 space-y-3 opacity-60">
+        <p className="text-muted-foreground text-xs leading-relaxed px-0.5">
+          Reliant phone confirms and SMS reminders will unlock here once Hub ↔ Reliant integration is
+          ready.
+        </p>
+        <label className="border-border bg-muted/30 flex cursor-not-allowed items-start gap-3 rounded-lg border px-3 py-3 text-sm">
+          <input
+            type="checkbox"
+            disabled
+            aria-disabled="true"
+            className="border-input mt-0.5 size-4 shrink-0 rounded opacity-50"
+          />
+          <span>
+            <span className="text-foreground font-medium">Request Reliant phone confirmation</span>
+            <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
+              {compact
+                ? "Coordinator’s Reliant account may call the assignee until they confirm."
+                : "Uses the household coordinator’s Reliant account (billing). Reliant calls the assignee or self-advocate’s mobile until they confirm — they do not need their own Reliant subscription."}
+            </span>
+          </span>
+        </label>
+
+        <label className="border-border bg-muted/30 flex cursor-not-allowed items-start gap-3 rounded-lg border px-3 py-3 text-sm">
+          <input
+            type="checkbox"
+            disabled
+            aria-disabled="true"
+            className="border-input mt-0.5 size-4 shrink-0 rounded opacity-50"
+          />
+          <span>
+            <span className="text-foreground font-medium">Request Reliant SMS reminder</span>
+            <span className="text-muted-foreground mt-0.5 block text-xs leading-relaxed">
+              Soft text nudge when due (or due soon) via the coordinator’s Reliant account — not a
+              phone call.
+            </span>
+          </span>
+        </label>
+      </div>
+    );
   }
 
   if (!bridge.coordinatorConnected) {

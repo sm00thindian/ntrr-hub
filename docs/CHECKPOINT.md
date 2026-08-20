@@ -148,7 +148,7 @@ Soft text nudges on tasks/templates. **May ship ahead of live voice** (dogfood a
 | Principle | Detail |
 |-----------|--------|
 | Boundary | Hub = intent only; **Reliant** sends SMS (not Hub → Twilio) |
-| Gate | `RELIANT_BRIDGE_ENABLED` + household `reliant_connected_at` (coordinator Settings self-attest; later active plan) |
+| Gate | `RELIANT_BRIDGE_ENABLED` + household `reliant_connected_at` (coordinator Settings self-attest; later active plan). When ENV off, Settings connect + task Reliant options are greyed/disabled (not hidden). |
 | Target | Assignee / focus mobile on Hub (`phone_e164`) **with Reliant SMS opt-in** |
 | Billing | Coordinator Reliant / bundle entitlement; quiet hours + daily caps |
 | UX | Independent of phone confirm; checkbox on task + recurring template when bridge connected |

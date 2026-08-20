@@ -14,7 +14,7 @@ import { RELIANT_SMS_URL, RELIANT_URL } from "@/lib/reliant/constants";
 const APEX_URL = "https://ntrr.com";
 
 type NtrrServicesCardProps = {
-  /** Master ENV gate — when false, show cross-sell only (no connect control). */
+  /** Master ENV gate — when false, connect control is greyed / disabled. */
   bridgeEnabled: boolean;
   coordinatorConnected: boolean;
   canManage: boolean;
@@ -54,9 +54,9 @@ export function NtrrServicesCard({
               Reliant — that account places confirmation calls and SMS reminders and holds billing.
               Assignees only need a free Reliant account (and SMS opt-in for texts), not a paid plan.
             </p>
-            {bridgeEnabled ? (
-              <div className="mt-3 space-y-2">
-                {coordinatorConnected ? (
+            <div className="mt-3 space-y-2">
+              {bridgeEnabled ? (
+                coordinatorConnected ? (
                   <p className="text-foreground text-xs font-medium">
                     Reliant is marked connected for this household. Task forms can request phone
                     confirms and SMS reminders.
@@ -67,17 +67,24 @@ export function NtrrServicesCard({
                     services use the coordinator&apos;s Reliant subscription when billing is live
                     (dogfood is free while we measure volume).
                   </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={RELIANT_URL}
-                    className="text-brand inline-flex h-9 items-center text-sm font-medium hover:underline"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Open Reliant →
-                  </a>
-                  {canManage ? (
+                )
+              ) : (
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Hub ↔ Reliant connection unlocks once the integration is ready. You can still open
+                  Reliant on its own; phone confirms and SMS from Hub tasks stay unavailable for now.
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={RELIANT_URL}
+                  className="text-brand inline-flex h-9 items-center text-sm font-medium hover:underline"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Open Reliant →
+                </a>
+                {bridgeEnabled ? (
+                  canManage ? (
                     coordinatorConnected ? (
                       <Button
                         type="button"
@@ -126,31 +133,31 @@ export function NtrrServicesCard({
                     <p className="text-muted-foreground text-xs">
                       Ask an owner or admin to connect Reliant for the household.
                     </p>
-                  )}
-                </div>
-                {message ? (
-                  <p className="text-muted-foreground text-xs" role="status">
-                    {message}
-                  </p>
-                ) : null}
-                {error ? (
-                  <p className="text-destructive text-xs" role="alert">
-                    {error}
-                  </p>
-                ) : null}
+                  )
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled
+                    aria-disabled="true"
+                    className="opacity-50"
+                    title="Available when Hub ↔ Reliant integration is ready"
+                  >
+                    I&apos;ve set up Reliant
+                  </Button>
+                )}
               </div>
-            ) : (
-              <p className="mt-3">
-                <a
-                  href={RELIANT_URL}
-                  className="text-brand text-sm font-medium hover:underline"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  Open Reliant →
-                </a>
-              </p>
-            )}
+              {bridgeEnabled && message ? (
+                <p className="text-muted-foreground text-xs" role="status">
+                  {message}
+                </p>
+              ) : null}
+              {bridgeEnabled && error ? (
+                <p className="text-destructive text-xs" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
             <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
               Call/SMS targets: save a Hub mobile, then{" "}
               <a

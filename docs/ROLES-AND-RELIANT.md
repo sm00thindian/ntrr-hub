@@ -86,7 +86,7 @@ Coordinator’s Reliant account  ──places call──►  Caregiver or self-a
 | `recurring_task_templates` | `reliant_confirm_requested` / `reliant_sms_reminder_requested` | Defaults for instances |
 | `households` | `reliant_connected_at` / `reliant_connected_by` | Coordinator self-attest (dogfood); later active-plan |
 
-**Gate:** `RELIANT_BRIDGE_ENABLED` must be on **and** household Reliant connected — otherwise task forms hide both options (or show Connect CTA when ENV on). Server rejects setting either flag to true when gated off.
+**Gate:** `RELIANT_BRIDGE_ENABLED` must be on **and** household Reliant connected — otherwise task forms and Settings connect controls are greyed / disabled (or show Connect CTA when ENV on but not connected). Server rejects setting either flag to true when gated off.
 
 UX: independent checkboxes on create/edit task + recurring template when connected; **Reliant** + **SMS** chips on cards. Assignees need a free Reliant account + SMS opt-in for live texts (no subscription).
 
